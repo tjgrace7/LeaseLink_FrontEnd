@@ -1,0 +1,15 @@
+@import "@fontsource/source-serif-pro"; /* Default weight */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .bg-lease-gradient {
+    @apply bg-gradient-to-r from-[#4ea5a8] to-[#004564];
+  }
+}
+
+html, body {
+  @apply m-0 p-0 bg-[#222222];
+}
