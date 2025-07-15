@@ -31,7 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace /> />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
