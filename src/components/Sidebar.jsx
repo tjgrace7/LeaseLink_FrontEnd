@@ -17,10 +17,6 @@ const Sidebar = () => {
                     <li><a href="/dashboard" className="flex items-center space-x-2 hover:text-blue-400 no-underline text-l sm:text-xl md:text-2xl lg:text-3xl">
                         <FiHome />
                         Home</a></li>
-                    {/* Properties Link + Icon */}
-                    <li><a href="/properties" className="flex items-center space-x-2 hover:text-blue-400 no-underline text-l sm:text-xl md:text-2xl lg:text-3xl">
-                        <FiDatabase />
-                        Properties</a></li>
                     {/* Chat Link + Icon */}
                     <li><a href="/chat" onClick={() => {
                         localStorage.removeItem("chat_session_id");

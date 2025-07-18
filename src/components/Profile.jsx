@@ -44,8 +44,12 @@ const Profile = ({
     if (!entity || !getFilePath) return;
 
     const loadImage = async () => {
-      const imageUrl = await get_entity_image(getFilePath(entity), session);
-      if (imageUrl) setImage(imageUrl);
+      const file_path = getFilePath(entity)
+
+      if (file_path != null) {
+        const imageUrl = await get_entity_image(file_path, session);
+        if (imageUrl) setImage(imageUrl);
+      }
     };
 
     loadImage();
@@ -61,14 +65,19 @@ const Profile = ({
       const relatedArray = Array.isArray(result)
         ? result
         : result
-        ? [result]
-        : [];
+          ? [result]
+          : [];
 
       setRelatedEntities(relatedArray);
 
       const images = await Promise.all(
-        relatedArray.map((rel) =>
-          get_entity_image(getRelatedFilePath?.(rel), session)
+        relatedArray.map((rel) => {
+          const file = getRelatedFilePath?.(rel)
+          if(file)
+          {
+          get_entity_image(file, session)
+          }
+        }
         )
       );
 
@@ -87,7 +96,7 @@ const Profile = ({
         navigate(`/unit/${id}`);
         break;
       case 'Managing Owner':
-        navigate(`/managing_owner/${id}`);
+        navigate(`/owner/${id}`);
         break;
       case 'Property':
         navigate(`/property/${id}`);

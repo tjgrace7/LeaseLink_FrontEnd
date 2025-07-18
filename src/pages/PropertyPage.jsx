@@ -70,9 +70,9 @@ const PropertyPage = () => {
   /**
    * Navigate to unit page when selected
    */
-  const selectUnit = (unit_id) => {
+  const selectUnit = (unit_id, type) => {
     // TODO: Add PermissionGate check
-    navigate(`/unit/${unit_id}`);
+    navigate(`/${type}/${unit_id}`);
   };
 
   if (!property) {
@@ -115,6 +115,20 @@ const PropertyPage = () => {
         getEntityLabel={(unit) => unit.address || 'Unnamed Unit'}
         getEntityId={(unit) => unit.unit_id}
         Label="Units"
+        placeholder='Units'
+        getSQ={(unit) => unit.square_footage}
+        getSuite={(unit) => unit.Suite}
+        getRelatedEntity={async (unit) => {
+          if (!unit.tenant_id) return null
+          const { data, error } = await supabase.from('tenant').select("*").eq("tenant_id", unit.tenant_id).single()
+          if (error) {
+            console.error("Error Fetching Tenant", error)
+            return null;
+          }
+
+          return data
+        }}
+        renderRelatedLabel={(tenant) => tenant?.Tenant_Name}
       />
 
       {/* Previous chat history for this property */}
@@ -123,6 +137,7 @@ const PropertyPage = () => {
         session={session}
         entityType="property"
         className="mt-6"
+        boxType='unit'
       />
     </div>
   );

@@ -7,11 +7,10 @@ import Dashboard from './pages/Dashboard';
 import TenantPage from './pages/TenantPage'
 import ChatPage from './pages/ChatPage'
 import SignIn from './pages/Sign-In';
-import Properties from './pages/Properties';
+
 import PropertyPage from './pages/PropertyPage'
 import UnitPage from './pages/UnitPage';
-import CreateProperty from './pages/CreateProperty'
-import CreateUnit from './pages/CreateUnit'
+import CreateUnitProperty from './pages/CreateUnit'
 import CreatePerson from './pages/CreatePerson'
 import ManagingOwner from './pages/ManagingOwner'
 import UploadLeases from './pages/UploadLeases'
@@ -36,14 +35,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-            <Route path="properties" element={<ProtectedRoute><Properties /></ProtectedRoute>}/>
+
             <Route path='/property/:property_id' element={<ProtectedRoute><PropertyPage /></ProtectedRoute>}/>
             <Route path='/unit/:unit_id' element={<ProtectedRoute><UnitPage /></ProtectedRoute>} />
             <Route path='/tenant/:tenant_id' element={<ProtectedRoute><TenantPage /></ProtectedRoute>}/>
-            <Route path='/create_property' element={<ProtectedRoute><CreateProperty/></ProtectedRoute>}/>
-            <Route path='/create_unit' element={<ProtectedRoute><CreateUnit/></ProtectedRoute>}/>
+            <Route path='/create_unit' element={<ProtectedRoute><CreateUnitProperty/></ProtectedRoute>}/>
             <Route path='/create_person' element={<ProtectedRoute><CreatePerson/></ProtectedRoute>}/>
-            <Route path='/managing_owner/:owner_id' element={<ProtectedRoute><ManagingOwner/></ProtectedRoute>}/>
+            <Route path='/owner/:owner_id' element={<ProtectedRoute><ManagingOwner/></ProtectedRoute>}/>
             <Route path='/upload_docs' element={<ProtectedRoute><UploadLeases/></ProtectedRoute>}/>
           </Route>
         </Routes>

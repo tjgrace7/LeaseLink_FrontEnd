@@ -1,6 +1,6 @@
 // src/components/SearchableDropdown.jsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * SearchableDropdown
@@ -20,7 +20,8 @@ const SearchableDropdown = ({
   placeholder = "Select an option",
   getOptionTitle = null,
   getOptionId,
-  clearAfterSelect = false
+  clearAfterSelect = false,
+  clearSelection = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);     // Controls dropdown visibility
   const [search, setSearch] = useState('');         // Tracks search input
@@ -31,7 +32,9 @@ const SearchableDropdown = ({
     const label = typeof option === 'string' ? option : getOptionTitle?.(option);
     return label?.toLowerCase().includes(search.toLowerCase());
   });
-
+  useEffect(() => {
+    if(clearSelection) setSelected(null)
+    }, [clearSelection])
   // Handle item selection
   const handleSelect = (option) => {
     if (!clearAfterSelect) setSelected(option);

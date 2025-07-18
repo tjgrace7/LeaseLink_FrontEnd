@@ -2,6 +2,7 @@ import { FiSearch } from 'react-icons/fi';
 import { useState, useEffect } from 'react'
 import { useAuth } from '../components/AuthProvider';
 
+
 // SearchBar Component
 const SearchBar = ({ placeholder, selectEntity, type }) => {
     const supabase_url = import.meta.env.VITE_SUPABASE_URL;
@@ -34,6 +35,7 @@ const SearchBar = ({ placeholder, selectEntity, type }) => {
         localStorage.setItem('entity_name', entityName);
         localStorage.setItem('entity_type', entityType);
         localStorage.setItem('entity_id', entityId);
+
     };
 
     const onSearch = async (searchInput) => {

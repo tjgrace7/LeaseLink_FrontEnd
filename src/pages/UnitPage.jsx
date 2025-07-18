@@ -63,7 +63,7 @@ const UnitPage = () => {
         return;
       }
 
-      const tenantIds = joinData.map((row) => row.tenant_id);
+      const tenantIds = joinData.filter((row) => row && row.tenant_id != null).map((row) => row.tenant_id);
       if (tenantIds.length === 0) return;
 
       const { data: tenantData, error: tenantError } = await supabase

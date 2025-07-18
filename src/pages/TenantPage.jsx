@@ -10,7 +10,7 @@ import Spinner from '../components/Spinner';
 import Profile from '../components/Profile';
 import DisplayBox from '../components/DisplayBox';
 import LoadPreviousMessages from '../components/PreviousMessages';
-
+import { getLeaseDocs } from '../utilities/GetMessages';
 /**
  * TenantPage
  * Displays a tenant profile, related units, lease details, and previous messages.
@@ -21,6 +21,8 @@ const TenantPage = () => {
 
   const [tenant, setTenant] = useState(null);
   const [unitsIds, setUnits] = useState([]);
+  const [contacts, setContacts] = useState([]);
+
 
   const [maintenance, setMaintenance] = useState('');
   const [insurance, setInsurance] = useState('');
@@ -44,11 +46,35 @@ const TenantPage = () => {
       } else {
         setTenant(data);
       }
+
     };
 
     fetchTenant();
   }, [session, tenant_id]);
 
+  //Sets Contacts for Tenants
+  useEffect(() => {
+    if (!tenant_id || !session) return;
+    const getContacts = async () => {
+
+      const { data, error } = await supabase.from('Tenant_Contact').select("*").eq("tenant_id", tenant_id)
+      console.log(data)
+      if (error) {
+        console.error("Error Fetching Contacts Related to Tenant", error)
+        return;
+      }
+
+      const contactIds = data.map((c) => c.contact_id)
+      const { data: contactData, error: contactError } = await supabase.from('Contact').select('*').in('contact_id', contactIds)
+      if (contactError) {
+        console.error("Error Fetching Contacts", contactError)
+        return
+      }
+
+      setContacts(contactData);
+    }
+    getContacts();
+  }, [session, tenant_id])
   /**
    * Get all units linked to this tenant
    */
@@ -65,7 +91,6 @@ const TenantPage = () => {
         console.error('Error Fetching Units for Tenant', error);
         return;
       }
-
       setUnits(data.map((row) => row.unit_id));
     };
 
@@ -76,39 +101,14 @@ const TenantPage = () => {
    * Get lease documents and extract terms
    */
   useEffect(() => {
-    if (!tenant_id) return;
-
-    const getLeaseDocs = async () => {
-      const { data, error } = await supabase
-        .from('lease_documents')
-        .select('*')
-        .eq('tenant_id', tenant_id);
-
-      if (error) {
-        console.error('No Tenant Docs', error);
-        return;
-      }
-
-      const byDate = (a, b) => new Date(b.effective_date) - new Date(a.effective_date);
-
-      const latestMaintenance = data
-        .filter((lease) => lease.effective_date && lease.maintenance_terms !== null)
-        .sort(byDate)[0]?.maintenance_terms;
-
-      const latestInsurance = data
-        .filter((lease) => lease.effective_date && lease.insurance !== null)
-        .sort(byDate)[0]?.insurance;
-
-      const latestTaxes = data
-        .filter((lease) => lease.effective_date && lease.taxes !== null)
-        .sort(byDate)[0]?.taxes;
-
-      setMaintenance(latestMaintenance || '');
-      setInsurance(latestInsurance || '');
-      setTaxes(latestTaxes || '');
-    };
-
-    getLeaseDocs();
+    if (!tenant_id) return
+    const getLeases = async () => {
+      const leases = await getLeaseDocs(tenant_id)
+      setMaintenance(leases.Maintenance)
+      setInsurance(leases.Insurance)
+      setTaxes(leases.Taxes)
+    }
+    getLeases();
   }, [tenant_id]);
 
   if (!tenant) {
@@ -138,7 +138,6 @@ const TenantPage = () => {
               if (error) {
                 console.error('Error Fetching Units', error);
               }
-
               return data || [];
             }}
             getRelatedFilePath={(unit) => unit?.photo_file_path}
@@ -169,8 +168,31 @@ const TenantPage = () => {
         <DisplayBox className="ml-auto w-2/5 overflow-y-auto">
           <div>
             <h2 className="text-2xl"><u>Contact Info</u></h2>
-            <p>We will also need to decide what goes here. Canva has me a little confused. Cause I don't get leases that well</p>
-            <p>Are these different people who we contact and is the info in the leases or will we have to manually upload</p>
+            {contacts.map((contact) => (
+              <div key={contact.contact_id} className='mb-4'>
+                <div className='flex flex-row items-center'>
+                  <h2 className='text-lg mr-2'>Name:</h2>
+                  <p>{contact.Contact_Name}</p>
+                </div>
+                <div className='flex flex-row items-centers'>
+                  <h3 className='text-md mr-2'>Type:</h3>
+                  <p>{contact.Contact_Type}</p>
+                </div>
+                <div className='flex flex-row items-center'>
+                  <h3 className='text-md mr-2'>Phone:</h3>
+                  <p>{contact.Phone}</p>
+                </div>
+                <div className='flex flex-row items-center'>
+                  <h3 className='text-md mr-2'>Email:</h3>
+                  <p>{contact.Email}</p>
+                </div>
+                <div className='flex flex-row items-c'>
+                  <h3 className='text-md mr-2'>Addres:</h3>
+                  <p>{contact.Address}</p>
+                </div>
+              </div>
+            )
+            )}
           </div>
         </DisplayBox>
       </div>

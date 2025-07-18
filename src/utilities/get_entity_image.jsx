@@ -5,7 +5,7 @@ export const get_entity_image = async (filePath, session) => {
 
 
     const supabase_url = import.meta.env.VITE_SUPABASE_URL;
-    console.log(filePath)
+    
     //Calls Suapbase Edge Function get_entity_photo to get signed url from supabase with filepath
     const res = await fetch(`${supabase_url}/functions/v1/get_entity_photo?file_path=${encodeURIComponent(filePath)}`,
         {

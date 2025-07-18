@@ -19,7 +19,7 @@ const CreatePerson = () => {
   const { session, userData } = useAuth();
   const navigate = useNavigate();
 
-  const personOptions = ['App User', 'Tenant', 'Building Owner'];
+  const personOptions = ['App User', 'Tenant', 'Building Owner', 'Contact'];
   const permissionLevels = ['Company Admin', 'Property Manager'];
 
   // Generic info
@@ -30,10 +30,18 @@ const CreatePerson = () => {
     phone: '',
     image: '',
     imageType: '',
+    address: '',
+    contactType: '',
   });
 
   // Tenant-specific state
   const [tenant, setTenant] = useState({ dba: '', active: true });
+
+  //List of Tenants for Contacts
+  const [tenants, setTenants] = useState([]);
+  //Select a Tenant for Contact
+  const [selectedTenants, setSelectedTenant] = useState([])
+
 
   // App User-specific state
   const [permission, setPermission] = useState('');
@@ -90,11 +98,46 @@ const CreatePerson = () => {
           }
         }
       }
+      if (selectedPerson === "Contact") {
+        const { data, error } = await supabase.from('tenant').select("*").eq("property_management_id", userData.company_id)
+        if (error) console.error("Error Fetching Tenants", error)
+        else if (data) {
+          setTenants(data)
+        }
+      }
     };
 
     getPropertyUnits();
   }, [selectedPerson, userData]);
+  useEffect(() => {
+    if (selectedProperties.length < 1 && selectedPerson != "Tenant") return;
+    const propertyIds = selectedProperties.map((prop) => prop.prop_id);
+    const getUnits = async () => {
 
+      const { data: unitData, error: unitError } = await supabase
+        .from('Units')
+        .select('*')
+        .eq('pmcompany_id', userData.company_id).in('property_id', propertyIds);
+
+      if (unitError) {
+        console.error('No Units Available', unitError);
+      } else {
+        const { data: usedUnits, error: unusedError } = await supabase
+          .from('Tenant_Unit')
+          .select('*')
+          .in('unit_id', unitData.map((u) => u.unit_id));
+
+        if (unusedError) {
+          console.error('Tenant_Unit Failed', unusedError);
+        } else {
+          const usedIds = new Set(usedUnits.map((u) => u.unit_id));
+          const availableUnits = unitData.filter((unit) => !usedIds.has(unit.unit_id));
+          setUnits(availableUnits);
+        }
+      }
+    }
+    getUnits();
+  }, [selectedProperties])
   /**
    * Handle input changes for both generic and tenant-specific fields
    */
@@ -114,8 +157,11 @@ const CreatePerson = () => {
   const handleSubmit = async () => {
     const newErrors = {};
     if (!genericFormData.name) newErrors.name = true;
-    if (!genericFormData.email) newErrors.email = true;
-    if (!genericFormData.phone) newErrors.phone = true;
+    if (!genericFormData.email && selectedPerson != "Tenant") newErrors.email = true;
+    if (!genericFormData.phone && selectedPerson != "Tenant") newErrors.phone = true;
+    if (!genericFormData.address && selectedPerson === "Contact") newErrors.address = true;
+    if (!genericFormData.contactType && selectedPerson === "Contact") newErrors.contactType = true;
+    if (selectedTenants.length < 1 && selectedPerson === "Contact") newErrors.tenant = true;
     if (selectedPerson === 'App User' && !permission) newErrors.PermissionLevel = true;
 
     setErrors(newErrors);
@@ -125,7 +171,7 @@ const CreatePerson = () => {
     const imageBase64 = genericFormData.image
       ? await fileToBase64(genericFormData.image)
       : null;
-
+    const tenantIds = selectedTenants.map((tenant) => tenant.tenant_id)
     const response = await fetch(`${supabase_url}/functions/v1/Create_Person`, {
       method: 'POST',
       headers: {
@@ -147,6 +193,9 @@ const CreatePerson = () => {
         role: permission,
         storagePath,
         imageType: genericFormData.imageType,
+        address: genericFormData.address,
+        contactType: genericFormData.contactType,
+        tenant_id: tenantIds
       }),
     });
 
@@ -166,19 +215,49 @@ const CreatePerson = () => {
         <div className="flex flex-col p-6">
           <Dropdown
             options={personOptions}
-            onSelect={setPerson}
+            onSelect={(value) => {
+              setPerson(value)
+              setSelectedProperties([])
+              setSelectedTenant([])
+              setSelectedUnits([])
+              setGeneric({
+                name: '',
+                email: '',
+                phone: '',
+                image: '',
+                imageType: '',
+                address: '',
+                contactType: '',
+              })
+              setTenant({ dba: '', active: true })
+              setErrors({})
+            }}
             placeholder="Select Person Type"
           />
 
           {/* Basic Info Fields */}
+
           <div className="flex flex-col mt-6">
-            {['name', 'email', 'phone'].map((field) => (
+
+            <div>
+              <p className="capitalize">Full Name</p>
+              <input
+                className={`bg-gray-700 p-4 rounded w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                type='text'
+                name="name"
+                placeholder={`Enter Name`}
+                value={genericFormData.name}
+                onChange={handleChange}
+              />
+            </div>
+
+            {selectedPerson != "Tenant" && ['email', 'phone'].map((field) => (
               <div key={field}>
                 <p className="capitalize">{field}</p>
                 <input
-                  className={`bg-gray-700 p-4 rounded w-full border ${
-                    errors[field] ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`bg-gray-700 p-4 rounded w-full border ${errors[field] ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
                   name={field}
                   placeholder={`Enter ${field}`}
@@ -227,23 +306,26 @@ const CreatePerson = () => {
                   getOptionId={(o) => o.prop_id}
                   clearAfterSelect
                 />
-
-                <p>Units</p>
-                <Dropdown
-                  options={units}
-                  onSelect={(unit) => {
-                    if (!selectedUnits.some((u) => u.unit_id === unit.unit_id)) {
-                      setSelectedUnits((prev) => [...prev, unit]);
-                      setUnits((prev) =>
-                        prev.filter((u) => u.unit_id !== unit.unit_id)
-                      );
-                    }
-                  }}
-                  placeholder="Select Units"
-                  getOptionTitle={(u) => u.address}
-                  getOptionId={(u) => u.unit_id}
-                  clearAfterSelect
-                />
+                {selectedProperties.length > 0 && (
+                  <div>
+                    <p>Units</p>
+                    <Dropdown
+                      options={units}
+                      onSelect={(unit) => {
+                        if (!selectedUnits.some((u) => u.unit_id === unit.unit_id)) {
+                          setSelectedUnits((prev) => [...prev, unit]);
+                          setUnits((prev) =>
+                            prev.filter((u) => u.unit_id !== unit.unit_id)
+                          );
+                        }
+                      }}
+                      placeholder="Select Units"
+                      getOptionTitle={(u) => u.address}
+                      getOptionId={(u) => u.unit_id}
+                      clearAfterSelect
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -251,9 +333,8 @@ const CreatePerson = () => {
             {selectedPerson === 'App User' && (
               <>
                 <div
-                  className={`bg-gray-700 mt-4 rounded w-full border ${
-                    errors.PermissionLevel ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`bg-gray-700 mt-4 rounded w-full border ${errors.PermissionLevel ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 >
                   <Dropdown
                     options={permissionLevels}
@@ -283,7 +364,53 @@ const CreatePerson = () => {
                 </div>
               </>
             )}
+            {selectedPerson === "Contact" && (
+              <>
+                <div>
+                  <p>Address</p>
+                  <input
+                    className={`bg-gray-700 p-4 rounded w-full border ${errors.address ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    type='text'
+                    name='address'
+                    placeholder='Enter Address'
+                    value={genericFormData.address}
+                    onChange={handleChange}
 
+                  />
+                </div>
+                <div>
+                  <p>Contact Type</p>
+                  <input
+                    className={`bg-gray-700 p-4 rounded w-full border mb-4 ${errors.contactType ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    type='text'
+                    name='contactType'
+                    placeholder='Enter Contact Type'
+                    value={genericFormData.contactType}
+                    onChange={handleChange} />
+                </div>
+                <div>
+                  <Dropdown
+                    options={tenants}
+                    onSelect={(tenant) => {
+                      if(!selectedTenants.some(t => t.tenant_id === tenant.tenant_id))
+                      {
+                      setSelectedTenant((prev) => [...prev, tenant])
+                      setTenants((prev) =>
+                        prev.filter((p) => p.tenant_id !== tenant.tenant_id)
+                      )
+                    }
+                    }}
+                    placeholder='Select Tenants'
+                    getOptionTitle={(o) => o.Tenant_Name}
+                    getOptionId={(o) => o.tenant_id}
+                    clearAfterSelect
+                  />
+
+                </div>
+              </>
+            )}
             {/* Submit */}
             <div className="mt-4 flex items-center">
               <button
@@ -328,6 +455,17 @@ const CreatePerson = () => {
                     {unit.address || 'Unnamed Unit'}
                   </div>
                 ))}
+              </div>
+            )}
+            {selectedTenants.length > 0 && (
+              <div>
+                <h2 className='text-2xl underline'>Tenants</h2>
+                {selectedTenants.map((tenant) => (
+                  <div key={tenant.tenant_id} className='mb-1 bg-gray-700'>
+                    {tenant.Tenant_Name || "Unnamed Tenant"}
+                  </div>
+                )
+                )}
               </div>
             )}
           </div>

@@ -1,4 +1,4 @@
-
+import { supabase } from "../supabaseClient";
 
 //When an entity is selected from the Search Bar. This function calls supabase edge function entity-session-organizer to get all previous chat sessions for that entity
 export const getPreviousChats = async (entityId, session, setChats) => {
@@ -19,16 +19,50 @@ export const getPreviousChats = async (entityId, session, setChats) => {
         setChats(data.sessions)
     }
 }
-export const getMessages = async (sessionId) => {
-    //Gets directly from supabase table. The messages for the session in order of creation. Newest at bottom
-    //TODO set up RLS security for table
-    const { data, error } = await supabase.from('entity_questions').select("*").eq('session_id', sessionId).order('created_at', { ascending: true });
+export const getCompanyPreviousChats = async (company_id, session, setChats) => {
+    const supabase_url = import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${supabase_url}/functions/v1/company_recent_chats?company_id=${company_id}`,
+        {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${session.access_token}`
+            }
+
+        })
+    const data = await response.json();
+    if (data === null) {
+        setChats("No Previous Chats Available");
+    }
+    else {
+        setChats(data.sessions)
+    }
+}
+
+export const getLeaseDocs = async (tenant_id) => {
+    console.log(tenant_id)
+    const { data, error } = await supabase
+        .from('lease_documents')
+        .select('*')
+        .eq('tenant_id', tenant_id);
+
     if (error) {
-        console.error('Failed to fetch messages', await supabase_messages.text());
-        return [];
+        console.error('No Tenant Docs', error);
+        return;
     }
 
-    return data
+    const byDate = (a, b) => new Date(b.effective_date) - new Date(a.effective_date);
 
+    const latestMaintenance = data
+        .filter((lease) => lease.effective_date && lease.maintenance_terms !== null)
+        .sort(byDate)[0]?.maintenance_terms;
 
-}
+    const latestInsurance = data
+        .filter((lease) => lease.effective_date && lease.insurance !== null)
+        .sort(byDate)[0]?.insurance;
+
+    const latestTaxes = data
+        .filter((lease) => lease.effective_date && lease.taxes !== null)
+        .sort(byDate)[0]?.taxes;
+
+    return {Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || ""}
+};

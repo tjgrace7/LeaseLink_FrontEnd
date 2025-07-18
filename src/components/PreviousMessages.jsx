@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPreviousChats } from '../utilities/GetMessages';
+import { getPreviousChats, getCompanyPreviousChats } from '../utilities/GetMessages';
 import DisplayBox from './DisplayBox';
 
 /**
@@ -24,7 +24,9 @@ const LoadPreviousMessages = ({ entityId, session, entityType, className = '' })
     if (!entityId || !session) return;
 
     const getChats = async () => {
-      await getPreviousChats(entityId, session, setPreviousChats);
+      if(entityType != 'company')
+        await getPreviousChats(entityId, session, setPreviousChats);
+      else if(entityType === 'company') await getCompanyPreviousChats(entityId, session, setPreviousChats)
     };
 
     getChats();

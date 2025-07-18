@@ -1,6 +1,7 @@
 // src/components/EntityListBox.jsx
 
 import SearchBar from './SearchBar';
+import { useEffect, useState } from 'react'
 
 /**
  * EntityListBox
@@ -14,18 +15,31 @@ import SearchBar from './SearchBar';
  * - getEntityId: function to extract unique ID from an entity
  * - Label: display label/title for the section (e.g. "Tenants")
  */
-const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntityId, Label }) => {
+const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntityId, Label, placeholder, boxType, getSQ, getSuite, getRelatedEntity, renderRelatedLabel }) => {
   // If no Label provided, don't render anything
   if (!Label) return null;
-
+  const RelatedEntityInfo = ({ entity }) => {
+    const [related, setRelated] = useState(null)
+    useEffect(() => {
+      const fetch = async () => {
+        if (getRelatedEntity) {
+          const data = await getRelatedEntity(entity)
+          setRelated(data);
+        }
+      };
+      fetch();
+    }, [entity])
+    if (!related || !renderRelatedLabel) return null;
+    return <span className='text-white text-md'>{renderRelatedLabel(related)}</span>;
+  }
   return (
     <div className="bg-lease-gradient text-white p-5 rounded-lg pt-5 mt-20">
       {/* Header: SearchBar and Centered Title */}
       <div className="relative flex items-center pb-10">
         <div className="z-10">
           <SearchBar
-            placeholder={`Search ${Label}`}
-            selectEntity={(entity_id) => selectEntity(entity_id)}
+            placeholder={`Search ${placeholder}`}
+            selectEntity={selectEntity}
             type={type}
           />
         </div>
@@ -38,17 +52,63 @@ const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntity
       <ul className="max-h-80 overflow-y-auto space-y-2">
         {Array.isArray(entities) &&
           entities.map((entity) => (
-            <li
-              key={getEntityId(entity)}
-              className="border border-gray-500 text-white px-4 py-2 rounded-shadow"
-            >
-              <button onClick={() => selectEntity(getEntityId(entity))}>
-                {getEntityLabel(entity)}
+            <li key={getEntityId(entity)}>
+              <button
+                onClick={async () => {
+                  if (getRelatedEntity) {
+                    const related = await getRelatedEntity(entity);
+                    if (related && related.tenant_id) {
+                      console.log("Tenant Id", related.tenant_id)
+                      selectEntity(related.tenant_id, 'tenant');
+                      return;
+                    }
+                  }
+                  selectEntity(getEntityId(entity), boxType);
+                }}
+                className="w-full text-left border border-gray-500 text-white px-4 py-2 rounded-lg"
+              >
+                <div className="flex justify-between items-center w-full gap-4">
+                  {getSuite && (
+
+                    <span className="text-md text-white flex flex-col">
+                      <div>
+                        <h2>Suite</h2>
+                        {getSuite(entity)}
+                      </div>
+                    </span>
+
+                  )}
+                  <span className="font-medium flex flex-col">
+                    <div>
+                      {Label === "Units" && (
+                        <h2>Address</h2>
+                      )}
+                      {getEntityLabel(entity)}
+                    </div>
+                  </span>
+                  {getSQ && (
+                    <span className="text-md text-white">
+                      <div>
+                        <h2>Square Footage</h2>
+                      {getSQ(entity)} sq ft
+                      </div>
+                    </span>
+                  )}
+                  {getRelatedEntity && renderRelatedLabel && (
+                    <div>
+                    {Label === "Units" && (
+                      <h2>Current Tenant</h2>
+                    )}
+                    <RelatedEntityInfo entity={entity} />
+                    </div>
+                  )}
+                </div>
               </button>
             </li>
           ))}
       </ul>
-    </div>
+
+    </div >
   );
 };
 
