@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
  */
 const Profile = ({
   entity,
+  getEntityId,
   session,
   getFilePath,
   getLabel,
@@ -32,7 +33,8 @@ const Profile = ({
   getRelatedLabel,
   RelatedTitle,
   getRelatedEntityId,
-  className = ''
+  className = '',
+  Title = ""
 }) => {
   const [image, setImage] = useState('');
   const [relatedEntities, setRelatedEntities] = useState([]);
@@ -101,12 +103,25 @@ const Profile = ({
       case 'Property':
         navigate(`/property/${id}`);
         break;
+      case 'Tenant(s)':
+        navigate(`/tenant/${id}`)
+        break;
       default:
         console.warn('Unknown RelatedTitle:', RelatedTitle);
         break;
     }
   };
+  const handleEditClick = () => {
+    const entityid = getEntityId(entity)
 
+    let url
+    if(Title === "Property" || Title === "Unit") url = 'edit_building'
+    else url = 'edit_person'
+    navigate(`/${url}/edit?id=${entityid}&type=${Title}`);
+
+      
+    }
+  
   if (!entity) return <Spinner />;
 
   return (
@@ -114,13 +129,16 @@ const Profile = ({
       <div className={`w-full max-w-4xl bg-lease-gradient rounded-lg p-6 flex space-x-10 pb-20 ${className}`}>
         {/* Column 1: Edit Button */}
         <div className="flex flex-col items-start text-white hover:text-gray-200">
-          <button>
+          <button onClick={() => handleEditClick()}>
             <FiEdit size={24} />
           </button>
         </div>
 
         {/* Column 2: Main Entity Image & Label */}
         <div className="flex flex-col items-center justify-center text-center flex-1">
+          {Title != "" && (
+          <h1 className='text-2xl font-bold text-white underline'>{Title}</h1>
+          )}
           {image && (
             <img
               src={image}

@@ -24,7 +24,7 @@ const TopNav = ({toggleSidebar}) => {
                 {/*create user icon/link */}
                 <a href="/create_person"><FaUserPlus className='w-8 h-8'/></a>
                 {/* create property icon/link */}
-                <a href="/create_unit" className='flex items-center'><HiOfficeBuilding className='w-8 h-8'/><HiPlus className='w-5 h-5 -ml-1'/></a>
+                <a href="/create_building" className='flex items-center'><HiOfficeBuilding className='w-8 h-8'/><HiPlus className='w-5 h-5 -ml-1'/></a>
 
                 {/*Search bar  */}
                 <div className='hidden md:block flex'>

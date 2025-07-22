@@ -240,7 +240,7 @@ const ChatPage = () => {
         //Sets the message input to blank
         setInput('');
         console.log(entity_id);
-        console.log(entity_type);
+        console.log("Entity Type:", entity_type);
         console.log("Company Id:", company_id)
         //Creates the json payload for the Server
         const payload = {

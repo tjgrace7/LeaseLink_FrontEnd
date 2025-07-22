@@ -54,7 +54,7 @@ const UnitPage = () => {
 
     const getTenants = async () => {
       const { data: joinData, error: joinError } = await supabase
-        .from('Units')
+        .from('Tenant_Unit')
         .select('*')
         .eq('unit_id', unit_id);
 
@@ -64,6 +64,7 @@ const UnitPage = () => {
       }
 
       const tenantIds = joinData.filter((row) => row && row.tenant_id != null).map((row) => row.tenant_id);
+
       if (tenantIds.length === 0) return;
 
       const { data: tenantData, error: tenantError } = await supabase
@@ -74,29 +75,17 @@ const UnitPage = () => {
       if (tenantError) {
         console.error('Error loading tenants', tenantError);
       } else {
-        setTenants(tenantData);
+        const TenantSet = tenantData.filter((tenant) => tenant.tenant_id !== unit.tenant_id)
+        const curtenant = tenantData.find((tenant) => tenant.tenant_id === unit.tenant_id)
+        setTenants(TenantSet);
+        setCurrentTenant(curtenant)
       }
     };
 
     getTenants();
   }, [unit]);
 
-  /**
-   * Identify current tenant (marked as active) and separate from past tenants
-   */
-  useEffect(() => {
-    if (!tenants) return;
 
-    const parseCurrentTenant = () => {
-      const activeTenant = tenants.find((t) => t.Active);
-      if (activeTenant) {
-        setCurrentTenant(activeTenant);
-        setTenants((prev) => prev.filter((t) => t.tenant_id !== activeTenant.tenant_id));
-      }
-    };
-
-    parseCurrentTenant();
-  }, [tenants]);
 
   /**
    * Navigate to tenant profile
@@ -141,6 +130,8 @@ const UnitPage = () => {
             getRelatedLabel={(property) => property?.Property_Name}
             RelatedTitle="Property"
             getRelatedEntityId={(property) => property.prop_id}
+            Title="Unit"
+            getEntityId={(u) => u.unit_id}
           />
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../components/AuthProvider';
 import { supabase } from '../supabaseClient';
@@ -18,6 +19,7 @@ import { getLeaseDocs } from '../utilities/GetMessages';
 const TenantPage = () => {
   const { session } = useAuth();
   const { tenant_id } = useParams();
+  const navigate = useNavigate();
 
   const [tenant, setTenant] = useState(null);
   const [unitsIds, setUnits] = useState([]);
@@ -144,6 +146,8 @@ const TenantPage = () => {
             getRelatedLabel={(unit) => unit?.address}
             RelatedTitle="Unit(s)"
             getRelatedEntityId={(unit) => unit.unit_id}
+            Title="Tenant"
+            getEntityId={(t) => t.tenant_id}
           />
         </div>
 
@@ -169,12 +173,13 @@ const TenantPage = () => {
           <div>
             <h2 className="text-2xl"><u>Contact Info</u></h2>
             {contacts.map((contact) => (
-              <div key={contact.contact_id} className='mb-4'>
+              <button className='flex flex-col items-start text-white hover:bg-gray-700' key={contact.contact_id} onClick={() => navigate(`/contact/${contact.contact_id}`)}> 
+              <div  className='mb-4'>
                 <div className='flex flex-row items-center'>
                   <h2 className='text-lg mr-2'>Name:</h2>
                   <p>{contact.Contact_Name}</p>
                 </div>
-                <div className='flex flex-row items-centers'>
+                <div className='flex flex-row items-center'>
                   <h3 className='text-md mr-2'>Type:</h3>
                   <p>{contact.Contact_Type}</p>
                 </div>
@@ -186,11 +191,12 @@ const TenantPage = () => {
                   <h3 className='text-md mr-2'>Email:</h3>
                   <p>{contact.Email}</p>
                 </div>
-                <div className='flex flex-row items-c'>
-                  <h3 className='text-md mr-2'>Addres:</h3>
+                <div className='flex flex-row items-center'>
+                  <h3 className='text-md mr-2'>Address:</h3>
                   <p>{contact.Address}</p>
                 </div>
               </div>
+              </button>
             )
             )}
           </div>

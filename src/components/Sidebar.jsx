@@ -30,21 +30,6 @@ const Sidebar = () => {
 
                 </ul>
             </div>
-            <div>
-
-                <ul className="space-y-4 list-none pl-4">
-                    {/*LeaseLink Backend Link + Icon */}
-                    <li><a href="/leaselinkbackend" className="flex items-center space-x-2 hover:text-blue-400 no-underline text-l sm:text-xl md:text-2xl lg:text-3xl">
-                        <img src={tinylogo} alt={tinylogo} className="h-6 w-auto align-left" />LeaseLink</a></li>
-                    {/*Settings Link + Icon */}
-                    <li><a href="/settings" className="flex items-center space-x-2 hover:text-blue-400 no-underline text-l sm:text-xl md:text-2xl lg:text-3xl">
-                        <FiSettings />
-                        Settings</a></li>
-                    {/*Sign Out Link + Icon */}
-                    <FiLogOut />
-                    <SignOut />
-                </ul>
-            </div>
         </div>
     );
 };

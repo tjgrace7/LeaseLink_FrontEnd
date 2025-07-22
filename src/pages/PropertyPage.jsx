@@ -105,6 +105,8 @@ const PropertyPage = () => {
         getRelatedEntityId={(o) => o.owner_id}
         RelatedTitle="Managing Owner"
         className="w-2/5"
+        Title="Property"
+        getEntityId={(e) => e.prop_id}
       />
 
       {/* Units associated with this property */}

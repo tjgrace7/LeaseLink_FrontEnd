@@ -2,6 +2,7 @@ import Sidebar from '../components/Sidebar';
 import TopNav from '../components/TopNav';
 import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import TicketSystem from '../components/TicketSystem';
 
 //Shows the Layout of the App for main to use when loading pages
 const Layout = () => {
@@ -23,7 +24,7 @@ const Layout = () => {
 
                 </main>
             </div>
-
+            <TicketSystem/>
         </div>
     );
 };

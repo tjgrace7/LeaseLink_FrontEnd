@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
  */
 const SearchableDropdown = ({
   options,
+  value,
   onSelect,
   placeholder = "Select an option",
   getOptionTitle = null,
@@ -28,10 +29,20 @@ const SearchableDropdown = ({
   const [selected, setSelected] = useState(null);   // Stores selected item
 
   // Filter options based on search input
-  const filteredOptions = options.filter(option => {
+const filteredOptions =
+  options.filter(option => {
     const label = typeof option === 'string' ? option : getOptionTitle?.(option);
     return label?.toLowerCase().includes(search.toLowerCase());
-  });
+  })
+
+  useEffect(() => {
+    if(!value) return
+    const option = options.find((o) => o === value)
+    if(option)
+    {
+    setSelected(option)
+    }
+  }, [value, options])
   useEffect(() => {
     if(clearSelection) setSelected(null)
     }, [clearSelection])

@@ -71,14 +71,14 @@ const ManagingOwner = () => {
 
     getProperties();
   }, [owner_id]);
-
+  //add Edit Navigation
   return (
     <div className="p-20">
       {/* Profile Section */}
       <div className="w-full max-w-4xl bg-lease-gradient rounded-lg p-6 flex space-x-10 mb-20">
         {/* Column 1: Edit Icon */}
         <div className="flex flex-col items-start text-white hover:text-gray-200">
-          <button>
+          <button onClick={() => navigate(`/edit_person/edit?id=${owner_id}&type=Building Owner`)}>
             <FiEdit size={24} />
           </button>
         </div>

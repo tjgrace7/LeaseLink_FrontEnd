@@ -1,12 +1,17 @@
+
+import './utilities/logCollector'
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
+
+
 import Layout from './layout/Layout';
 import Dashboard from './pages/Dashboard';
 import TenantPage from './pages/TenantPage'
 import ChatPage from './pages/ChatPage'
 import SignIn from './pages/Sign-In';
+import ContactPage from './pages/Contact';
 
 import PropertyPage from './pages/PropertyPage'
 import UnitPage from './pages/UnitPage';
@@ -14,6 +19,7 @@ import CreateUnitProperty from './pages/CreateUnit'
 import CreatePerson from './pages/CreatePerson'
 import ManagingOwner from './pages/ManagingOwner'
 import UploadLeases from './pages/UploadLeases'
+import UserProfile from './pages/UserProfile';
 
 import Spinner from './components/loadingSpinner'
 
@@ -39,10 +45,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/property/:property_id' element={<ProtectedRoute><PropertyPage /></ProtectedRoute>}/>
             <Route path='/unit/:unit_id' element={<ProtectedRoute><UnitPage /></ProtectedRoute>} />
             <Route path='/tenant/:tenant_id' element={<ProtectedRoute><TenantPage /></ProtectedRoute>}/>
-            <Route path='/create_unit' element={<ProtectedRoute><CreateUnitProperty/></ProtectedRoute>}/>
+            <Route path='/create_building' element={<ProtectedRoute><CreateUnitProperty/></ProtectedRoute>}/>
+            <Route path='/edit_building/:id' element={<ProtectedRoute><CreateUnitProperty/></ProtectedRoute>}/>
             <Route path='/create_person' element={<ProtectedRoute><CreatePerson/></ProtectedRoute>}/>
+            <Route path='/edit_person/:id' element={<ProtectedRoute><CreatePerson/></ProtectedRoute>}/>
             <Route path='/owner/:owner_id' element={<ProtectedRoute><ManagingOwner/></ProtectedRoute>}/>
+            <Route path='/contact/:contact_id' element={<ProtectedRoute><ContactPage/></ProtectedRoute>}/>
             <Route path='/upload_docs' element={<ProtectedRoute><UploadLeases/></ProtectedRoute>}/>
+            <Route path='/profile' element={<ProtectedRoute><UserProfile /></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

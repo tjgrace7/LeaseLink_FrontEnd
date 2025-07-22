@@ -11,7 +11,7 @@ import { useState } from 'react';
  * - onImageSelect: function to handle the selected image file
  */
 const UploadImage = ({ onImageSelect }) => {
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [setPreviewUrl] = useState(null);
 
   // Handle file input change
   const handleFileChange = (e) => {
@@ -39,14 +39,6 @@ const UploadImage = ({ onImageSelect }) => {
         className="block"
       />
 
-      {/* Image preview */}
-      {previewUrl && (
-        <img
-          src={previewUrl}
-          alt="Preview"
-          className="w-32 h-32 object-cover rounded border"
-        />
-      )}
     </div>
   );
 };
