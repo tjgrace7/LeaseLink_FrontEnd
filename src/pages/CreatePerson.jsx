@@ -390,7 +390,7 @@ if (!isEditMode || (isEditMode && genericFormData.password)) {
                         }
                       }}
                       placeholder="Select Units"
-                      getOptionTitle={(u) => u.address}
+                      getOptionTitle={(u) => `${u.address} - Suite ${u.Suite}`}
                       getOptionId={(u) => u.unit_id}
                       clearAfterSelect
                     />
