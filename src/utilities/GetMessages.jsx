@@ -131,5 +131,6 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Delivery/Possession Date": getMostRecentField('delivery_posession_date') },
         { "Expansion/Contraction Rights": getMostRecentField('expansion_contraction_rights') }
     ];
-    return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent }
+    const leaseDocs = data
+    return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent, leaseDocs }
 };

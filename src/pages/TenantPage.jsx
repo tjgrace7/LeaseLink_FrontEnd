@@ -30,6 +30,7 @@ const TenantPage = () => {
   const [insurance, setInsurance] = useState('');
   const [taxes, setTaxes] = useState('');
   const [Terms, setTerms] = useState([])
+  const [leaseDocs, setLeaseDocs] = useState([])
 
   /**
    * Fetch tenant by ID
@@ -61,7 +62,6 @@ const TenantPage = () => {
     const getContacts = async () => {
 
       const { data, error } = await supabase.from('Tenant_Contact').select("*").eq("tenant_id", tenant_id)
-      console.log(data)
       if (error) {
         console.error("Error Fetching Contacts Related to Tenant", error)
         return;
@@ -82,7 +82,7 @@ const TenantPage = () => {
    * Get all units linked to this tenant
    */
   useEffect(() => {
-    if (!tenant) return;
+    if (!tenant_id) return;
 
     const getUnits = async () => {
       const { data, error } = await supabase
@@ -98,7 +98,7 @@ const TenantPage = () => {
     };
 
     getUnits();
-  }, [tenant, tenant_id]);
+  }, [tenant_id]);
 
   /**
    * Get lease documents and extract terms
@@ -111,10 +111,21 @@ const TenantPage = () => {
       setInsurance(leases.Insurance)
       setTaxes(leases.Taxes)
       setTerms(leases.terms_Rent)
+      setLeaseDocs(leases.leaseDocs)
     }
     getLeases();
   }, [tenant_id]);
 
+  const getSignedUrl = async (filePath) => {
+    const {data, error} = await supabase.storage.from('lease-docs').createSignedUrl(filePath, 600)
+
+    if(error)
+    {
+      console.error("Error Generating Signed URL", error)
+      return null
+    }
+    return data.signedUrl
+  }
   if (!tenant) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
@@ -184,39 +195,40 @@ const TenantPage = () => {
             })}
           </div>
         </DisplayBox>
-
-        <DisplayBox className="ml-auto w-2/5 overflow-y-auto">
-          <div>
-            <h2 className="text-2xl"><u>Contact Info</u></h2>
-            {contacts.map((contact) => (
-              <button className='flex flex-col items-start text-white hover:bg-gray-700' key={contact.contact_id} onClick={() => navigate(`/contact/${contact.contact_id}`)}>
-                <div className='mb-4'>
-                  <div className='flex flex-row items-center'>
-                    <h2 className='text-lg mr-2'>Name:</h2>
-                    <p>{contact.Contact_Name}</p>
+        {contacts.length > 0 && (
+          <DisplayBox className="ml-auto w-2/5 overflow-y-auto">
+            <div>
+              <h2 className="text-2xl"><u>Contact Info</u></h2>
+              {contacts.map((contact) => (
+                <button className='flex flex-col items-start text-white hover:bg-gray-700' key={contact.contact_id} onClick={() => navigate(`/contact/${contact.contact_id}`)}>
+                  <div className='mb-4'>
+                    <div className='flex flex-row items-center'>
+                      <h2 className='text-lg mr-2'>Name:</h2>
+                      <p>{contact.Contact_Name}</p>
+                    </div>
+                    <div className='flex flex-row items-center'>
+                      <h3 className='text-md mr-2'>Type:</h3>
+                      <p>{contact.Contact_Type}</p>
+                    </div>
+                    <div className='flex flex-row items-center'>
+                      <h3 className='text-md mr-2'>Phone:</h3>
+                      <p>{contact.Phone}</p>
+                    </div>
+                    <div className='flex flex-row items-center'>
+                      <h3 className='text-md mr-2'>Email:</h3>
+                      <p>{contact.Email}</p>
+                    </div>
+                    <div className='flex flex-row items-center'>
+                      <h3 className='text-md mr-2'>Address:</h3>
+                      <p>{contact.Address}</p>
+                    </div>
                   </div>
-                  <div className='flex flex-row items-center'>
-                    <h3 className='text-md mr-2'>Type:</h3>
-                    <p>{contact.Contact_Type}</p>
-                  </div>
-                  <div className='flex flex-row items-center'>
-                    <h3 className='text-md mr-2'>Phone:</h3>
-                    <p>{contact.Phone}</p>
-                  </div>
-                  <div className='flex flex-row items-center'>
-                    <h3 className='text-md mr-2'>Email:</h3>
-                    <p>{contact.Email}</p>
-                  </div>
-                  <div className='flex flex-row items-center'>
-                    <h3 className='text-md mr-2'>Address:</h3>
-                    <p>{contact.Address}</p>
-                  </div>
-                </div>
-              </button>
-            )
-            )}
-          </div>
-        </DisplayBox>
+                </button>
+              )
+              )}
+            </div>
+          </DisplayBox>
+        )}
       </div>
 
       {/* Bottom Row: Lease Terms */}
@@ -235,9 +247,33 @@ const TenantPage = () => {
             <h2 className="text-2xl"><u>Insurance</u></h2>
             <p>{insurance}</p>
           </div>
+
         </DisplayBox>
       </div>
-    </div>
+      {
+        leaseDocs.length > 0 && (
+          <div className="flex flex-row items-start items-stretch">
+            <DisplayBox className='mr-6'>
+              <div>
+                <h2 className="text-2xl"><u>Lease Documents</u></h2>
+                {leaseDocs.map((lease) => {
+                  const title = lease.lease_file_path.split('/').pop()
+                  return (
+                    <p className='text-white underline cursor-pointer' onClick={async() => {
+                      console.log(lease.lease_file_path)
+                      const signedUrl = await getSignedUrl(lease.lease_file_path)
+                      
+                      if(signedUrl) window.open(signedUrl, '_blank');
+                    }}>{title}</p>
+                  )
+                })}
+              </div>
+            </DisplayBox>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 

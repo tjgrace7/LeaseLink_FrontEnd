@@ -23,7 +23,6 @@ const ChatSidebar = ({ previousChats = [], sources = [], onSelectChat, onSourceC
           ))
         )}
       </ul>
-      {console.log(termsRent)}
       {termsRent.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Terms and Rent</h2>
