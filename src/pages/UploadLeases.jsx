@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import DisplayBox from '../components/DisplayBox';
 import Dropdown from '../components/dropdown';
 import { supabase } from '../supabaseClient';
+import Spinner from '../components/Spinner'
 
 const UploadLeases = () => {
     const { session, userData } = useAuth();
@@ -18,6 +19,8 @@ const UploadLeases = () => {
     const [properties, setProperties] = useState([]);
     const [selectedUnit, setSelectedUnit] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
+
+    const [submittingFiles, setSubmitFiles] = useState(false)
 
     const supabaseurl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -77,7 +80,7 @@ const UploadLeases = () => {
             alert('Please select a tenant, property, unit, and at least one file.');
             return;
         }
-
+        setSubmitFiles(true)
         for (const file of fileList) {
             try {
                 // 🎟️ Step 1: Get signed upload URL
@@ -131,26 +134,31 @@ const UploadLeases = () => {
                     const err = await processRes.text();
                     throw new Error("Processing failed: " + err);
                 }
-
+                
                 console.log(`✅ File processed: ${file.name}`);
             } catch (err) {
                 console.error(`❌ Error uploading ${file.name}:`, err);
                 alert(`Error uploading file: ${file.name}\n${err.message}`);
+                setSubmitFiles(false)
                 return;
+                
             }
         }
-
+        setSubmitFiles(false)
         alert("🎉 All files uploaded and processing triggered.");
         navigate("/dashboard");
     };
-
+    if(submittingFiles)
+    {
+        return ( <div className='flex items-center justify-center'><Spinner/></div>)
+    }
     return (
         <div>
             <div className="flex items-center justify-center">
                 <h1 className="text-2xl">Upload Leases</h1>
             </div>
 
-            <DisplayBox className="flex flex-col">
+            <DisplayBox className="flex flex-col mb-10">
                 <Dropdown
                     options={tenants}
                     onSelect={tenantSelected}
@@ -173,6 +181,7 @@ const UploadLeases = () => {
 
                         {units.length > 1 && (
                             <Dropdown
+                            className='mt-10'
                                 options={units}
                                 onSelect={setSelectedUnit}
                                 placeholder="Select Unit"

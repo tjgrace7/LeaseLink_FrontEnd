@@ -9,25 +9,28 @@ import LoadPreviousMessages from '../components/PreviousMessages';
 const Dashboard = () => {
     const { session, userData } = useAuth();
     const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startISO = currentMonth.toISOString();
+    const nowISO = now.toISOString();
+
 
     const [messageCount, setMessageCount] = useState(0);
     const [tenantCount, setTenantCount] = useState(0)
     const [properties, setProperties] = useState([]);
     const [companyId, setCompanyId] = useState("");
+    const [docs, setDocs] = useState(0)
     const navigate = useNavigate();
 
     //Gets Entity Questions for counting how many 
     useEffect(() => {
         if (!session || !userData) return;
-        
+
         setCompanyId(userData.company_id)
         const getMessages = async () => {
-            const { data, error } = await supabase.from('entity_questions').select('*').eq("company_id", userData.company_id)
+            const { data, error } = await supabase.from('entity_questions').select('*').gte('created_at', startISO).lte('created_at', nowISO)
             if (error) console.error("Message Load Error", error)
             else if (data) {
-                const recentData = data.filter(item => new Date(item.created_at) >= sevenDaysAgo && item.role === "assistant");
+                const recentData = data.filter(item => item.role === "assistant");
                 setMessageCount(recentData.length);
             }
         }
@@ -50,13 +53,21 @@ const Dashboard = () => {
 
         getProperties();
         const getTenants = async () => {
-            const {data, error} = await supabase.from('tenant').select("*").eq("property_management_id", userData.company_id)
-            if(error) console.error("Tenant Load Error", error)
-            else if(data) {
+            const { data, error } = await supabase.from('tenant').select("*").eq("property_management_id", userData.company_id)
+            if (error) console.error("Tenant Load Error", error)
+            else if (data) {
                 setTenantCount(data.length);
             }
         }
         getTenants();
+        const getDocs = async () => {
+            const { data, error } = await supabase.from('lease_documents').select("*").eq('company_id', userData.company_id)
+            if (error) console.error("Doc Load Error")
+            else if (data) {
+                setDocs(data.length)
+            }
+        }
+        getDocs();
 
     }, [session, userData])
 
@@ -77,8 +88,14 @@ const Dashboard = () => {
             <div className='flex flex-row justify-between'>
                 <DisplayBox className='w-1/5 m-4 ml-20 flex flex-col justify-center items-center'>
                     <div className='flex flex-col items-center justify-center'>
-                        <h2><u>Weekly Answered Questions</u></h2>
+                        <h2><u>Monthly Answered Questions</u></h2>
                         <p className='text-4xl mt-6'>{messageCount}</p>
+                    </div>
+                </DisplayBox>
+                <DisplayBox className='w-1/5 m-4 ml-20 flex flex-col justify-center items-center'>
+                    <div className='flex flex-col items-center justify-center'>
+                        <h2><u>Tenant Docs Extracted</u></h2>
+                        <p className='text-4xl mt-6'>{docs}</p>
                     </div>
                 </DisplayBox>
                 <DisplayBox className='w-1/5 m-4 mr-20 flex flex-col justify-center items-center'>
@@ -109,13 +126,13 @@ const Dashboard = () => {
                 />
             </div>
             {companyId && (
-            <div className='p-10'>
-                <LoadPreviousMessages 
-                    entityId={companyId}
-                    session={session}
-                    entityType="company"
-                />
-            </div>
+                <div className='p-10'>
+                    <LoadPreviousMessages
+                        entityId={companyId}
+                        session={session}
+                        entityType="company"
+                    />
+                </div>
             )}
         </div>
     )

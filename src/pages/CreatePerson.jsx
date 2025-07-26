@@ -28,7 +28,7 @@ const CreateEditPerson = () => {
   const [genericFormData, setGeneric] = useState({
     name: '', email: '', phone: '', image: '', imageType: '', address: '', contactType: '', password: '', passwordconfirm: ''
   });
-  const [initialData, setInitialData] = useState(null);
+
 
   const [tenant, setTenant] = useState({ dba: '', active: true });
   const [tenants, setTenants] = useState([]);
@@ -40,8 +40,13 @@ const CreateEditPerson = () => {
   const [units, setUnits] = useState([]);
   const [selectedUnits, setSelectedUnits] = useState([]);
   const supabase_url = import.meta.env.VITE_SUPABASE_URL;
-  const [previousImage, setPreviousImage] = useState('')
 
+  const [previousImage, setPreviousImage] = useState('')
+  const [initialData, setInitialData] = useState(null);
+  const [initialUnits, setInitialUnits] = useState(null);
+  const [initialProperties, setInitialProperties] = useState(null)
+  const [initialTenants, setInitialTenants] = useState(null)
+  const [initialPermission, setInitialPermission] = useState('')
 
   useEffect(() => {
     let objectUrl;
@@ -142,6 +147,7 @@ const CreateEditPerson = () => {
         const uIds = unitTenant.map((u) => u.unit_id);
         const unitData = await getTableIdList('Units', 'unit_id', uIds);
         setSelectedUnits(unitData);
+        setInitialUnits(unitData)
       }
 
       if (typeParam === 'Contact') {
@@ -151,10 +157,12 @@ const CreateEditPerson = () => {
         const selectedIds = new Set((relatedTenants || []).map((t) => t.tenant_id));
         setSelectedTenant(relatedTenants);
         setTenants((prev) => prev.filter((p) => !selectedIds.has(p.tenant_id)));
+        setInitialTenants(relatedTenants)
       }
 
       if (typeParam === 'App User') {
         setPermission(data.role || '');
+        setInitialPermission(data.role || '')
       }
 
       if (typeParam === 'Tenant' || typeParam === 'App User') {
@@ -164,6 +172,7 @@ const CreateEditPerson = () => {
         const propertyData = await getTableIdList('properties', 'prop_id', propIds);
         setSelectedProperties(propertyData);
         setProperties((prev) => prev.filter((p) => !propertyData.map(pd => pd.prop_id).includes(p.prop_id)));
+        setInitialProperties(propertyData)
       }
     };
 

@@ -6,6 +6,7 @@ import { useAuth } from '../components/AuthProvider'
 import { supabase } from '../supabaseClient'
 import { getPreviousChats } from '../utilities/GetMessages'
 import { get_entity_image } from '../utilities/get_entity_image';
+import PopUp from '../components/popUp';
 
 //The Chat Page is the main use feature of the app. PM can ask the chat questions about properties, units, or tenants. It has access to all leasing data applied to those properties.
 const ChatPage = () => {
@@ -31,6 +32,9 @@ const ChatPage = () => {
     const [currentSources, setSources] = useState([]);
     const [selectedSource, setSelectedSource] = useState(null);
     const [showModal, setShowModal] = useState(false);
+
+    const [isAvailable, setAvailable] = useState(true);
+    const [popUp, setPopUp] = useState(false)
 
     const messagesEndRef = useRef(null);
 
@@ -202,6 +206,10 @@ const ChatPage = () => {
         console.log(imageurl)
         setEntityImage(imageurl)
 
+        if (storedEntityType === "tenant") {
+
+        }
+
     }
     //Once an entity is selected from the search bar. Clears old entity data and replaces it with new in local storage
     const selectEntity = async (entityId, entityType) => {
@@ -225,35 +233,51 @@ const ChatPage = () => {
         //Calls Get Previous Chats for entity
         getPreviousChats(entityId, session, setPreviousChats);
     }
+    const pollForNextAssistantResponse = async (existingAssistantCount, retries = 20, delay = 1500) => {
+        for (let i = 0; i < retries; i++) {
+            const messages = await getMessages(session_id);
+            const newAssistantMessages = messages.filter(m => m.role === 'assistant');
+
+            if (newAssistantMessages.length > existingAssistantCount) {
+                setMessages(messages);
+                const last = messages[messages.length - 1];
+                if (last.sources) {
+                    setSources(last.sources);
+                }
+                return;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        setMessages(prev => [
+            ...prev.slice(0, -1),
+            { role: 'assistant', text: '⚠️ No response received. Please try again later.' }
+        ]);
+    };
+
     //This function handles the logic when a message is sent for an entity
     const handleSend = async () => {
-        //Makes sure message is trimmed before sending
         if (!input.trim()) return;
 
-        //Sets new messages while using previous messages
-        //Adds loading message for ai 
+        // Optimistically show message
         setMessages((prev) => [
             ...prev,
             { role: 'user', text: input },
             { role: 'assistant', text: '...', loading: true }
         ]);
-        //Sets the message input to blank
         setInput('');
-        console.log(entity_id);
-        console.log("Entity Type:", entity_type);
-        console.log("Company Id:", company_id)
-        //Creates the json payload for the Server
+
         const payload = {
-            entity_id: entity_id,
-            company_id: company_id,
+            entity_id,
+            company_id,
             message: input,
             session_id,
-            auth_id: auth_id,
-            entity_type: entity_type
+            auth_id,
+            entity_type
         };
 
         try {
-            //Contacts Servert to post message and run entire server script
             const res = await fetch(`${server_url}/entity_questions`, {
                 method: 'POST',
                 headers: {
@@ -262,7 +286,7 @@ const ChatPage = () => {
                 },
                 body: JSON.stringify(payload)
             });
-            //Checks that response was ok
+
             if (!res.ok) {
                 const error = await res.json();
                 console.error("Server Error:", error);
@@ -272,26 +296,31 @@ const ChatPage = () => {
                 ]);
                 return;
             }
-            //Gets all session messages from supabase
-            const data = await getMessages(session_id);
-            //Gets Sources that chatGPT used for messages
-            const newSource = data[data.length - 1].sources;
-            //Sets messages to supabase get call
-            setMessages(data);
-            if (newSource != null) {
-                setSources(newSource);
-                console.log(currentSources);
-            }
+
+            // 🔥 Count how many assistant messages already exist before polling
+            const current = await getMessages(session_id);
+            const assistantCount = current.filter(m => m.role === 'assistant').length;
+
+            pollForNextAssistantResponse(assistantCount);
 
         } catch (err) {
             console.error("Message Send Failed", err);
         }
     };
+
     if (loading) return <div>Loading...</div>
     if (loadingUserData) return <div>Loading...</div>
     if (!userData) return <div>User record not found</div>
     return (
         <div className="flex h-screen bg-[#1e1e1e]">
+            {popUp && (
+                <PopUp
+                    title={`${entity_name} Not Updated`}
+                    message={`${entity_name} may not have accurate context. Documents are still uploading.`}
+                    onClose={() => setPopUp(false)}
+                />
+            )}
+
             {/* Left: main chat area */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header: entity info + search bar */}
@@ -300,11 +329,13 @@ const ChatPage = () => {
                     <div className="flex items-center space-x-3">
                         {entitySelected && entity_name !== '' && (
                             <div className="flex items-center space-x-2">
-                                <img
-                                    src={entity_image || ''}
-                                    alt="Profile"
-                                    className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
-                                />
+                                {entity_image && (
+                                    <img
+                                        src={entity_image || ''}
+                                        alt="Profile"
+                                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                                    />
+                                )}
                                 <p className="text-white font-medium">
                                     {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)} - {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
                                 </p>

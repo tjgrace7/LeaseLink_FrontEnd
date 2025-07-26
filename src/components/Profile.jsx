@@ -75,9 +75,8 @@ const Profile = ({
       const images = await Promise.all(
         relatedArray.map((rel) => {
           const file = getRelatedFilePath?.(rel)
-          if(file)
-          {
-          get_entity_image(file, session)
+          if (file) {
+            get_entity_image(file, session)
           }
         }
         )
@@ -115,13 +114,13 @@ const Profile = ({
     const entityid = getEntityId(entity)
 
     let url
-    if(Title === "Property" || Title === "Unit") url = 'edit_building'
+    if (Title === "Property" || Title === "Unit") url = 'edit_building'
     else url = 'edit_person'
     navigate(`/${url}/edit?id=${entityid}&type=${Title}`);
 
-      
-    }
-  
+
+  }
+
   if (!entity) return <Spinner />;
 
   return (
@@ -137,7 +136,7 @@ const Profile = ({
         {/* Column 2: Main Entity Image & Label */}
         <div className="flex flex-col items-center justify-center text-center flex-1">
           {Title != "" && (
-          <h1 className='text-2xl font-bold text-white underline'>{Title}</h1>
+            <h1 className='text-2xl font-bold text-white underline'>{Title}</h1>
           )}
           {image && (
             <img
@@ -177,6 +176,21 @@ const Profile = ({
                     </button>
                   </div>
                 ))}
+
+              </div>
+              <div className='flex flex-col mt-4'>
+                {console.log(Title)}
+                {(Title === "Unit" || Title === "Property") && (
+                  <div>
+                    <h2 className='underline'>Add Entities</h2>
+                    <button onClick={() => navigate('/create_person')} className='cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left'>Create Tenant</button>
+                  </div>
+                )}
+                {Title === 'Property' && (
+
+                  <button onClick={() => navigate('/create_building')} className='cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left'>Create Unit</button>
+                )}
+
               </div>
             </div>
           )}

@@ -29,9 +29,29 @@ const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntity
       };
       fetch();
     }, [entity])
+
+
     if (!related || !renderRelatedLabel) return null;
     return <span className='text-white text-md'>{renderRelatedLabel(related)}</span>;
   }
+  
+  const sortedEntities = [...(entities ?? [])].sort((a, b) => {
+    const hasSuite = !!getSuite?.(a); // check once for all
+
+    if (hasSuite) {
+      // If suites are present, sort by suite
+      return getSuite(a).toString().trim().localeCompare(
+        getSuite(b).toString().trim(),
+        undefined,
+        { numeric: true }
+      );
+    } else {
+      // Otherwise, sort by label
+      return getEntityLabel(a).toString().toLowerCase().localeCompare(
+        getEntityLabel(b).toString().toLowerCase()
+      );
+    }
+  });
   return (
     <div className="bg-lease-gradient text-white p-5 rounded-lg pt-5 mt-20">
       {/* Header: SearchBar and Centered Title */}
@@ -50,8 +70,8 @@ const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntity
 
       {/* Entity List */}
       <ul className="max-h-80 overflow-y-auto space-y-2">
-        {Array.isArray(entities) &&
-          entities.map((entity) => (
+        {Array.isArray(sortedEntities) &&
+          sortedEntities.map((entity) => (
             <li key={getEntityId(entity)}>
               <button
                 onClick={async () => {
@@ -90,16 +110,16 @@ const EntityListBox = ({ type, selectEntity, entities, getEntityLabel, getEntity
                     <span className="text-md text-white">
                       <div>
                         <h2>Square Footage</h2>
-                      {getSQ(entity)} sq ft
+                        {getSQ(entity)} sq ft
                       </div>
                     </span>
                   )}
                   {getRelatedEntity && renderRelatedLabel && (
                     <div>
-                    {Label === "Units" && (
-                      <h2>Current Tenant</h2>
-                    )}
-                    <RelatedEntityInfo entity={entity} />
+                      {Label === "Units" && (
+                        <h2>Current Tenant</h2>
+                      )}
+                      <RelatedEntityInfo entity={entity} />
                     </div>
                   )}
                 </div>

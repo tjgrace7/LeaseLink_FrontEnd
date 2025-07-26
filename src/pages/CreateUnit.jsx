@@ -11,6 +11,7 @@ import { get_entity_image } from '../utilities/get_entity_image';
 import { fileToBase64 } from '../utilities/imageConverter';
 import { getTable } from '../utilities/supabaseCalls';
 
+
 const CreateUnitProperty = () => {
   const { session, userData } = useAuth();
   const navigate = useNavigate();
@@ -118,14 +119,23 @@ const CreateUnitProperty = () => {
 
     const newErrors = {};
     if (!Entity.label) newErrors.label = true;
-    if (!Entity.square_footage) newErrors.square_footage = true;
     if (!selectedParent) newErrors.parent = true;
     if (selectedEntity === 'Property') {
       if (!Entity.city) newErrors.city = true;
       if (!Entity.state) newErrors.state = true;
       if (!Entity.zip) newErrors.zip = true;
     }
-    if (selectedEntity === "Unit" && !Entity.suite) newErrors.suite = true;
+    if (selectedEntity === "Unit") {
+      console.log(Entity.suite)
+      if (!Entity.suite) {
+        newErrors.suite = true;
+
+      }
+      if (!Entity.square_footage) {
+        newErrors.square_footage = true;
+        
+      }
+    }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
@@ -209,7 +219,7 @@ const CreateUnitProperty = () => {
                   <h2 className='text-xl'>Unit Suite</h2>
                   <input
                     className={`bg-gray-700 p-4 rounded w-full border ${errors.suite ? 'border-red-500' : 'border-gray-300'}`}
-                    type="text"
+                    type="number"
                     name="suite"
                     placeholder='Enter Suite Name'
                     value={Entity.suite}
@@ -227,20 +237,21 @@ const CreateUnitProperty = () => {
                   onChange={handleChange}
                 />
               </div>
-              <div>
-                <h2 className="text-xl mt-4">Square Footage</h2>
-                <input
-                  className={`bg-gray-700 p-4 rounded w-full border ${errors.square_footage ? 'border-red-500' : 'border-gray-300'}`}
-                  type="text"
-                  name="square_footage"
-                  placeholder="Enter Unit Square Footage"
-                  value={Entity.square_footage}
-                  onChange={handleChange}
-                />
-              </div>
-
+              {selectedEntity === "Unit" && (
+                <div>
+                  <h2 className="text-xl mt-4">Square Footage</h2>
+                  <input
+                    className={`bg-gray-700 p-4 rounded w-full border ${errors.square_footage ? 'border-red-500' : 'border-gray-300'}`}
+                    type="number"
+                    name="square_footage"
+                    placeholder="Enter Unit Square Footage"
+                    value={Entity.square_footage}
+                    onChange={handleChange}
+                  />
+                </div>
+              )}
               {selectedEntity === "Property" && (
-                
+
                 <div>
                   <div>
                     <h2 className="text-xl mt-4">City</h2>
