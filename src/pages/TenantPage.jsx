@@ -29,6 +29,7 @@ const TenantPage = () => {
   const [maintenance, setMaintenance] = useState('');
   const [insurance, setInsurance] = useState('');
   const [taxes, setTaxes] = useState('');
+  const [Terms, setTerms] = useState([])
 
   /**
    * Fetch tenant by ID
@@ -109,6 +110,7 @@ const TenantPage = () => {
       setMaintenance(leases.Maintenance)
       setInsurance(leases.Insurance)
       setTaxes(leases.Taxes)
+      setTerms(leases.terms_Rent)
     }
     getLeases();
   }, [tenant_id]);
@@ -162,10 +164,24 @@ const TenantPage = () => {
 
       {/* Mid Row: Placeholder Sections */}
       <div className="flex flex-row items-start items-stretch pb-10">
-        <DisplayBox className="w-2/5 mr-6">
+        <DisplayBox className="w-2/5 mr-6 max-h-[600px] overflow-y-auto">
           <div>
             <h2 className="text-2xl"><u>Terms & Rent</u></h2>
-            <p>Jayton this section will take some work. I'm gonna get the app running for now.</p>
+            {Terms.map((item, index) => {
+              const [[key, value]] = Object.entries(item);
+
+              // ❌ Skip empty values
+              if (!value || value == "N/A") return null;
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex flex-row items-center">
+                    <h2 className="text-lg mr-2">{key}:</h2>
+                    <p>{value}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </DisplayBox>
 
@@ -173,29 +189,29 @@ const TenantPage = () => {
           <div>
             <h2 className="text-2xl"><u>Contact Info</u></h2>
             {contacts.map((contact) => (
-              <button className='flex flex-col items-start text-white hover:bg-gray-700' key={contact.contact_id} onClick={() => navigate(`/contact/${contact.contact_id}`)}> 
-              <div  className='mb-4'>
-                <div className='flex flex-row items-center'>
-                  <h2 className='text-lg mr-2'>Name:</h2>
-                  <p>{contact.Contact_Name}</p>
+              <button className='flex flex-col items-start text-white hover:bg-gray-700' key={contact.contact_id} onClick={() => navigate(`/contact/${contact.contact_id}`)}>
+                <div className='mb-4'>
+                  <div className='flex flex-row items-center'>
+                    <h2 className='text-lg mr-2'>Name:</h2>
+                    <p>{contact.Contact_Name}</p>
+                  </div>
+                  <div className='flex flex-row items-center'>
+                    <h3 className='text-md mr-2'>Type:</h3>
+                    <p>{contact.Contact_Type}</p>
+                  </div>
+                  <div className='flex flex-row items-center'>
+                    <h3 className='text-md mr-2'>Phone:</h3>
+                    <p>{contact.Phone}</p>
+                  </div>
+                  <div className='flex flex-row items-center'>
+                    <h3 className='text-md mr-2'>Email:</h3>
+                    <p>{contact.Email}</p>
+                  </div>
+                  <div className='flex flex-row items-center'>
+                    <h3 className='text-md mr-2'>Address:</h3>
+                    <p>{contact.Address}</p>
+                  </div>
                 </div>
-                <div className='flex flex-row items-center'>
-                  <h3 className='text-md mr-2'>Type:</h3>
-                  <p>{contact.Contact_Type}</p>
-                </div>
-                <div className='flex flex-row items-center'>
-                  <h3 className='text-md mr-2'>Phone:</h3>
-                  <p>{contact.Phone}</p>
-                </div>
-                <div className='flex flex-row items-center'>
-                  <h3 className='text-md mr-2'>Email:</h3>
-                  <p>{contact.Email}</p>
-                </div>
-                <div className='flex flex-row items-center'>
-                  <h3 className='text-md mr-2'>Address:</h3>
-                  <p>{contact.Address}</p>
-                </div>
-              </div>
               </button>
             )
             )}

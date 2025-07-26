@@ -4,7 +4,7 @@ import ChatSidebar from '../components/ChatSidebar';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../components/AuthProvider'
 import { supabase } from '../supabaseClient'
-import { getPreviousChats } from '../utilities/GetMessages'
+import { getPreviousChats, getLeaseDocs } from '../utilities/GetMessages'
 import { get_entity_image } from '../utilities/get_entity_image';
 import PopUp from '../components/popUp';
 
@@ -33,7 +33,7 @@ const ChatPage = () => {
     const [selectedSource, setSelectedSource] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
-    const [isAvailable, setAvailable] = useState(true);
+    const [terms, setTerms] = useState([])
     const [popUp, setPopUp] = useState(false)
 
     const messagesEndRef = useRef(null);
@@ -148,6 +148,16 @@ const ChatPage = () => {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+    useEffect(() => {
+        const entityType = localStorage.getItem('entity_type')
+        if (entityType != 'tenant' || !entity_id) return;
+        const LeaseFetch = async () => {
+            const leases = await getLeaseDocs(entity_id);
+            console.log(leases)
+            setTerms(leases.terms_Rent)
+        }
+        LeaseFetch()
+    }, [localStorage.getItem('entity_type'), entity_id])
     //Gets messages from supabase based on sessionId
     const getMessages = async (sessionId) => {
         //Gets directly from supabase table. The messages for the session in order of creation. Newest at bottom
@@ -162,6 +172,7 @@ const ChatPage = () => {
 
 
     }
+
     const getEntityNameImage = async (storedEntityType, storedEntityId) => {
         let columnName
         let tableName
@@ -422,6 +433,7 @@ const ChatPage = () => {
                     setSelectedSource(source);
                     setShowModal(true);
                 }}
+                termsRent={terms}
             />
 
             {/* Source modal */}
