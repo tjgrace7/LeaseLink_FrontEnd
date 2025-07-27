@@ -27,7 +27,8 @@ const TenantPage = () => {
 
 
   const [maintenance, setMaintenance] = useState('');
-  const [insurance, setInsurance] = useState('');
+  const [insurance, setInsurance] = useState("");
+  const [liability, setLiability] = useState('')
   const [taxes, setTaxes] = useState('');
   const [Terms, setTerms] = useState([])
   const [leaseDocs, setLeaseDocs] = useState([])
@@ -112,6 +113,7 @@ const TenantPage = () => {
       setTaxes(leases.Taxes)
       setTerms(leases.terms_Rent)
       setLeaseDocs(leases.leaseDocs)
+      setLiability(leases.Liability)
     }
     getLeases();
   }, [tenant_id]);
@@ -182,7 +184,6 @@ const TenantPage = () => {
               const [[key, value]] = Object.entries(item);
 
               // ❌ Skip empty values
-              if (!value || value == "N/A") return null;
 
               return (
                 <div key={index} className="mb-4">
@@ -244,8 +245,10 @@ const TenantPage = () => {
           <div>
             <h2 className="text-2xl"><u>Taxes</u></h2>
             <p>{taxes}</p>
-            <h2 className="text-2xl"><u>Insurance</u></h2>
+            <h2 className="text-2xl"><u>Property Insurance</u></h2>
             <p>{insurance}</p>
+            <h2 className='text-2xl'>General Liability</h2>
+            <p>{liability}</p>
           </div>
 
         </DisplayBox>

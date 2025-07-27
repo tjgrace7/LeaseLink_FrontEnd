@@ -58,7 +58,7 @@ export const getLeaseDocs = async (tenant_id) => {
     const latestMaintenance = getMostRecentField('maintenance_terms')
 
     const latestInsurance = getMostRecentField('insurance')
-
+    const generalLiability = getMostRecentField('general_liability')
     const latestTaxes = getMostRecentField('taxes')
 
     const terms_Rent = [
@@ -115,7 +115,6 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Assignment and Subletting": getMostRecentField('assignment_and_subletting') },
         { "Insurance Requirements": getMostRecentField('insurance_requirements') },
         { "Indemnity Clauses": getMostRecentField('indemnity_clauses') },
-        { "Compliance with Laws": getMostRecentField('compliance_with_laws') },
         { "Force Majeure": getMostRecentField('force_majeure') },
         { "Estoppel Certificate Required": getMostRecentField('estoppel_certificate_required') },
         { "Signage Rights": getMostRecentField('signage_rights') },
@@ -130,7 +129,8 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Security Deposit Term": getMostRecentField('security_deposit_term') },
         { "Delivery/Possession Date": getMostRecentField('delivery_posession_date') },
         { "Expansion/Contraction Rights": getMostRecentField('expansion_contraction_rights') }
+
     ];
     const leaseDocs = data
-    return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent, leaseDocs }
+    return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent, leaseDocs, Liability: generalLiability || "" }
 };
