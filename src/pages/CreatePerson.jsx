@@ -67,23 +67,34 @@ const CreateEditPerson = () => {
       if (!propertyData) return;
       setProperties(propertyData);
 
-      if (selectedPerson === 'Tenant') {
+      if (selectedPerson === 'Tenant' && selectedProperties.length > 0) {
         const unitData = await getTable('Units', 'pmcompany_id', userData.company_id);
         if (!unitData) return;
+
         const usedUnits = await getTableIdList('Tenant_Unit', 'unit_id', unitData.map((u) => u.unit_id));
         const usedIds = new Set((usedUnits || []).map((u) => u.unit_id));
-        setUnits(unitData.filter((u) => !usedIds.has(u.unit_id)));
-      }
 
-      if (selectedPerson === 'Contact') {
-        const tenantData = await getTable('tenant', 'property_management_id', userData.company_id);
-        if (!tenantData) return;
-        setTenants(tenantData);
-      }
-    };
+        const selectedPropIds = selectedProperties.map((p) => p.prop_id);
 
-    fetchInitialData();
-  }, [selectedPerson, userData]);
+        const availableUnits = unitData.filter((u) =>
+          selectedPropIds.includes(u.property_id) && !usedIds.has(u.unit_id))
+        .sort((a, b) => {
+          const addrCompare = a.address.localeCompare(b.address);
+          if(addrCompare !== 0) return addrCompare
+
+          return a.suite_number?.localeCompare?.(b.suite_number ?? '') ?? 0;
+        });
+        setUnits(availableUnits)
+      }
+        if (selectedPerson === 'Contact') {
+          const tenantData = await getTable('tenant', 'property_management_id', userData.company_id);
+          if (!tenantData) return;
+          setTenants(tenantData);
+        }
+      };
+
+      fetchInitialData();
+    }, [selectedPerson, userData, selectedProperties]);
 
   useEffect(() => {
     if (!isEditMode || !typeParam) return;
@@ -108,7 +119,7 @@ const CreateEditPerson = () => {
       let generic = {
         name: '', email: '', phone: '', image: '', imageType: '', address: '', contactType: '',
       };
-        let imagepath;
+      let imagepath;
       if (typeParam === 'Tenant') {
         generic.name = data.Tenant_Name || '';
         imagepath = data.photo_file_path || '';
@@ -131,15 +142,22 @@ const CreateEditPerson = () => {
         generic.phone = data.Phone || '';
         imagepath = data.image_file_path || '';
       }
-    
-      if (imagepath) 
-      {
+
+      if (imagepath) {
         setEditImage(await get_entity_image(imagepath, session));
         setPreviousImage(imagepath)
       }
       setGeneric(generic);
       setInitialData({ ...generic, image: imagepath });
-
+      if (typeParam === 'Tenant' || typeParam === 'App User') {
+        const tableName = (typeParam === 'Tenant') ? 'Property_Tenant' : 'User_Property';
+        const joinData = await getTable(tableName, 'tenant_id', id);
+        const propIds = joinData.map((j) => j.property_id);
+        const propertyData = await getTableIdList('properties', 'prop_id', propIds);
+        setSelectedProperties(propertyData);
+        setProperties((prev) => prev.filter((p) => !propertyData.map(pd => pd.prop_id).includes(p.prop_id)));
+        setInitialProperties(propertyData)
+      }
       // Continue as before...
       if (typeParam === 'Tenant') {
         setTenant({ dba: data.dba || '', active: data.active ?? true });
@@ -165,15 +183,7 @@ const CreateEditPerson = () => {
         setInitialPermission(data.role || '')
       }
 
-      if (typeParam === 'Tenant' || typeParam === 'App User') {
-        const tableName = (typeParam === 'Tenant') ? 'Property_Tenant' : 'User_Property';
-        const joinData = await getTable(tableName, 'tenant_id', id);
-        const propIds = joinData.map((j) => j.property_id);
-        const propertyData = await getTableIdList('properties', 'prop_id', propIds);
-        setSelectedProperties(propertyData);
-        setProperties((prev) => prev.filter((p) => !propertyData.map(pd => pd.prop_id).includes(p.prop_id)));
-        setInitialProperties(propertyData)
-      }
+
     };
 
     fetchPerson();
@@ -218,16 +228,16 @@ const CreateEditPerson = () => {
     const storagePath = genericFormData.image
       ? `${company_name}/${selectedPerson}/${genericFormData.name}`
       : isEditMode ? previousImage : '';
-      console.log(storagePath)
+    console.log(storagePath)
     const imageBase64 = genericFormData.image
       ? await fileToBase64(genericFormData.image)
       : null;
 
     const tenantIds = selectedTenants.map((t) => t.tenant_id);
-let additionalPayload = {}
-if (!isEditMode || (isEditMode && genericFormData.password)) {
-  additionalPayload.password = genericFormData.password;
-}
+    let additionalPayload = {}
+    if (!isEditMode || (isEditMode && genericFormData.password)) {
+      additionalPayload.password = genericFormData.password;
+    }
     const response = await fetch(
       `${supabase_url}/functions/v1/Create_Person`,
       {
@@ -440,23 +450,23 @@ if (!isEditMode || (isEditMode && genericFormData.password)) {
                     placeholder="Select Role"
                   />
                 </div>
-              {permission != 'Company Admin' && (
-                <div className="bg-gray-700 mt-4 rounded w-full">
-                  <Dropdown
-                    options={properties}
-                    onSelect={(property) => {
-                      if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
-                        setSelectedProperties((prev) => [...prev, property]);
-                        setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
-                      }
-                    }}
-                    placeholder="Select Properties"
-                    getOptionTitle={(o) => o.Property_Name}
-                    getOptionId={(o) => o.prop_id}
-                    clearAfterSelect
-                  />
-                </div>
-              )}
+                {permission != 'Company Admin' && (
+                  <div className="bg-gray-700 mt-4 rounded w-full">
+                    <Dropdown
+                      options={properties}
+                      onSelect={(property) => {
+                        if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
+                          setSelectedProperties((prev) => [...prev, property]);
+                          setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
+                        }
+                      }}
+                      placeholder="Select Properties"
+                      getOptionTitle={(o) => o.Property_Name}
+                      getOptionId={(o) => o.prop_id}
+                      clearAfterSelect
+                    />
+                  </div>
+                )}
               </>
             )}
 
