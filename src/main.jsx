@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import TenantPage from './pages/TenantPage'
 import ChatPage from './pages/ChatPage'
 import SignIn from './pages/Sign-In';
+import RequestAccess from './pages/Access-Request';
 import ContactPage from './pages/Contact';
 
 import PropertyPage from './pages/PropertyPage'
@@ -24,6 +25,7 @@ import UserProfile from './pages/UserProfile';
 import Spinner from './components/loadingSpinner'
 
 import {AuthProvider, useAuth} from './components/AuthProvider'
+import ThankYou from './pages/thank-you';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -38,6 +40,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path='/login' element={<SignIn/>}/>
+          <Route path="/request" element={<RequestAccess/>}/>
+          <Route path='/thank-you' element={<ThankYou/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

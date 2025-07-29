@@ -217,8 +217,8 @@ const ChatPage = () => {
         console.log(imageurl)
         setEntityImage(imageurl)
 
-        if (storedEntityType === "tenant") {
-
+        if (storedEntityType === "tenant" && data.Available) {
+            setPopUp(True)
         }
 
     }

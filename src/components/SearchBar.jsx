@@ -107,7 +107,7 @@ const SearchBar = ({ placeholder, selectEntity, type }) => {
                                             className='text-left block w-full hover:bg-gray-700 p-2 rounded'
                                             onClick={() => EntitySelected(tenant.tenant_id, tenant.Tenant_Name, 'tenant')}
                                         >
-                                            {tenant.Tenant_Name}
+                                            {tenant.Tenant_Name} - {tenant.DBA}
                                         </button>
                                     </li>
                                 ))}

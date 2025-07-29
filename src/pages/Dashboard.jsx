@@ -24,7 +24,7 @@ const Dashboard = () => {
     //Gets Entity Questions for counting how many 
     useEffect(() => {
         if (!session || !userData) return;
-
+        console.log(session)
         setCompanyId(userData.company_id)
         const getMessages = async () => {
             const { data, error } = await supabase.from('entity_questions').select('*').gte('created_at', startISO).lte('created_at', nowISO)
