@@ -26,6 +26,8 @@ import Spinner from './components/loadingSpinner'
 
 import {AuthProvider, useAuth} from './components/AuthProvider'
 import ThankYou from './pages/thank-you';
+import Settings from './pages/settings';
+import Roles from './pages/Roles';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -57,6 +59,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/contact/:contact_id' element={<ProtectedRoute><ContactPage/></ProtectedRoute>}/>
             <Route path='/upload_docs' element={<ProtectedRoute><UploadLeases/></ProtectedRoute>}/>
             <Route path='/profile' element={<ProtectedRoute><UserProfile /></ProtectedRoute>}/>
+            <Route path='/settings' element={<ProtectedRoute><Settings/></ProtectedRoute>}/>
+            <Route path='/roles' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
+            <Route path='/roles/edit/:roleId' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

@@ -10,6 +10,7 @@ const UserDropdown = () => {
     const [isOpen, setIsOpen] = useState(false)
     const { userData, session } = useAuth();
     const [image, setImage] = useState("");
+    const {roleData} = useAuth()
     let closeTimeout;
 
     useEffect(() => {
@@ -53,7 +54,9 @@ const UserDropdown = () => {
                 <div className='absolute right-0 mt-2 w-48 bg-[#222] text-white border border-gray-700 rounded-lg shadow-lg z-50'>
                     {/*Holds all the links to pages in user dropdown */}
                     <a href="/profile" className='block px-4 py-2 hover:bg-gray-700'>Profile</a>
+                    {roleData && roleData.Access_Settings && (
                     <a href="/settings" className='block px-4 py-2 hover:bg-gray-700'>Settings</a>
+                    )}
                     <div className='block px-4 py-2 hover:bg-gray-700'>
                         <SignOut/>
                     </div>

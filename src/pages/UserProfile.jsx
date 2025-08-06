@@ -40,6 +40,7 @@ const UserProfile = () => {
       getLabel={(user) =>  user.Name}
       Title="User Profile"
       getEntityId={(u) => u.user_id}
+      edit_Entity={true}
     />
 
     <DisplayBox className="space-y-4 overflow-y-auto flex flex-col justify-center items-center">

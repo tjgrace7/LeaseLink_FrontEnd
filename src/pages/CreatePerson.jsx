@@ -11,7 +11,7 @@ import { get_entity_image } from '../utilities/get_entity_image';
 import { getTable, getTableIdList } from '../utilities/supabaseCalls';
 
 const CreateEditPerson = () => {
-  const { session, userData } = useAuth();
+  const { session, userData, roleData } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get('id');
@@ -21,7 +21,7 @@ const CreateEditPerson = () => {
   const [editImage, setEditImage] = useState('');
   const isEditMode = !!id;
 
-  const personOptions = ['App User', 'Tenant', 'Building Owner', 'Contact'];
+  const [personOptions, setPersonOptions] = useState([]);
   const permissionLevels = ['Company Admin', 'Property Manager'];
 
   const [selectedPerson, setPerson] = useState(normalizedType || '');
@@ -47,6 +47,18 @@ const CreateEditPerson = () => {
   const [initialProperties, setInitialProperties] = useState(null)
   const [initialTenants, setInitialTenants] = useState(null)
   const [initialPermission, setInitialPermission] = useState('')
+
+  useEffect(() => {
+
+    if (!roleData) return;
+    const createOptions = [
+      ...(roleData.Create_Users ? ["App User"] : []),
+      ...(roleData.Create_Tenants ? ["Tenant"] : []),
+      ...(roleData.Create_Contact ? ["Contact"] : []),
+      ...(roleData.Create_Owner ? ['Building Owner'] : [])
+    ]
+    setPersonOptions(createOptions)
+  }, [roleData])
 
   useEffect(() => {
     let objectUrl;
@@ -78,23 +90,23 @@ const CreateEditPerson = () => {
 
         const availableUnits = unitData.filter((u) =>
           selectedPropIds.includes(u.property_id) && !usedIds.has(u.unit_id))
-        .sort((a, b) => {
-          const addrCompare = a.address.localeCompare(b.address);
-          if(addrCompare !== 0) return addrCompare
+          .sort((a, b) => {
+            const addrCompare = a.address.localeCompare(b.address);
+            if (addrCompare !== 0) return addrCompare
 
-          return a.suite_number?.localeCompare?.(b.suite_number ?? '') ?? 0;
-        });
+            return a.suite_number?.localeCompare?.(b.suite_number ?? '') ?? 0;
+          });
         setUnits(availableUnits)
       }
-        if (selectedPerson === 'Contact') {
-          const tenantData = await getTable('tenant', 'property_management_id', userData.company_id);
-          if (!tenantData) return;
-          setTenants(tenantData);
-        }
-      };
+      if (selectedPerson === 'Contact') {
+        const tenantData = await getTable('tenant', 'property_management_id', userData.company_id);
+        if (!tenantData) return;
+        setTenants(tenantData);
+      }
+    };
 
-      fetchInitialData();
-    }, [selectedPerson, userData, selectedProperties]);
+    fetchInitialData();
+  }, [selectedPerson, userData, selectedProperties]);
 
   useEffect(() => {
     if (!isEditMode || !typeParam) return;
@@ -114,6 +126,15 @@ const CreateEditPerson = () => {
     const fetchPerson = async () => {
       const personData = await getTable(table, `${column.toLowerCase()}_id`, id);
       const data = personData?.[0];
+      let email;
+      let role;
+      let phone
+      if (table === "User_Data") {
+        const info = await getUserEmailPhone(id)
+        email = info.email;
+        role = await getTable("Roles", 'id', data.role_id)
+        phone = info.phone
+      }
       if (!data) return;
 
       let generic = {
@@ -126,9 +147,10 @@ const CreateEditPerson = () => {
 
       } else if (normalizedType === 'App User') {
         generic.name = data.Name || '';
-        generic.email = session?.user?.email || '';
-        generic.phone = session?.user?.phone || '';
+        generic.email = email || '';
+        generic.phone = phone || '';
         imagepath = data.image_file_path || '';
+        setPermission(role[0]?.Role_Name)
       } else if (typeParam === 'Contact') {
         generic.name = data.Contact_Name || '';
         generic.email = data.Email || '';
@@ -189,6 +211,27 @@ const CreateEditPerson = () => {
     fetchPerson();
   }, [id, typeParam]);
 
+  const getUserEmailPhone = async (targetUserId) => {
+    const query = targetUserId ? `?target_user_id=${targetUserId}` : '';
+    console.log(session)
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get_user_email_phone${query}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error('Error from Edge Function:', data);
+      throw new Error(data.error || 'Unknown error');
+    }
+
+    return data; // { email, phone }
+  };
   const hasChanged = () => {
     if (!initialData) return true;
     const { image: initialImage, ...initialRest } = initialData;
@@ -221,8 +264,10 @@ const CreateEditPerson = () => {
         newErrors.password = true;
       }
     }
-    const company = getTable('Property_Management_Companies', 'company_id', userData.company_id)
-    const company_name = company.company_name
+    const company = await getTable('Property_Management_Companies', 'company_id', userData.company_id)
+    console.log(company)
+    const company_name = company[0].company_name
+    console.log(company_name)
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
     const storagePath = genericFormData.image
@@ -443,28 +488,32 @@ const CreateEditPerson = () => {
                     onChange={handleChange}
                   />
                 </div>
-                <div className={`bg-gray-700 mt-4 rounded w-full border ${errors.PermissionLevel ? 'border-red-500' : 'border-gray-300'}`}>
-                  <Dropdown
-                    options={permissionLevels}
-                    onSelect={setPermission}
-                    placeholder="Select Role"
-                  />
-                </div>
-                {permission != 'Company Admin' && (
-                  <div className="bg-gray-700 mt-4 rounded w-full">
-                    <Dropdown
-                      options={properties}
-                      onSelect={(property) => {
-                        if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
-                          setSelectedProperties((prev) => [...prev, property]);
-                          setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
-                        }
-                      }}
-                      placeholder="Select Properties"
-                      getOptionTitle={(o) => o.Property_Name}
-                      getOptionId={(o) => o.prop_id}
-                      clearAfterSelect
-                    />
+                {roleData && roleData.Edit_Users && (
+                  <div>
+                    <div className={`bg-gray-700 mt-4 rounded w-full border ${errors.PermissionLevel ? 'border-red-500' : 'border-gray-300'}`}>
+                      <Dropdown
+                        options={permissionLevels}
+                        onSelect={setPermission}
+                        placeholder={permission || "Select Role"}
+                      />
+                    </div>
+                    {permission != 'Company Admin' && (
+                      <div className="bg-gray-700 mt-4 rounded w-full">
+                        <Dropdown
+                          options={properties}
+                          onSelect={(property) => {
+                            if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
+                              setSelectedProperties((prev) => [...prev, property]);
+                              setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
+                            }
+                          }}
+                          placeholder="Select Properties"
+                          getOptionTitle={(o) => o.Property_Name}
+                          getOptionId={(o) => o.prop_id}
+                          clearAfterSelect
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </>

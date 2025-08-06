@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 const ContactPage = () => {
     const {contact_id} = useParams();
-    const {session, userData} = useAuth();
+    const {session, userData, roleData} = useAuth();
 
     const [contact, setContact] = useState(null)
     const [tenants, setTenants] = useState([])
@@ -64,6 +64,7 @@ const ContactPage = () => {
       getRelatedEntityId={(t) => t.tenant_id}
       Title="Contact"
       getEntityId={(c) => c.contact_id}
+      edit_Entity={roleData.Edit_Contact}
     />
 
     <DisplayBox className="space-y-4 overflow-y-auto flex flex-col justify-center items-center">

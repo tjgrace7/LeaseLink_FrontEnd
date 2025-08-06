@@ -12,12 +12,13 @@ import Profile from '../components/Profile';
 import DisplayBox from '../components/DisplayBox';
 import LoadPreviousMessages from '../components/PreviousMessages';
 import { getLeaseDocs } from '../utilities/GetMessages';
+import { getTableIdList } from '../utilities/supabaseCalls';
 /**
  * TenantPage
  * Displays a tenant profile, related units, lease details, and previous messages.
  */
 const TenantPage = () => {
-  const { session } = useAuth();
+  const { session, roleData } = useAuth();
   const { tenant_id } = useParams();
   const navigate = useNavigate();
 
@@ -32,7 +33,7 @@ const TenantPage = () => {
   const [taxes, setTaxes] = useState('');
   const [Terms, setTerms] = useState([])
   const [leaseDocs, setLeaseDocs] = useState([])
-
+  const [leaseStatus, setLeaseStatus] = useState({})
   /**
    * Fetch tenant by ID
    */
@@ -117,12 +118,28 @@ const TenantPage = () => {
     }
     getLeases();
   }, [tenant_id]);
+  useEffect(() => {
+    if (!leaseDocs) return
+    const getJobs = async () => {
+      const leaseIds = leaseDocs.map((lease) => lease.lease_id)
+      const response = await getTableIdList('Upload_Job_Status', 'lease_id', leaseIds)
 
+      const latestStatusbyLease = response.reduce((acc, status) => {
+        const leaseId = status.lease_id
+        if (!acc[leaseId] || new Date(status.created_at) > new Date(acc[leaseId].created_at)) {
+          acc[leaseId] = status
+        }
+        return acc;
+      }, {})
+
+      setLeaseStatus(latestStatusbyLease)
+    }
+    getJobs()
+  }, [leaseDocs])
   const getSignedUrl = async (filePath) => {
-    const {data, error} = await supabase.storage.from('lease-docs').createSignedUrl(filePath, 600)
+    const { data, error } = await supabase.storage.from('lease-docs').createSignedUrl(filePath, 600)
 
-    if(error)
-    {
+    if (error) {
       console.error("Error Generating Signed URL", error)
       return null
     }
@@ -141,29 +158,32 @@ const TenantPage = () => {
       {/* Top Row: Profile + Messages */}
       <div className="flex flex-row items-start items-stretch pb-10">
         <div>
-          <Profile
-            entity={tenant}
-            session={session}
-            getFilePath={(t) => t.photo_file_path}
-            getLabel={(t) => t.Tenant_Name}
-            getRelatedEntity={async () => {
-              const { data, error } = await supabase
-                .from('Units')
-                .select('*')
-                .in('unit_id', unitsIds);
+          {roleData && (
+            <Profile
+              entity={tenant}
+              session={session}
+              getFilePath={(t) => t.photo_file_path}
+              getLabel={(t) => t.Tenant_Name}
+              getRelatedEntity={async () => {
+                const { data, error } = await supabase
+                  .from('Units')
+                  .select('*')
+                  .in('unit_id', unitsIds);
 
-              if (error) {
-                console.error('Error Fetching Units', error);
-              }
-              return data || [];
-            }}
-            getRelatedFilePath={(unit) => unit?.photo_file_path}
-            getRelatedLabel={(unit) => unit?.address}
-            RelatedTitle="Unit(s)"
-            getRelatedEntityId={(unit) => unit.unit_id}
-            Title="Tenant"
-            getEntityId={(t) => t.tenant_id}
-          />
+                if (error) {
+                  console.error('Error Fetching Units', error);
+                }
+                return data || [];
+              }}
+              getRelatedFilePath={(unit) => unit?.photo_file_path}
+              getRelatedLabel={(unit) => unit?.address}
+              RelatedTitle="Unit(s)"
+              getRelatedEntityId={(unit) => unit.unit_id}
+              Title="Tenant"
+              getEntityId={(t) => t.tenant_id}
+              edit_Entity={roleData.Edit_Tenants}
+            />
+          )}
         </div>
 
         <div className="w-2/5 ml-auto max-h-[32rem] overflow-y-auto">
@@ -172,6 +192,7 @@ const TenantPage = () => {
             session={session}
             entityType="tenant"
           />
+
         </div>
       </div>
 
@@ -261,13 +282,24 @@ const TenantPage = () => {
                 <h2 className="text-2xl"><u>Lease Documents</u></h2>
                 {leaseDocs.map((lease) => {
                   const title = lease.lease_file_path.split('/').pop()
+                  const status = leaseStatus[lease.lease_id]?.job_info.status
                   return (
-                    <p className='text-white underline cursor-pointer' onClick={async() => {
-                      console.log(lease.lease_file_path)
-                      const signedUrl = await getSignedUrl(lease.lease_file_path)
-                      
-                      if(signedUrl) window.open(signedUrl, '_blank');
-                    }}>{title}</p>
+                    <div className='flex overflow-x-auto justify between items-center gap-4' key={lease.lease_id}>
+                      <p className='text-white underline cursor-pointer' onClick={async () => {
+
+                        const signedUrl = await getSignedUrl(lease.lease_file_path)
+
+                        if (signedUrl) window.open(signedUrl, '_blank');
+                      }}>{title}</p>
+                      <p>-</p>
+                      <p>{status?.charAt(0).toUpperCase() + status?.slice(1)}</p>
+                      {status === 'error' && (
+                        <div className='flex overflow-x-auto justify between items-center gap-4'>
+                            <p>-</p>
+                            <button className='bg-gray-400' onClick={() => navigate('/upload_docs')}>Reupload</button>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>

@@ -24,7 +24,6 @@ const Dashboard = () => {
     //Gets Entity Questions for counting how many 
     useEffect(() => {
         if (!session || !userData) return;
-        console.log(session)
         setCompanyId(userData.company_id)
         const getMessages = async () => {
             const { data, error } = await supabase.from('entity_questions').select('*').gte('created_at', startISO).lte('created_at', nowISO)
@@ -54,16 +53,17 @@ const Dashboard = () => {
         getProperties();
         const getTenants = async () => {
             const { data, error } = await supabase.from('tenant').select("*").eq("property_management_id", userData.company_id)
-            if (error) console.error("Tenant Load Error", error)
+            if (error) console.error("Tenant Load Error", error.message)
             else if (data) {
                 setTenantCount(data.length);
             }
         }
         getTenants();
         const getDocs = async () => {
-            const { data, error } = await supabase.from('lease_documents').select("*").eq('company_id', userData.company_id)
-            if (error) console.error("Doc Load Error")
+            const { data, error } = await supabase.from('lease_documents').select("*")
+            if (error) console.error("Doc Load Error", error.message)
             else if (data) {
+        console.log(data)
                 setDocs(data.length)
             }
         }

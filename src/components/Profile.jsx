@@ -34,7 +34,8 @@ const Profile = ({
   RelatedTitle,
   getRelatedEntityId,
   className = '',
-  Title = ""
+  Title = "",
+  edit_Entity
 }) => {
   const [image, setImage] = useState('');
   const [relatedEntities, setRelatedEntities] = useState([]);
@@ -47,7 +48,6 @@ const Profile = ({
 
     const loadImage = async () => {
       const file_path = getFilePath(entity)
-
       if (file_path != null) {
         const imageUrl = await get_entity_image(file_path, session);
         if (imageUrl) setImage(imageUrl);
@@ -127,12 +127,13 @@ const Profile = ({
     <div>
       <div className={`w-full max-w-4xl bg-lease-gradient rounded-lg p-6 flex space-x-10 pb-20 ${className}`}>
         {/* Column 1: Edit Button */}
+        {edit_Entity && (
         <div className="flex flex-col items-start text-white hover:text-gray-200">
           <button onClick={() => handleEditClick()}>
             <FiEdit size={24} />
           </button>
         </div>
-
+        )}
         {/* Column 2: Main Entity Image & Label */}
         <div className="flex flex-col items-center justify-center text-center flex-1">
           {Title != "" && (
@@ -179,7 +180,6 @@ const Profile = ({
 
               </div>
               <div className='flex flex-col mt-4'>
-                {console.log(Title)}
                 {(Title === "Unit" || Title === "Property") && (
                   <div>
                     <h2 className='underline'>Add Entities</h2>

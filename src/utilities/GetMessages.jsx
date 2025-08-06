@@ -60,7 +60,6 @@ export const getLeaseDocs = async (tenant_id) => {
     const latestInsurance = getMostRecentField('insurance')
     const generalLiability = getMostRecentField('general_liability')
     const latestTaxes = getMostRecentField('taxes')
-
     const terms_Rent = [
         { "Term": getMostRecentField('term') },
         { "Current Rent": getMostRecentField('current_rent') },

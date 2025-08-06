@@ -17,7 +17,7 @@ import LoadPreviousMessages from '../components/PreviousMessages';
 const PropertyPage = () => {
   const { property_id } = useParams();
   const navigate = useNavigate();
-  const { session, userData } = useAuth();
+  const { session, userData, roleData } = useAuth();
 
   const [property, setProperty] = useState(null);
   const [units, setUnits] = useState(null);
@@ -82,6 +82,7 @@ const PropertyPage = () => {
   return (
     <div className="p-20">
       {/* Property Profile + Managing Owner */}
+      {roleData && (
       <Profile
         entity={property}
         session={session}
@@ -107,8 +108,9 @@ const PropertyPage = () => {
         className="w-2/5"
         Title="Property"
         getEntityId={(e) => e.prop_id}
+        edit_Entity={roleData.Edit_Properties}
       />
-
+      )}
       {/* Units associated with this property */}
       <EntityListBox
         type="units"

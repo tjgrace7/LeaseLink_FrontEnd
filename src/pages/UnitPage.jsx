@@ -20,7 +20,7 @@ const UnitPage = () => {
   const [currentTenant, setCurrentTenant] = useState(null);
 
   const { unit_id } = useParams();
-  const { session } = useAuth();
+  const { session, roleData } = useAuth();
   const navigate = useNavigate();
 
   /**
@@ -132,6 +132,7 @@ const UnitPage = () => {
             getRelatedEntityId={(property) => property.prop_id}
             Title="Unit"
             getEntityId={(u) => u.unit_id}
+            edit_Entity={roleData.Edit_Units}
           />
         </div>
 

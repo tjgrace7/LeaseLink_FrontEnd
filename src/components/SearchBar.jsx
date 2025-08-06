@@ -1,6 +1,7 @@
 import { FiSearch } from 'react-icons/fi';
 import { useState, useEffect } from 'react'
 import { useAuth } from '../components/AuthProvider';
+import PermissionGate from './PermissionGate';
 
 
 // SearchBar Component

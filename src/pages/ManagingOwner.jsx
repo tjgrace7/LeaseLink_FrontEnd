@@ -14,7 +14,7 @@ import DisplayBox from "../components/DisplayBox";
  * Displays managing owner's profile image, name, and associated properties.
  */
 const ManagingOwner = () => {
-  const { session } = useAuth();
+  const { session, roleData } = useAuth();
   const { owner_id } = useParams();
   const navigate = useNavigate();
 
@@ -78,6 +78,7 @@ const ManagingOwner = () => {
       <div className="w-full max-w-4xl bg-lease-gradient rounded-lg p-6 flex space-x-10 mb-20">
         {/* Column 1: Edit Icon */}
         <div className="flex flex-col items-start text-white hover:text-gray-200">
+        {roleData.Edit_Owner}
           <button onClick={() => navigate(`/edit_person/edit?id=${owner_id}&type=Building Owner`)}>
             <FiEdit size={24} />
           </button>

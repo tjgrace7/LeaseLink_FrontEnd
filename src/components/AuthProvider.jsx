@@ -12,6 +12,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(undefined);      // Supabase session
   const [userData, setUserData] = useState(null);         // Custom user data from 'User_Data' table
+  const [roleData, setRoleData] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(true); // Loading state for user data
 
   // Fetch session and listen for changes on component mount
@@ -65,7 +66,13 @@ export const AuthProvider = ({ children }) => {
         console.error('Error loading extended user data:', error);
         return;
       }
-
+      const {data: roleData, error: roleError} = await supabase.from('Roles').select('*').eq('id', data.role_id).single()
+      if(roleError)
+      {
+        console.error("Error Fetching User Role", roleError)
+        return;
+      }
+      setRoleData(roleData)
       setUserData(data);
     } catch (err) {
       console.error('FetchUserData Error:', err);
@@ -75,7 +82,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, userData, loadingUserData }}>
+    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData }}>
       {children}
     </AuthContext.Provider>
   );

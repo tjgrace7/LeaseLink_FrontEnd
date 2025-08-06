@@ -13,7 +13,7 @@ import { getTable } from '../utilities/supabaseCalls';
 
 
 const CreateUnitProperty = () => {
-  const { session, userData } = useAuth();
+  const { session, userData, roleData } = useAuth();
   const navigate = useNavigate();
   const supabaseurl = import.meta.env.VITE_SUPABASE_URL;
   const [searchParams] = useSearchParams();
@@ -21,6 +21,7 @@ const CreateUnitProperty = () => {
   const type = searchParams.get('type');
   const isEditMode = !!id;
 
+  const [entityOptions, setEntityOptions] = useState([])
   const [selectedEntity, selectEntity] = useState(type || null);
   const [Name, setName] = useState("")
   const [namePlaceholder, setNamePlaceholder] = useState("")
@@ -41,6 +42,16 @@ const CreateUnitProperty = () => {
   const [selectedParent, setSelectedParent] = useState(null);
   const [errors, setErrors] = useState({});
   const [editImage, setEditImage] = useState('')
+
+  useEffect(() => {
+    if(!roleData) return
+    const options = [
+      ...(roleData.Create_Properties ? ["Property"] : []),
+      ...(roleData.Create_Unit ? ["Unit"] : [])
+    ]
+    setEntityOptions(options)
+
+  }, [roleData])
 
   useEffect(() => {
     if (!session || !userData || !selectedEntity) return;
@@ -201,7 +212,7 @@ const CreateUnitProperty = () => {
       <DisplayBox className="flex flex-row justify-between">
         <div className="flex flex-col p-6 w-1/2">
           {!isEditMode && (
-            <Dropdown options={["Property", "Unit"]}
+            <Dropdown options={entityOptions}
               onSelect={(entity) => {
                 selectEntity(entity);
                 setEntity({ square_footage: '', label: '', image: '', imageType: '', suite: '' });

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 //Controls the Top Navigation Panel at the top of most pages on the app
 const TopNav = ({toggleSidebar}) => {
-    
+    const {roleData} = useAuth()
     const navigate = useNavigate();
     return (
         
@@ -22,10 +22,14 @@ const TopNav = ({toggleSidebar}) => {
                 {/* Upload Docs icon/link */}
                 <a href="/upload_docs"><FiUpload className='w-8 h-8'/></a>
                 {/*create user icon/link */}
+                
+                {roleData && (roleData.CreateUsers || roleData.Create_Tenants || roleData.Create_Contact || roleData.Create_Owner) && (
                 <a href="/create_person"><FaUserPlus className='w-8 h-8'/></a>
+                )}
                 {/* create property icon/link */}
+                {roleData && (roleData.Create_Properties || roleData.Create_Unit) && (
                 <a href="/create_building" className='flex items-center'><HiOfficeBuilding className='w-8 h-8'/><HiPlus className='w-5 h-5 -ml-1'/></a>
-
+                )}
                 {/*Search bar  */}
                 <div className='hidden md:block flex'>
                     <SearchBar placeholder='Search...'
