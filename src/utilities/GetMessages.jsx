@@ -44,16 +44,26 @@ export const getLeaseDocs = async (tenant_id) => {
         .select('*')
         .eq('tenant_id', tenant_id);
 
+
     if (error) {
         console.error('No Tenant Docs', error);
         return;
     }
-    const sortDate = 'lease_commencement_date'
-    const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
-
+    console.log(data)
     const getMostRecentField = (fieldname) => {
-        return data.filter((lease) => lease[sortDate] && lease[fieldname] != null).sort(byDate)[0]?.[fieldname] ?? null
+        if (data.length > 1) {
+            const sortDate = 'lease_commencement_date'
+            const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
+            const filteredData = data.filter((lease) => lease[sortDate] && lease[fieldname] != null).sort(byDate)[0]?.[fieldname] ?? null
+            return filteredData
+        }
+        else {
+            console.log(data[0][fieldname])
+            return data[0][fieldname]
+        }
+
     }
+
 
     const latestMaintenance = getMostRecentField('maintenance_terms')
 
@@ -131,5 +141,25 @@ export const getLeaseDocs = async (tenant_id) => {
 
     ];
     const leaseDocs = data
+    console.log(terms_Rent)
     return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent, leaseDocs, Liability: generalLiability || "" }
 };
+
+const getTenantLeaseInfo = async () => {
+    const lease_sumamry = [
+        { "Lease Commencement Date": getMostRecentField('lease_commencement_date') },
+        { "Lease Expiration Date": getMostRecentField('lease_expiration_date') },
+    ]
+    const finacial_snapshot = [
+
+    ]
+    const responsibility = [
+
+    ]
+    const keyDates = [
+
+    ]
+    const rights = [
+
+    ]
+}
