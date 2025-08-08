@@ -28,6 +28,7 @@ import {AuthProvider, useAuth} from './components/AuthProvider'
 import ThankYou from './pages/thank-you';
 import Settings from './pages/settings';
 import Roles from './pages/Roles';
+import TenantTerms from './pages/tenantTerms';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -62,6 +63,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/settings' element={<ProtectedRoute><Settings/></ProtectedRoute>}/>
             <Route path='/roles' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
             <Route path='/roles/edit/:roleId' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
+            <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

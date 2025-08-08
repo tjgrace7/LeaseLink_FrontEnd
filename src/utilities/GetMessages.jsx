@@ -1,5 +1,7 @@
 import { supabase } from "../supabaseClient";
 
+
+const supabase_url = import.meta.env.VITE_SUPABASE_URL;
 //When an entity is selected from the Search Bar. This function calls supabase edge function entity-session-organizer to get all previous chat sessions for that entity
 export const getPreviousChats = async (entityId, session, setChats) => {
     const supabase_url = import.meta.env.VITE_SUPABASE_URL;
@@ -20,7 +22,7 @@ export const getPreviousChats = async (entityId, session, setChats) => {
     }
 }
 export const getCompanyPreviousChats = async (company_id, session, setChats) => {
-    const supabase_url = import.meta.env.VITE_SUPABASE_URL;
+
     const response = await fetch(`${supabase_url}/functions/v1/company_recent_chats?company_id=${company_id}`,
         {
             method: "GET",
@@ -39,30 +41,33 @@ export const getCompanyPreviousChats = async (company_id, session, setChats) => 
 }
 
 export const getLeaseDocs = async (tenant_id) => {
-    const { data, error } = await supabase
-        .from('lease_documents')
-        .select('*')
-        .eq('tenant_id', tenant_id);
+    const data = await getLeaseInfo(tenant_id)
 
-
-    if (error) {
-        console.error('No Tenant Docs', error);
-        return;
-    }
-    console.log(data)
     const getMostRecentField = (fieldname) => {
+        let value;
+
         if (data.length > 1) {
-            const sortDate = 'lease_commencement_date'
+            const sortDate = 'lease_commencement_date';
             const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
-            const filteredData = data.filter((lease) => lease[sortDate] && lease[fieldname] != null).sort(byDate)[0]?.[fieldname] ?? null
-            return filteredData
-        }
-        else {
-            console.log(data[0][fieldname])
-            return data[0][fieldname]
+            value = data
+                .filter((lease) => lease[sortDate] && lease[fieldname] != null)
+                .sort(byDate)[0]?.[fieldname] ?? null;
+        } else {
+            console.log(data[0][fieldname]);
+            value = data[0][fieldname];
         }
 
-    }
+        // ✅ If value is a JSON-like string, reformat it
+        if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
+            value = value
+                .slice(1, -1)           // remove the { and }
+                .split(",")             // split by comma
+                .map(item => item.trim())
+                .join("\n");             // join with newline
+        }
+
+        return value;
+    };
 
 
     const latestMaintenance = getMostRecentField('maintenance_terms')
@@ -145,21 +150,80 @@ export const getLeaseDocs = async (tenant_id) => {
     return { Maintenance: latestMaintenance || "", Insurance: latestInsurance || "", Taxes: latestTaxes || "", terms_Rent, leaseDocs, Liability: generalLiability || "" }
 };
 
-const getTenantLeaseInfo = async () => {
-    const lease_sumamry = [
+const getLeaseInfo = async (tenant_id) => {
+    const { data, error } = await supabase
+        .from('lease_documents')
+        .select('*')
+        .eq('tenant_id', tenant_id);
+
+
+    if (error) {
+        console.error('No Tenant Docs', error);
+        return;
+    }
+    return data
+}
+
+export const getTenantLeaseInfo = async (tenant_id) => {
+
+    const data = await getLeaseInfo(tenant_id)
+    const getMostRecentField = (fieldname) => {
+        let value;
+
+        if (data.length > 1) {
+            const sortDate = 'lease_commencement_date';
+            const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
+            value = data
+                .filter((lease) => lease[sortDate] && lease[fieldname] != null)
+                .sort(byDate)[0]?.[fieldname] ?? null;
+        } else {
+            console.log(data[0][fieldname]);
+            value = data[0][fieldname];
+        }
+
+        // ✅ If value is a JSON-like string, reformat it
+        if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
+            value = value
+                .slice(1, -1)           // remove the { and }
+                .split(",")             // split by comma
+                .map(item => item.trim())
+                .join("\n");             // join with newline
+        }
+
+        return value;
+    };
+    const lease_summary = [
         { "Lease Commencement Date": getMostRecentField('lease_commencement_date') },
         { "Lease Expiration Date": getMostRecentField('lease_expiration_date') },
+        { "Term": getMostRecentField('term') },
+        { "Lease Type": getMostRecentField('lease_type') },
+        { "Suite Identifier": getMostRecentField('suite_identifier') },
+        { "Property Address": getMostRecentField('Property_Address') },
     ]
-    const finacial_snapshot = [
-
+    const financial_snapshot = [
+        { "Base Rent Monthly": getMostRecentField('base_rent_monthly') },
+        { "Operating Expenses CAM Monthly": getMostRecentField('operating_expenses_CAM_monthly') },
+        { "Rent Escalation": getMostRecentField('rent_escalation') },
+        { "Security Deposit Amount": getMostRecentField('security_deposit_amount') },
     ]
     const responsibility = [
-
+        { "Tenant Maintenance Responsibilities": getMostRecentField('tenant_maintenance_responsibilities') },
+        { "Landlord Maintenance Responsibilities": getMostRecentField('landlord_maintenance_responsibilities') },
+        { "Property Taxes": getMostRecentField('property_taxes') },
+        { "Insurance Cost": getMostRecentField('insurance_cost') },
     ]
     const keyDates = [
-
+        { "Rent Commencement Date": getMostRecentField('rent_commmencement_date') },
+        { "Rent Abatement End": getMostRecentField('rent_abatement_end') },
+        { "Renewal Notice Deadline": getMostRecentField('renewal_notice_deadline') },
+        { "Option Exercise Deadlines": getMostRecentField('option_exercise_deadlines') },
     ]
     const rights = [
-
-    ]
+        { "Renewal Options": getMostRecentField('renewal_options') },
+        { "Termination Rights": getMostRecentField('termination_rights') },
+        { "Exclusivity Rights": getMostRecentField('exclusivity_rights') },
+        { "Expansion/Contraction Rights": getMostRecentField('expansion_contraction_rights') }
+    ];
+    const lease_docs = data
+    return {'lease_summary':lease_summary, 'financial_snapshot': financial_snapshot, 'responsibility': responsibility, 'keyDates': keyDates, 'rights': rights, 'lease_docs': lease_docs}
 }

@@ -11,7 +11,7 @@ import Spinner from '../components/Spinner';
 import Profile from '../components/Profile';
 import DisplayBox from '../components/DisplayBox';
 import LoadPreviousMessages from '../components/PreviousMessages';
-import { getLeaseDocs } from '../utilities/GetMessages';
+import { getTenantLeaseInfo } from '../utilities/GetMessages';
 import { getTableIdList } from '../utilities/supabaseCalls';
 /**
  * TenantPage
@@ -27,11 +27,11 @@ const TenantPage = () => {
   const [contacts, setContacts] = useState([]);
 
 
-  const [maintenance, setMaintenance] = useState('');
-  const [insurance, setInsurance] = useState("");
-  const [liability, setLiability] = useState('')
-  const [taxes, setTaxes] = useState('');
-  const [Terms, setTerms] = useState([])
+  const [leaseSummary, setLeaseSummary] = useState([]);
+  const [financial, setFinancial] = useState([]);
+  const [responsibility, setResponsibility] = useState([])
+  const [keyDates, setKeyDates] = useState([])
+  const [rights, setRights] = useState([])
   const [leaseDocs, setLeaseDocs] = useState([])
   const [leaseStatus, setLeaseStatus] = useState({})
   /**
@@ -108,13 +108,14 @@ const TenantPage = () => {
   useEffect(() => {
     if (!tenant_id) return
     const getLeases = async () => {
-      const leases = await getLeaseDocs(tenant_id)
-      setMaintenance(leases.Maintenance)
-      setInsurance(leases.Insurance)
-      setTaxes(leases.Taxes)
-      setTerms(leases.terms_Rent)
-      setLeaseDocs(leases.leaseDocs)
-      setLiability(leases.Liability)
+      const leases= await getTenantLeaseInfo(tenant_id)
+setLeaseSummary(leases.leases_summary || []);
+setFinancial(leases.financial_snapshot || []);
+setResponsibility(leases.responsibility || []);
+setKeyDates(leases.keyDates || []);
+setRights(leases.rights || []);
+setLeaseDocs(leases.lease_docs || []);
+
     }
     getLeases();
   }, [tenant_id]);
@@ -200,8 +201,8 @@ const TenantPage = () => {
       <div className="flex flex-row items-start items-stretch pb-10">
         <DisplayBox className="w-2/5 mr-6 max-h-[600px] overflow-y-auto">
           <div>
-            <h2 className="text-2xl"><u>Terms & Rent</u></h2>
-            {Terms.map((item, index) => {
+            <h2 className="text-2xl"><u>Lease Summary</u></h2>
+            {leaseSummary.length > 0 && leaseSummary.map((item, index) => {
               const [[key, value]] = Object.entries(item);
 
               // ❌ Skip empty values
@@ -257,19 +258,74 @@ const TenantPage = () => {
       <div className="flex flex-row items-start items-stretch">
         <DisplayBox className="w-2/5 mr-6">
           <div>
-            <h2 className="text-2xl"><u>Maintenance</u></h2>
-            <p>{maintenance}</p>
+            <h2 className="text-2xl"><u>Financial Snapshot</u></h2>
+            {financial.length > 0 && financial.map((item, index) => {
+              console.log(item)
+              const [[key, value]] = Object.entries(item);
+
+              // ❌ Skip empty values
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex flex-row items-center">
+                    <h2 className="text-lg mr-2">{key}:</h2>
+                    <p>{value}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </DisplayBox>
 
         <DisplayBox className="ml-auto w-2/5 overflow-y-auto">
           <div>
-            <h2 className="text-2xl"><u>Taxes</u></h2>
-            <p>{taxes}</p>
-            <h2 className="text-2xl"><u>Property Insurance</u></h2>
-            <p>{insurance}</p>
-            <h2 className='text-2xl'>General Liability</h2>
-            <p>{liability}</p>
+            <h2 className="text-2xl"><u>Responsibility</u></h2>
+            {console.log("Responsibility", responsibility)}
+            {responsibility.length > 0 && responsibility.map((item, index) => {
+              const [[key, value]] = Object.entries(item);
+
+              // ❌ Skip empty values
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex flex-row items-center">
+                    <h2 className="text-lg mr-2">{key}:</h2>
+                    <p>{value}</p>
+                  </div>
+                </div>
+              );
+            })}
+            <h2 className="text-2xl"><u>Key Dates</u></h2>
+            {keyDates.length > 0 && keyDates.map((item, index) => {
+              const [[key, value]] = Object.entries(item);
+
+              // ❌ Skip empty values
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex flex-row items-center">
+                    <h2 className="text-lg mr-2">{key}:</h2>
+                    <p>{value}</p>
+                  </div>
+                </div>
+              );
+            })}
+            <h2 className='text-2xl underline'>Critical Rights and Options</h2>
+            {rights.length > 0 && rights.map((item, index) => {
+              const [[key, value]] = Object.entries(item);
+
+              // ❌ Skip empty values
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex flex-row items-center">
+                    <h2 className="text-lg mr-2">{key}:</h2>
+                    <p>{value}</p>
+                  </div>
+                </div>
+              );
+            })}
+
           </div>
 
         </DisplayBox>
@@ -295,8 +351,8 @@ const TenantPage = () => {
                       <p>{status?.charAt(0).toUpperCase() + status?.slice(1)}</p>
                       {status === 'error' && (
                         <div className='flex overflow-x-auto justify between items-center gap-4'>
-                            <p>-</p>
-                            <button className='bg-gray-400' onClick={() => navigate('/upload_docs')}>Reupload</button>
+                          <p>-</p>
+                          <button className='bg-gray-400' onClick={() => navigate('/upload_docs')}>Reupload</button>
                         </div>
                       )}
                     </div>
