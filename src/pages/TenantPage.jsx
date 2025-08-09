@@ -109,7 +109,7 @@ const TenantPage = () => {
     if (!tenant_id) return
     const getLeases = async () => {
       const leases= await getTenantLeaseInfo(tenant_id)
-setLeaseSummary(leases.leases_summary || []);
+setLeaseSummary(leases.lease_summary || []);
 setFinancial(leases.financial_snapshot || []);
 setResponsibility(leases.responsibility || []);
 setKeyDates(leases.keyDates || []);
@@ -201,11 +201,16 @@ setLeaseDocs(leases.lease_docs || []);
       <div className="flex flex-row items-start items-stretch pb-10">
         <DisplayBox className="w-2/5 mr-6 max-h-[600px] overflow-y-auto">
           <div>
+            <div className='flex items-center justify-between'>
             <h2 className="text-2xl"><u>Lease Summary</u></h2>
+            <button onClick={() => navigate(`/terms/${tenant_id}`)} className='text-2xl bg-gray-700 underline'>
+              View All Terms
+            </button>
+            </div>
             {leaseSummary.length > 0 && leaseSummary.map((item, index) => {
               const [[key, value]] = Object.entries(item);
-
-              // ❌ Skip empty values
+              console.log(key)
+              // ❌ Skip empty value
 
               return (
                 <div key={index} className="mb-4">
@@ -260,7 +265,6 @@ setLeaseDocs(leases.lease_docs || []);
           <div>
             <h2 className="text-2xl"><u>Financial Snapshot</u></h2>
             {financial.length > 0 && financial.map((item, index) => {
-              console.log(item)
               const [[key, value]] = Object.entries(item);
 
               // ❌ Skip empty values
@@ -280,7 +284,6 @@ setLeaseDocs(leases.lease_docs || []);
         <DisplayBox className="ml-auto w-2/5 overflow-y-auto">
           <div>
             <h2 className="text-2xl"><u>Responsibility</u></h2>
-            {console.log("Responsibility", responsibility)}
             {responsibility.length > 0 && responsibility.map((item, index) => {
               const [[key, value]] = Object.entries(item);
 
