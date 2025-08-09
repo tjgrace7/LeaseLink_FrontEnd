@@ -188,7 +188,7 @@ export const getTenantLeaseInfo = async (tenant_id) => {
     const lease_summary = [
         { "Lease Commencement Date": getMostRecentField('lease_commencement_date') },
         { "Lease Expiration Date": getMostRecentField('lease_expiration_date') },
-        { "Term": getMostRecentField('term') },
+        { "Lease Term": getMostRecentField('lease_term') },
         { "Lease Type": getMostRecentField('lease_type') },
         { "Suite Identifier": getMostRecentField('suite_identifier') },
         { "Property Address": getMostRecentField('Property_Address') },
