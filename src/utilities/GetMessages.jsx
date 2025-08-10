@@ -73,7 +73,6 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Delivery/Possession Date": getMostRecentField('delivery_posession_date') },
         { "Lease Expiration Date": getMostRecentField('lease_expiration_date') },
         { "Lease Term": getMostRecentField('lease_term') },
-        { "Lease Type": getMostRecentField('lease_type') },
         { "Suite Identifier": getMostRecentField('suite_identifier') },
         { "Property Address": getMostRecentField('Property_Address') },
         { "Premises Description": getMostRecentField('premises_description') },
@@ -112,6 +111,7 @@ export const getLeaseDocs = async (tenant_id) => {
     const legal = [
         { "Indemnity Clauses": getMostRecentField('indemnity_clauses') },
         { "Insurance Requirements": getMostRecentField('insurance_requirements') },
+        {"Property Insurance": getMostRecentField('property_insurance')},
          { "Default and Remedies": getMostRecentField('default_and_remedies') },
          { "Force Majeure": getMostRecentField('force_majeure') },
          { "Estoppel Certificate Required": getMostRecentField('estoppel_certificate_required') },
@@ -121,7 +121,6 @@ export const getLeaseDocs = async (tenant_id) => {
     ]
     const options = [
         { "Renewal Options": getMostRecentField('renewal_options') },
-        { "Renewal Notice Deadline": getMostRecentField('renewal_notice_deadline') },
         { "Option Exercise Deadlines": getMostRecentField('option_exercise_deadlines') },
         { "Holdover Terms": getMostRecentField('holdover_terms') },
         { "ROFR/ROFO Clauses": getMostRecentField('ROFR_ROFO_clauses') },
@@ -189,7 +188,6 @@ export const getTenantLeaseInfo = async (tenant_id) => {
         { "Lease Commencement Date": getMostRecentField('lease_commencement_date') },
         { "Lease Expiration Date": getMostRecentField('lease_expiration_date') },
         { "Lease Term": getMostRecentField('lease_term') },
-        { "Lease Type": getMostRecentField('lease_type') },
         { "Suite Identifier": getMostRecentField('suite_identifier') },
         { "Property Address": getMostRecentField('Property_Address') },
     ]
@@ -203,12 +201,12 @@ export const getTenantLeaseInfo = async (tenant_id) => {
         { "Tenant Maintenance Responsibilities": getMostRecentField('tenant_maintenance_responsibilities') },
         { "Landlord Maintenance Responsibilities": getMostRecentField('landlord_maintenance_responsibilities') },
         { "Property Taxes": getMostRecentField('property_taxes') },
-        { "Insurance Cost": getMostRecentField('insurance_cost') },
+        { "Insurance Requirements": getMostRecentField('insurance_requirements') },
+        {"Property Insurance": getMostRecentField('property_insurance')}
     ]
     const keyDates = [
-        { "Rent Commencement Date": getMostRecentField('rent_commmencement_date') },
+        { "Rent Commencement Date": getMostRecentField('rent_commencement_date') },
         { "Rent Abatement End": getMostRecentField('rent_abatement_end') },
-        { "Renewal Notice Deadline": getMostRecentField('renewal_notice_deadline') },
         { "Option Exercise Deadlines": getMostRecentField('option_exercise_deadlines') },
     ]
     const rights = [
