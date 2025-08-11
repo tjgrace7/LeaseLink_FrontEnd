@@ -81,7 +81,7 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Usable Square Footage": getMostRecentField('usable_square_footage') },
         { "Parking Allocation": getMostRecentField('parking_allocation') },
         { "Storage/Additional Space": getMostRecentField('storage_additional_space') },
-    
+
     ]
 
     const rent = [
@@ -100,24 +100,24 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Tenant Improvement Allowance": getMostRecentField('tenant_improvement_allowance') },
     ]
     const expense = [
-         { "Property Taxes": getMostRecentField('property_taxes') },
-         { "Insurance Cost": getMostRecentField('insurance_cost') },
-         { "Tenant Reimbursement": getMostRecentField('tenant_reimbursement') },
-         { "Utility Responsibility": getMostRecentField('utility_responsibility') },
-         { "HVAC Responsibilities": getMostRecentField('hvac_responsibilities') },
-         { "Tenant Maintenance Responsibilities": getMostRecentField('tenant_maintenance_responsibilities') },
+        { "Property Taxes": getMostRecentField('property_taxes') },
+        { "Insurance Cost": getMostRecentField('insurance_cost') },
+        { "Tenant Reimbursement": getMostRecentField('tenant_reimbursement') },
+        { "Utility Responsibility": getMostRecentField('utility_responsibility') },
+        { "HVAC Responsibilities": getMostRecentField('hvac_responsibilities') },
+        { "Tenant Maintenance Responsibilities": getMostRecentField('tenant_maintenance_responsibilities') },
         { "Landlord Maintenance Responsibilities": getMostRecentField('landlord_maintenance_responsibilities') },
     ]
     const legal = [
         { "Indemnity Clauses": getMostRecentField('indemnity_clauses') },
         { "Insurance Requirements": getMostRecentField('insurance_requirements') },
-        {"Property Insurance": getMostRecentField('property_insurance')},
-         { "Default and Remedies": getMostRecentField('default_and_remedies') },
-         { "Force Majeure": getMostRecentField('force_majeure') },
-         { "Estoppel Certificate Required": getMostRecentField('estoppel_certificate_required') },
-         { "Assignment and Subletting": getMostRecentField('assignment_and_subletting') },
-         { "Guarantor Information": getMostRecentField('guarantor_information') },
-         { "Security Access Rights": getMostRecentField('security_access_rights') },
+        { "Property Insurance": getMostRecentField('property_insurance') },
+        { "Default and Remedies": getMostRecentField('default_and_remedies') },
+        { "Force Majeure": getMostRecentField('force_majeure') },
+        { "Estoppel Certificate Required": getMostRecentField('estoppel_certificate_required') },
+        { "Assignment and Subletting": getMostRecentField('assignment_and_subletting') },
+        { "Guarantor Information": getMostRecentField('guarantor_information') },
+        { "Security Access Rights": getMostRecentField('security_access_rights') },
     ]
     const options = [
         { "Renewal Options": getMostRecentField('renewal_options') },
@@ -138,9 +138,21 @@ export const getLeaseDocs = async (tenant_id) => {
         { "Landlord Work": getMostRecentField('landlord_work') },
         { "Tenant Work": getMostRecentField('Tenant_work') },
     ]
+    const toNumber = (v) => {
+        if (v == null) return null;
+        const n = parseFloat(String(v).replace(/[$,]/g, ''));
+        return Number.isFinite(n) ? n : null;
+    };
 
-    const leaseDocs = data
-    return { 'basic_lease': basic_lease, 'rent': rent  || "", 'expense': expense || "", legal: legal || "", 'options': options, 'special': special, landlord: landlord || "" }
+    const monthly = toNumber(rent.find(r => "Base Rent Monthly" in r)?.["Base Rent Monthly"]);
+
+    console.log(monthly)
+const idxAnnual = rent.findIndex(r => "Base Rent Annually" in r);
+if (idxAnnual !== -1 && !rent[idxAnnual]["Base Rent Annually"] && monthly != null) {
+  rent[idxAnnual]["Base Rent Annually"] = "$" + (monthly * 12);
+}
+
+    return { 'basic_lease': basic_lease, 'rent': rent || "", 'expense': expense || "", legal: legal || "", 'options': options, 'special': special, landlord: landlord || "" }
 };
 
 const getLeaseInfo = async (tenant_id) => {
@@ -202,7 +214,7 @@ export const getTenantLeaseInfo = async (tenant_id) => {
         { "Landlord Maintenance Responsibilities": getMostRecentField('landlord_maintenance_responsibilities') },
         { "Property Taxes": getMostRecentField('property_taxes') },
         { "Insurance Requirements": getMostRecentField('insurance_requirements') },
-        {"Property Insurance": getMostRecentField('property_insurance')}
+        { "Property Insurance": getMostRecentField('property_insurance') }
     ]
     const keyDates = [
         { "Rent Commencement Date": getMostRecentField('rent_commencement_date') },
@@ -216,5 +228,5 @@ export const getTenantLeaseInfo = async (tenant_id) => {
         { "Expansion/Contraction Rights": getMostRecentField('expansion_contraction_rights') }
     ];
     const lease_docs = data
-    return {'lease_summary':lease_summary, 'financial_snapshot': financial_snapshot, 'responsibility': responsibility, 'keyDates': keyDates, 'rights': rights, 'lease_docs': lease_docs}
+    return { 'lease_summary': lease_summary, 'financial_snapshot': financial_snapshot, 'responsibility': responsibility, 'keyDates': keyDates, 'rights': rights, 'lease_docs': lease_docs }
 }
