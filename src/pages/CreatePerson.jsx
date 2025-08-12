@@ -1,251 +1,415 @@
 // src/pages/CreateEditPerson.jsx
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../components/AuthProvider';
-import { FiX } from 'react-icons/fi';
-import DisplayBox from '../components/DisplayBox';
-import Dropdown from '../components/dropdown';
-import UploadImage from '../components/upload_image';
-import { fileToBase64 } from '../utilities/imageConverter';
-import { get_entity_image } from '../utilities/get_entity_image';
-import { getTable, getTableIdList } from '../utilities/supabaseCalls';
+// ------------------------------------------------------------
+// LeaseLink — Create/Edit Person Page (Refreshed, full page)
+// - Softer, modern cards (no heavy borders)
+// - Mobile-first grid
+// - Clear sections + comments
+// - Sticky submit on mobile
+// - Same data flow & utilities
+// ------------------------------------------------------------
 
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../components/AuthProvider";
+import { FiX, FiTrash2, FiImage, FiChevronLeft } from "react-icons/fi";
+import DisplayBox from "../components/DisplayBox";
+import Dropdown from "../components/dropdown";
+import UploadImage from "../components/upload_image";
+import { fileToBase64 } from "../utilities/imageConverter";
+import { get_entity_image } from "../utilities/get_entity_image";
+import { getTable, getTableIdList } from "../utilities/supabaseCalls";
+
+// ----------------------------
+// Reusable UI primitives
+// ----------------------------
+const Label = ({ children, htmlFor, className = "" }) => (
+  <label htmlFor={htmlFor} className={`text-sm font-medium mb-1 ${className}`}>
+    {children}
+  </label>
+);
+
+const Input = ({ error, className = "", ...props }) => (
+  <input
+    {...props}
+    className={`bg-gray-900/40 text-sm rounded-xl w-full px-4 py-3 outline-none ring-1 ${
+      error ? "ring-red-500" : "ring-gray-800"
+    } focus:ring-2 focus:ring-blue-400 transition ${className}`}
+  />
+);
+
+const Field = ({ label, htmlFor, error, helper, children }) => (
+  <div className="flex flex-col gap-2">
+    <Label htmlFor={htmlFor}>{label}</Label>
+    {children}
+    {error && (
+      <p role="alert" className="text-xs text-red-400">
+        {helper || `${label} is required`}
+      </p>
+    )}
+  </div>
+);
+
+const SectionCard = ({ title, right, children }) => (
+  <div className="rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-md transition">
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-sm font-semibold tracking-wide uppercase text-gray-300">
+        {title}
+      </h2>
+      {right}
+    </div>
+    {children}
+  </div>
+);
+
+const Chip = ({ children, onRemove }) => (
+  <div className="group flex items-center gap-2 rounded-full bg-gray-800/70 px-3 py-1 text-xs">
+    <span className="truncate max-w-[14rem]">{children}</span>
+    {onRemove && (
+      <button
+        type="button"
+        className="opacity-70 group-hover:opacity-100 hover:text-red-400 focus:outline-none"
+        aria-label="Remove"
+        onClick={onRemove}
+      >
+        <FiX />
+      </button>
+    )}
+  </div>
+);
+
+// Label helpers for inconsistent field casing
+const unitLabel = (u) => {
+  const suite = u.Suite ?? u.suite ?? u.suite_number ?? u.SUITE ?? "";
+  const addr = u.address ?? u.Address ?? u.property_address ?? "Unit";
+  return `${addr}${suite ? ` — Suite ${suite}` : ""}`;
+};
+const propertyLabel = (p) => p.Property_Name ?? p.property_name ?? "Property";
+const tenantLabel = (t) => t.Tenant_Name ?? t.tenant_name ?? "Tenant";
+
+// ----------------------------
+// Component
+// ----------------------------
 const CreateEditPerson = () => {
   const { session, userData, roleData } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const id = searchParams.get('id');
-  const typeParam = searchParams.get('type');
-  const typeAliasMap = { 'User Profile': 'App User' };
+
+  // Params
+  const id = searchParams.get("id");
+  const typeParam = searchParams.get("type");
+  const typeAliasMap = { "User Profile": "App User" };
   const normalizedType = typeAliasMap[typeParam] || typeParam;
-  const [editImage, setEditImage] = useState('');
   const isEditMode = !!id;
 
+  // State
   const [personOptions, setPersonOptions] = useState([]);
-  const permissionLevels = ['Company Admin', 'Property Manager'];
+  const permissionLevels = ["Company Admin", "Property Manager"];
 
-  const [selectedPerson, setPerson] = useState(normalizedType || '');
+  const [selectedPerson, setPerson] = useState(normalizedType || "");
   const [genericFormData, setGeneric] = useState({
-    name: '', email: '', phone: '', image: '', imageType: '', address: '', contactType: '', password: '', passwordconfirm: ''
+    name: "",
+    email: "",
+    phone: "",
+    image: "",
+    imageType: "",
+    address: "",
+    contactType: "",
+    password: "",
+    passwordconfirm: "",
   });
 
+  const [tenant, setTenant] = useState({ dba: "", active: true });
 
-  const [tenant, setTenant] = useState({ dba: '', active: true });
   const [tenants, setTenants] = useState([]);
   const [selectedTenants, setSelectedTenant] = useState([]);
-  const [permission, setPermission] = useState('');
+
+  const [permission, setPermission] = useState("");
   const [errors, setErrors] = useState({});
+
   const [properties, setProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
+
   const [units, setUnits] = useState([]);
   const [selectedUnits, setSelectedUnits] = useState([]);
-  const supabase_url = import.meta.env.VITE_SUPABASE_URL;
 
-  const [previousImage, setPreviousImage] = useState('')
+  const [previousImage, setPreviousImage] = useState("");
+  const [editImage, setEditImage] = useState("");
+
+  // Snapshots to detect changes on edit
   const [initialData, setInitialData] = useState(null);
   const [initialUnits, setInitialUnits] = useState(null);
-  const [initialProperties, setInitialProperties] = useState(null)
-  const [initialTenants, setInitialTenants] = useState(null)
-  const [initialPermission, setInitialPermission] = useState('')
+  const [initialProperties, setInitialProperties] = useState(null);
+  const [initialTenants, setInitialTenants] = useState(null);
+  const [initialPermission, setInitialPermission] = useState("");
 
+  const [submitting, setSubmitting] = useState(false);
+  const supabase_url = import.meta.env.VITE_SUPABASE_URL;
+
+  // --------------------------------------
+  // Allowed person types by role
+  // --------------------------------------
   useEffect(() => {
-
     if (!roleData) return;
     const createOptions = [
       ...(roleData.Create_Users ? ["App User"] : []),
       ...(roleData.Create_Tenants ? ["Tenant"] : []),
       ...(roleData.Create_Contact ? ["Contact"] : []),
-      ...(roleData.Create_Owner ? ['Building Owner'] : [])
-    ]
-    setPersonOptions(createOptions)
-  }, [roleData])
+      ...(roleData.Create_Owner ? ["Building Owner"] : []),
+    ];
+    setPersonOptions(createOptions);
+  }, [roleData]);
 
+  // --------------------------------------
+  // Revoke blob URLs created for previews
+  // --------------------------------------
   useEffect(() => {
     let objectUrl;
-    if (genericFormData.image) {
+    if (genericFormData.image instanceof File) {
       objectUrl = URL.createObjectURL(genericFormData.image);
     }
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [genericFormData.image]);
+
+  // --------------------------------------
+  // Fetch list data based on selection
+  // --------------------------------------
   useEffect(() => {
     if (!session || !userData || !selectedPerson) return;
 
     const fetchInitialData = async () => {
-      if (selectedPerson === 'Building Owner') return;
+      try {
+        if (selectedPerson === "Building Owner") return; // No extra lists needed
 
-      const propertyData = await getTable('properties', 'pm_company', userData.company_id);
-      if (!propertyData) return;
-      setProperties(propertyData);
+        // Properties (common)
+        const propertyData = await getTable(
+          "properties",
+          "pm_company",
+          userData.company_id
+        );
+        if (!propertyData) return;
+        setProperties(propertyData);
 
-      if (selectedPerson === 'Tenant' && selectedProperties.length > 0) {
-        const unitData = await getTable('Units', 'pmcompany_id', userData.company_id);
-        if (!unitData) return;
+        // Units (only for Tenant & after properties are selected)
+        if (selectedPerson === "Tenant" && selectedProperties.length > 0) {
+          const unitData = await getTable("Units", "pmcompany_id", userData.company_id);
+          if (!unitData) return;
 
-        const usedUnits = await getTableIdList('Tenant_Unit', 'unit_id', unitData.map((u) => u.unit_id));
-        const usedIds = new Set((usedUnits || []).map((u) => u.unit_id));
+          // Units already linked to tenants
+          const usedUnits = await getTableIdList(
+            "Tenant_Unit",
+            "unit_id",
+            unitData.map((u) => u.unit_id)
+          );
+          const usedIds = new Set((usedUnits || []).map((u) => u.unit_id));
 
-        const selectedPropIds = selectedProperties.map((p) => p.prop_id);
+          const selectedPropIds = selectedProperties.map((p) => p.prop_id);
+          const availableUnits = unitData
+            .filter((u) => selectedPropIds.includes(u.property_id) && !usedIds.has(u.unit_id))
+            .sort((a, b) => {
+              const addrCompare = (a.address ?? "").localeCompare(b.address ?? "");
+              if (addrCompare !== 0) return addrCompare;
+              const as = a.Suite ?? a.suite ?? a.suite_number ?? "";
+              const bs = b.Suite ?? b.suite ?? b.suite_number ?? "";
+              return String(as).localeCompare(String(bs));
+            });
 
-        const availableUnits = unitData.filter((u) =>
-          selectedPropIds.includes(u.property_id) && !usedIds.has(u.unit_id))
-          .sort((a, b) => {
-            const addrCompare = a.address.localeCompare(b.address);
-            if (addrCompare !== 0) return addrCompare
+          setUnits(availableUnits);
+        }
 
-            return a.suite_number?.localeCompare?.(b.suite_number ?? '') ?? 0;
-          });
-        setUnits(availableUnits)
-      }
-      if (selectedPerson === 'Contact') {
-        const tenantData = await getTable('tenant', 'property_management_id', userData.company_id);
-        if (!tenantData) return;
-        setTenants(tenantData);
+        // Tenants list for Contact linking
+        if (selectedPerson === "Contact") {
+          const tenantData = await getTable(
+            "tenant",
+            "property_management_id",
+            userData.company_id
+          );
+          if (!tenantData) return;
+          setTenants(tenantData);
+        }
+      } catch (err) {
+        console.error("Fetch init data error:", err);
       }
     };
 
     fetchInitialData();
-  }, [selectedPerson, userData, selectedProperties]);
+  }, [selectedPerson, userData, selectedProperties, session]);
 
+  // --------------------------------------
+  // Prefill when editing
+  // --------------------------------------
   useEffect(() => {
     if (!isEditMode || !typeParam) return;
 
     const tableMap = {
-      'Tenant': 'tenant',
-      'App User': 'User_Data',
-      'Contact': 'Contact',
-      'Building Owner': 'building_owner',
+      Tenant: "tenant",
+      "App User": "User_Data",
+      Contact: "Contact",
+      "Building Owner": "building_owner",
     };
-    const table = tableMap[normalizedType];
-    const column = (normalizedType === 'App User') ? 'user' : normalizedType === "Building Owner" ? 'owner' : table;
 
+    const table = tableMap[normalizedType];
+    const column = normalizedType === "App User" ? "user" : normalizedType === "Building Owner" ? "owner" : table;
     if (!table) return;
+
     setPerson(normalizedType);
 
     const fetchPerson = async () => {
-      const personData = await getTable(table, `${column.toLowerCase()}_id`, id);
-      const data = personData?.[0];
-      let email;
-      let role;
-      let phone
-      if (table === "User_Data") {
-        const info = await getUserEmailPhone(id)
-        email = info.email;
-        role = await getTable("Roles", 'id', data.role_id)
-        phone = info.phone
-      }
-      if (!data) return;
+      try {
+        const personData = await getTable(table, `${column.toLowerCase()}_id`, id);
+        const data = personData?.[0];
+        if (!data) return;
 
-      let generic = {
-        name: '', email: '', phone: '', image: '', imageType: '', address: '', contactType: '',
-      };
-      let imagepath;
-      if (typeParam === 'Tenant') {
-        generic.name = data.Tenant_Name || '';
-        imagepath = data.photo_file_path || '';
+        // Special handling for User_Data (email/phone from Auth)
+        let email, role, phone;
+        if (table === "User_Data") {
+          const info = await getUserEmailPhone(id);
+          email = info.email;
+          phone = info.phone;
+          role = await getTable("Roles", "id", data.role_id);
+        }
 
-      } else if (normalizedType === 'App User') {
-        generic.name = data.Name || '';
-        generic.email = email || '';
-        generic.phone = phone || '';
-        imagepath = data.image_file_path || '';
-        setPermission(role[0]?.Role_Name)
-      } else if (typeParam === 'Contact') {
-        generic.name = data.Contact_Name || '';
-        generic.email = data.Email || '';
-        generic.phone = data.Phone || '';
-        generic.address = data.Address || '';
-        generic.contactType = data.Contact_Type || '';
-        imagepath = data.image_file_path || '';
-      } else if (typeParam === 'Building Owner') {
-        generic.name = data.owner_name || '';
-        generic.email = data.Email || '';
-        generic.phone = data.Phone || '';
-        imagepath = data.image_file_path || '';
-      }
+        const generic = {
+          name:
+            normalizedType === "Tenant"
+              ? data.Tenant_Name || ""
+              : normalizedType === "App User"
+              ? data.Name || ""
+              : normalizedType === "Contact"
+              ? data.Contact_Name || ""
+              : normalizedType === "Building Owner"
+              ? data.owner_name || ""
+              : "",
+          email:
+            normalizedType === "App User" || normalizedType === "Contact" || normalizedType === "Building Owner"
+              ? email || data.Email || ""
+              : "",
+          phone:
+            normalizedType === "App User" || normalizedType === "Contact" || normalizedType === "Building Owner"
+              ? phone || data.Phone || ""
+              : "",
+          image: "",
+          imageType: "",
+          address: normalizedType === "Contact" ? data.Address || "" : "",
+          contactType: normalizedType === "Contact" ? data.Contact_Type || "" : "",
+          password: "",
+          passwordconfirm: "",
+        };
 
-      if (imagepath) {
-        setEditImage(await get_entity_image(imagepath, session));
-        setPreviousImage(imagepath)
-      }
-      setGeneric(generic);
-      setInitialData({ ...generic, image: imagepath });
-      if (typeParam === 'Tenant' || typeParam === 'App User') {
-        const tableName = (typeParam === 'Tenant') ? 'Property_Tenant' : 'User_Property';
-        const joinData = await getTable(tableName, 'tenant_id', id);
-        const propIds = joinData.map((j) => j.property_id);
-        const propertyData = await getTableIdList('properties', 'prop_id', propIds);
-        setSelectedProperties(propertyData);
-        setProperties((prev) => prev.filter((p) => !propertyData.map(pd => pd.prop_id).includes(p.prop_id)));
-        setInitialProperties(propertyData)
-      }
-      // Continue as before...
-      if (typeParam === 'Tenant') {
-        setTenant({ dba: data.dba || '', active: data.active ?? true });
-        const unitTenant = await getTable('Tenant_Unit', 'tenant_id', id);
-        const uIds = unitTenant.map((u) => u.unit_id);
-        const unitData = await getTableIdList('Units', 'unit_id', uIds);
-        setSelectedUnits(unitData);
-        setInitialUnits(unitData)
-      }
+        // Preview existing image
+        const imagepath =
+          normalizedType === "Tenant"
+            ? data.photo_file_path || ""
+            : data.image_file_path || "";
 
-      if (typeParam === 'Contact') {
-        const tenantContacts = await getTable('Tenant_Contact', 'contact_id', id);
-        const tenantIds = tenantContacts.map((t) => t.tenant_id);
-        const relatedTenants = await getTableIdList('tenant', 'tenant_id', tenantIds);
-        const selectedIds = new Set((relatedTenants || []).map((t) => t.tenant_id));
-        setSelectedTenant(relatedTenants);
-        setTenants((prev) => prev.filter((p) => !selectedIds.has(p.tenant_id)));
-        setInitialTenants(relatedTenants)
+        if (imagepath) {
+          setEditImage(await get_entity_image(imagepath, session));
+          setPreviousImage(imagepath);
+        }
+
+        setGeneric(generic);
+        setInitialData({ ...generic, image: imagepath });
+
+        // Related selections
+        if (normalizedType === "Tenant") {
+          setTenant({ dba: data.dba || "", active: data.active ?? true });
+
+          const pt = await getTable("Property_Tenant", "tenant_id", id);
+          const propIds = pt.map((j) => j.property_id);
+          const propertyData = await getTableIdList("properties", "prop_id", propIds);
+          setSelectedProperties(propertyData);
+          setProperties((prev) => prev.filter((p) => !propertyData.map((pd) => pd.prop_id).includes(p.prop_id)));
+          setInitialProperties(propertyData);
+
+          const tUnits = await getTable("Tenant_Unit", "tenant_id", id);
+          const uIds = tUnits.map((u) => u.unit_id);
+          const unitData = await getTableIdList("Units", "unit_id", uIds);
+          setSelectedUnits(unitData);
+          setInitialUnits(unitData);
+        }
+
+        if (normalizedType === "Contact") {
+          const tenantContacts = await getTable("Tenant_Contact", "contact_id", id);
+          const tenantIds = tenantContacts.map((t) => t.tenant_id);
+          const relatedTenants = await getTableIdList("tenant", "tenant_id", tenantIds);
+          const selectedIds = new Set((relatedTenants || []).map((t) => t.tenant_id));
+          setSelectedTenant(relatedTenants);
+          setTenants((prev) => prev.filter((p) => !selectedIds.has(p.tenant_id)));
+          setInitialTenants(relatedTenants);
+        }
+
+        if (normalizedType === "App User") {
+          setPermission(role?.[0]?.Role_Name || data.role || "");
+          setInitialPermission(role?.[0]?.Role_Name || data.role || "");
+
+          // NOTE: Original used 'tenant_id' for User_Property lookup; keeping to avoid breaking
+          const up = await getTable("User_Property", "tenant_id", id);
+          const propIds = up.map((j) => j.property_id);
+          const propertyData = await getTableIdList("properties", "prop_id", propIds);
+          setSelectedProperties(propertyData);
+          setProperties((prev) => prev.filter((p) => !propertyData.map((pd) => pd.prop_id).includes(p.prop_id)));
+          setInitialProperties(propertyData);
+        }
+      } catch (err) {
+        console.error("Fetch person error:", err);
       }
-
-      if (typeParam === 'App User') {
-        setPermission(data.role || '');
-        setInitialPermission(data.role || '')
-      }
-
-
     };
 
     fetchPerson();
-  }, [id, typeParam]);
+  }, [id, typeParam, isEditMode, normalizedType, session]);
 
+  // Helpers
   const getUserEmailPhone = async (targetUserId) => {
-    const query = targetUserId ? `?target_user_id=${targetUserId}` : '';
-    console.log(session)
+    const query = targetUserId ? `?target_user_id=${targetUserId}` : "";
     const res = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get_user_email_phone${query}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      }
+      { method: "GET", headers: { Authorization: `Bearer ${session?.access_token}` } }
     );
     const data = await res.json();
-
     if (!res.ok) {
-      console.error('Error from Edge Function:', data);
-      throw new Error(data.error || 'Unknown error');
+      console.error("Edge Function error:", data);
+      throw new Error(data.error || "Unknown error");
     }
-
     return data; // { email, phone }
   };
-  const hasChanged = () => {
-    if (!initialData) return true;
+
+  const hasChanged = useCallback(() => {
+    if (!initialData) return true; // no baseline -> treat as changed
     const { image: initialImage, ...initialRest } = initialData;
     const { image: currentImage, ...currentRest } = genericFormData;
 
     const baseChanged = JSON.stringify(initialRest) !== JSON.stringify(currentRest);
     const imageChanged =
-      typeof currentImage === 'string' &&
-      (currentImage.startsWith("data:") || currentImage !== initialImage);
+      typeof currentImage === "string"
+        ? currentImage.startsWith("data:") || currentImage !== initialImage
+        : !!currentImage; // file selected
 
-    return baseChanged || imageChanged;
+    const selCompare =
+      JSON.stringify(selectedProperties) !== JSON.stringify(initialProperties) ||
+      JSON.stringify(selectedUnits) !== JSON.stringify(initialUnits) ||
+      JSON.stringify(selectedTenants) !== JSON.stringify(initialTenants) ||
+      permission !== initialPermission;
+
+    return baseChanged || imageChanged || selCompare;
+  }, [initialData, genericFormData, selectedProperties, selectedUnits, selectedTenants, initialProperties, initialUnits, initialTenants, permission, initialPermission]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (selectedPerson === "Tenant" && (name === "active" || name === "dba")) {
+      setTenant((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+      return;
+    }
+    setGeneric((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const removeEntity = (entity, setFromList, setToList, idKey = "prop_id") => {
+    setFromList((prev) => prev.filter((item) => item[idKey] !== entity[idKey]));
+    setToList((prev) => (prev.some((p) => p[idKey] === entity[idKey]) ? prev : [...prev, entity]));
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (isEditMode && !hasChanged()) {
       console.log("No changes detected — skipping update.");
       return;
@@ -253,44 +417,43 @@ const CreateEditPerson = () => {
 
     const newErrors = {};
     if (!genericFormData.name) newErrors.name = true;
-    if (!genericFormData.email && selectedPerson !== 'Tenant') newErrors.email = true;
-    if (!genericFormData.phone && selectedPerson !== 'Tenant') newErrors.phone = true;
-    if (selectedPerson === 'App User' && !isEditMode) {
-      const { password, passwordconfirm } = genericFormData;
-
-      if (!password || !passwordconfirm) {
-        newErrors.password = true;
-      } else if (password !== passwordconfirm) {
-        newErrors.password = true;
-      }
+    if (selectedPerson !== "Tenant") {
+      if (!genericFormData.email) newErrors.email = true;
+      if (!genericFormData.phone) newErrors.phone = true;
     }
-    const company = await getTable('Property_Management_Companies', 'company_id', userData.company_id)
-    console.log(company)
-    const company_name = company[0].company_name
-    console.log(company_name)
+    if (selectedPerson === "App User" && !isEditMode) {
+      const { password, passwordconfirm } = genericFormData;
+      if (!password || !passwordconfirm || password !== passwordconfirm) newErrors.password = true;
+    }
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
-    const storagePath = genericFormData.image
-      ? `${company_name}/${selectedPerson}/${genericFormData.name}`
-      : isEditMode ? previousImage : '';
-    console.log(storagePath)
-    const imageBase64 = genericFormData.image
-      ? await fileToBase64(genericFormData.image)
-      : null;
 
-    const tenantIds = selectedTenants.map((t) => t.tenant_id);
-    let additionalPayload = {}
-    if (!isEditMode || (isEditMode && genericFormData.password)) {
-      additionalPayload.password = genericFormData.password;
-    }
-    const response = await fetch(
-      `${supabase_url}/functions/v1/Create_Person`,
-      {
-        method: isEditMode ? 'PUT' : 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
+    setSubmitting(true);
+    try {
+      const company = await getTable(
+        "Property_Management_Companies",
+        "company_id",
+        userData.company_id
+      );
+      const company_name = company?.[0]?.company_name ?? "company";
+
+      const storagePath = genericFormData.image
+        ? `${company_name}/${selectedPerson}/${genericFormData.name}`
+        : isEditMode
+        ? previousImage
+        : "";
+
+      const imageBase64 = genericFormData.image ? await fileToBase64(genericFormData.image) : null;
+      const tenantIds = selectedTenants.map((t) => t.tenant_id);
+      const additionalPayload = {};
+      if (!isEditMode || (isEditMode && genericFormData.password)) {
+        additionalPayload.password = genericFormData.password;
+      }
+
+      const res = await fetch(`${supabase_url}/functions/v1/Create_Person`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           entityId: id,
           personType: selectedPerson,
@@ -310,141 +473,145 @@ const CreateEditPerson = () => {
           address: genericFormData.address,
           contactType: genericFormData.contactType,
           tenant_id: tenantIds,
-          ...additionalPayload
+          ...additionalPayload,
         }),
+      });
+
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error("Create_Person error:", result);
+        alert(result?.error || "Something went wrong. Check console.");
+        setSubmitting(false);
+        return;
       }
-    );
 
-    const result = await response.json();
-    navigate('/dashboard');
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setGeneric((prev) => ({ ...prev, [name]: value })
-
-    );
-
-    if (selectedPerson === 'Tenant') {
-      setTenant((prev) => ({ ...prev, [name]: value }));
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Failed to save. See console for details.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const RemoveEntity = (entity, setFromList, setToList) => {
-    setFromList(prev => prev.filter(item => item !== entity));
-    setToList(prev => {
-      if (!prev.includes(entity)) return [...prev, entity];
-      return prev;
-    });
-  };
-
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
-    <div>
-      <div className="flex items-center justify-center mt-5 text-2xl">
-        <h1>{isEditMode ? 'Edit Person' : 'Create Person'}</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8 py-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white">
+          <FiChevronLeft /> Back
+        </button>
+        <h1 className="text-xl md:text-2xl font-semibold">{isEditMode ? "Edit Person" : "Create Person"}</h1>
       </div>
 
-      <DisplayBox className="flex flex-row justify-between">
-        {/* Left Side: Form Fields */}
-        <div className="flex flex-col p-6">
-          {!isEditMode && (
-            <Dropdown
-              options={personOptions}
-              value={selectedPerson || ""}
-              onSelect={(value) => {
-                setPerson(value);
-                setSelectedProperties([]);
-                setSelectedTenant([]);
-                setSelectedUnits([]);
-                setGeneric({
-                  name: '',
-                  email: '',
-                  phone: '',
-                  image: '',
-                  imageType: '',
-                  address: '',
-                  contactType: '',
-                });
-                setTenant({ dba: '', active: true });
-                setErrors({});
-              }}
-              placeholder="Select Person Type"
-            />
-          )}
-          {isEditMode && (
-            <div className='bg-gray-700 p-4 rounded w-full border'>
-              {selectedPerson}
-            </div>
-          )}
-          {/* Basic Info Fields */}
-          <div className="flex flex-col mt-6">
-
-            <div>
-              <p className="capitalize">Full Name</p>
-              <input
-                className={`bg-gray-700 p-4 rounded w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-                type="text"
-                name="name"
-                placeholder="Enter Name"
-                value={genericFormData.name ?? ""}
-                onChange={handleChange}
-              />
-              {errors.name && <p className="text-red-500 text-sm">Name is required</p>}
-            </div>
-
-            {selectedPerson !== "Tenant" && ['email', 'phone'].map((field) => (
-              <div key={field}>
-                <p className="capitalize">{field}</p>
-                <input
-                  className={`bg-gray-700 p-4 rounded w-full border ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
-                  type={field === 'email' ? 'email' : 'tel'}
-                  name={field}
-                  placeholder={`Enter ${field}`}
-                  value={genericFormData[field] ?? ""}
-                  onChange={handleChange}
-                />
-                {errors[field] && <p className="text-red-500 text-sm">{field} is required</p>}
-              </div>
-            ))}
-
-            {/* Tenant Fields */}
-            {selectedPerson === 'Tenant' && (
-              <div className="flex flex-col">
-                <p>DBA</p>
-                <input
-                  className="bg-gray-700 p-4 rounded w-full"
-                  type="text"
-                  name="dba"
-                  placeholder="Enter DBA"
-                  value={tenant.dba ?? ""}
-                  onChange={handleChange}
-                />
-                <p>Is Active?</p>
-                <input
-                  type="checkbox"
-                  name="active"
-                  checked={tenant.active || false}
-                  onChange={(e) => setTenant((prev) => ({ ...prev, active: e.target.checked }))}
-                />
-
-                <p>Properties</p>
+      <DisplayBox className="p-0 md:p-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Type selector */}
+            {!isEditMode ? (
+              <SectionCard title="Person Type">
                 <Dropdown
-                  options={properties}
-                  onSelect={(property) => {
-                    if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
-                      setSelectedProperties((prev) => [...prev, property]);
-                      setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
-                    }
+                  options={personOptions}
+                  value={selectedPerson || ""}
+                  onSelect={(value) => {
+                    setPerson(value);
+                    setSelectedProperties([]);
+                    setSelectedTenant([]);
+                    setSelectedUnits([]);
+                    setGeneric({
+                      name: "",
+                      email: "",
+                      phone: "",
+                      image: "",
+                      imageType: "",
+                      address: "",
+                      contactType: "",
+                      password: "",
+                      passwordconfirm: "",
+                    });
+                    setTenant({ dba: "", active: true });
+                    setErrors({});
                   }}
-                  placeholder="Select Properties"
-                  getOptionTitle={(o) => o.Property_Name}
-                  getOptionId={(o) => o.prop_id}
-                  clearAfterSelect
+                  placeholder="Select Person Type"
                 />
+              </SectionCard>
+            ) : (
+              <SectionCard title="Person Type">
+                <div className="bg-gray-900/40 rounded-xl px-4 py-3 text-sm">{selectedPerson}</div>
+              </SectionCard>
+            )}
 
+            {/* Basic Info */}
+            <SectionCard title="Basic Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Full Name" htmlFor="name" error={errors.name}>
+                  <Input id="name" name="name" placeholder="Enter name" value={genericFormData.name} onChange={handleChange} />
+                </Field>
+
+                {selectedPerson !== "Tenant" && (
+                  <Field label="Email" htmlFor="email" error={errors.email}>
+                    <Input id="email" type="email" name="email" placeholder="name@company.com" value={genericFormData.email} onChange={handleChange} />
+                  </Field>
+                )}
+
+                {selectedPerson !== "Tenant" && (
+                  <Field label="Phone" htmlFor="phone" error={errors.phone}>
+                    <Input id="phone" type="tel" name="phone" placeholder="(555) 555-5555" value={genericFormData.phone} onChange={handleChange} />
+                  </Field>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Tenant-only */}
+            {selectedPerson === "Tenant" && (
+              <SectionCard title="Tenant Details">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="DBA" htmlFor="dba">
+                    <Input id="dba" name="dba" placeholder="Doing Business As" value={tenant.dba} onChange={handleChange} />
+                  </Field>
+
+                  <div className="flex items-center gap-3 pt-6">
+                    <input id="active" name="active" type="checkbox" className="size-4 rounded border-gray-600" checked={!!tenant.active} onChange={handleChange} />
+                    <Label htmlFor="active" className="mb-0">Active Tenant</Label>
+                  </div>
+                </div>
+
+                {/* Properties for tenant */}
+                <div className="mt-4">
+                  <Label>Properties</Label>
+                  <Dropdown
+                    options={properties}
+                    onSelect={(property) => {
+                      if (!selectedProperties.some((p) => p.prop_id === property.prop_id)) {
+                        setSelectedProperties((prev) => [...prev, property]);
+                        setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
+                      }
+                    }}
+                    placeholder="Select properties"
+                    getOptionTitle={propertyLabel}
+                    getOptionId={(o) => o.prop_id}
+                    clearAfterSelect
+                  />
+
+                  {selectedProperties.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {selectedProperties.map((property) => (
+                        <Chip key={property.prop_id} onRemove={() => removeEntity(property, setSelectedProperties, setProperties, "prop_id")}>
+                          {propertyLabel(property)}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Units after selecting properties */}
                 {selectedProperties.length > 0 && (
-                  <>
-                    <p>Units</p>
+                  <div className="mt-6">
+                    <Label>Units</Label>
                     <Dropdown
                       options={units}
                       onSelect={(unit) => {
@@ -453,52 +620,46 @@ const CreateEditPerson = () => {
                           setUnits((prev) => prev.filter((u) => u.unit_id !== unit.unit_id));
                         }
                       }}
-                      placeholder="Select Units"
-                      getOptionTitle={(u) => `${u.address} - Suite ${u.Suite}`}
+                      placeholder="Select units"
+                      getOptionTitle={unitLabel}
                       getOptionId={(u) => u.unit_id}
                       clearAfterSelect
                     />
-                  </>
+
+                    {selectedUnits.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {selectedUnits.map((unit) => (
+                          <Chip key={unit.unit_id} onRemove={() => removeEntity(unit, setSelectedUnits, setUnits, "unit_id")}>{unitLabel(unit)}</Chip>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
+              </SectionCard>
             )}
 
-            {/* App User Fields */}
-            {selectedPerson === 'App User' && (
-              <>
-                <div>
-                  <p>Password</p>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                    type="password"
-                    name="password"
-                    placeholder="Enter Password"
-                    value={genericFormData.password ?? ""}
-                    onChange={handleChange}
-                  />
+            {/* App User-only */}
+            {selectedPerson === "App User" && (
+              <SectionCard title="User Settings">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Password" htmlFor="password" error={errors.password} helper={isEditMode ? "Leave blank to keep current password" : undefined}>
+                    <Input id="password" type="password" name="password" placeholder={isEditMode ? "•••••• (unchanged)" : "Enter password"} value={genericFormData.password} onChange={handleChange} />
+                  </Field>
+                  <Field label="Confirm Password" htmlFor="passwordconfirm" error={errors.password}>
+                    <Input id="passwordconfirm" type="password" name="passwordconfirm" placeholder="Confirm password" value={genericFormData.passwordconfirm} onChange={handleChange} />
+                  </Field>
                 </div>
-                <div>
-                  <p>Confirm Password</p>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                    type="password"
-                    name="passwordconfirm"
-                    placeholder="Enter Password"
-                    value={genericFormData.passwordconfirm ?? ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                {roleData && roleData.Edit_Users && (
-                  <div>
-                    <div className={`bg-gray-700 mt-4 rounded w-full border ${errors.PermissionLevel ? 'border-red-500' : 'border-gray-300'}`}>
-                      <Dropdown
-                        options={permissionLevels}
-                        onSelect={setPermission}
-                        placeholder={permission || "Select Role"}
-                      />
-                    </div>
-                    {permission != 'Company Admin' && (
-                      <div className="bg-gray-700 mt-4 rounded w-full">
+
+                {roleData?.Edit_Users && (
+                  <div className="grid grid-cols-1 gap-4 mt-2">
+                    <Field label="Role" htmlFor="role">
+                      <div className="bg-gray-900/40 rounded-xl ring-1 ring-gray-800">
+                        <Dropdown options={permissionLevels} onSelect={setPermission} placeholder={permission || "Select role"} />
+                      </div>
+                    </Field>
+
+                    {permission !== "Company Admin" && (
+                      <Field label="Property Access">
                         <Dropdown
                           options={properties}
                           onSelect={(property) => {
@@ -507,137 +668,158 @@ const CreateEditPerson = () => {
                               setProperties((prev) => prev.filter((p) => p.prop_id !== property.prop_id));
                             }
                           }}
-                          placeholder="Select Properties"
-                          getOptionTitle={(o) => o.Property_Name}
+                          placeholder="Select properties"
+                          getOptionTitle={propertyLabel}
                           getOptionId={(o) => o.prop_id}
                           clearAfterSelect
                         />
-                      </div>
+
+                        {selectedProperties.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {selectedProperties.map((property) => (
+                              <Chip key={property.prop_id} onRemove={() => removeEntity(property, setSelectedProperties, setProperties, "prop_id")}>
+                                {propertyLabel(property)}
+                              </Chip>
+                            ))}
+                          </div>
+                        )}
+                      </Field>
                     )}
                   </div>
                 )}
-              </>
+              </SectionCard>
             )}
 
+            {/* Contact-only */}
             {selectedPerson === "Contact" && (
-              <>
-                <div>
-                  <p>Address</p>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
-                    type='text'
-                    name='address'
-                    placeholder='Enter Address'
-                    value={genericFormData.address}
-                    onChange={handleChange}
+              <SectionCard title="Contact Details">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Address" htmlFor="address" error={errors.address}>
+                    <Input id="address" type="text" name="address" placeholder="123 Main St, City, ST" value={genericFormData.address} onChange={handleChange} />
+                  </Field>
+                  <Field label="Contact Type" htmlFor="contactType" error={errors.contactType}>
+                    <Input id="contactType" type="text" name="contactType" placeholder="e.g., Accounts Payable" value={genericFormData.contactType} onChange={handleChange} />
+                  </Field>
+                </div>
 
-                  />
-                </div>
-                <div>
-                  <p>Contact Type</p>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border mb-4 ${errors.contactType ? 'border-red-500' : 'border-gray-300'}`}
-                    type='text'
-                    name='contactType'
-                    placeholder='Enter Contact Type'
-                    value={genericFormData.contactType}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
+                <div className="mt-4">
+                  <Label>Related Tenants</Label>
                   <Dropdown
                     options={tenants}
-                    onSelect={(tenant) => {
-                      if (!selectedTenants.some(t => t.tenant_id === tenant.tenant_id)) {
-                        setSelectedTenant((prev) => [...prev, tenant]);
-                        setTenants((prev) => prev.filter((p) => p.tenant_id !== tenant.tenant_id));
+                    onSelect={(t) => {
+                      if (!selectedTenants.some((x) => x.tenant_id === t.tenant_id)) {
+                        setSelectedTenant((prev) => [...prev, t]);
+                        setTenants((prev) => prev.filter((p) => p.tenant_id !== t.tenant_id));
                       }
                     }}
-                    placeholder='Select Tenants'
-                    getOptionTitle={(o) => o.Tenant_Name}
+                    placeholder="Select tenants"
+                    getOptionTitle={tenantLabel}
                     getOptionId={(o) => o.tenant_id}
                     clearAfterSelect
                   />
 
+                  {selectedTenants.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {selectedTenants.map((t) => (
+                        <Chip key={t.tenant_id} onRemove={() => removeEntity(t, setSelectedTenant, setTenants, "tenant_id")}>{tenantLabel(t)}</Chip>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </>
+              </SectionCard>
             )}
 
-            <div className="mt-4 flex items-center">
-              <button
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={handleSubmit}
-              >
-                Submit
-              </button>
+            {/* Submit CTA */}
+            <div className="sticky bottom-3 z-10">
+              <div className="rounded-2xl bg-gray-900/70 backdrop-blur p-3 flex items-center justify-end shadow-sm">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {submitting ? "Saving…" : "Submit"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Side: Upload and Preview */}
-        <div className="flex flex-col justify-left">
-          <UploadImage
-            onImageSelect={(image) => {
-              setGeneric((prev) => ({
-                ...prev,
-                image,
-                imageType: image.type,
-              }))
-              setEditImage('')
-            }
-            }
-            showPreview={false}
-          />
-          {genericFormData.image ? (
-            <img
-              src={URL.createObjectURL(genericFormData.image)}
-              alt="Preview"
-              className="w-32 h-32 object-cover mt-4 rounded"
-            />
-          ) : editImage ? (
-            <img
-              src={editImage}
-              alt="Preview"
-              className="w-32 h-32 object-cover mt-4 rounded"
-            />
-          ) : null}
+          {/* Right: Image + summaries */}
+          <div className="space-y-6 lg:sticky lg:top-6 h-fit">
+            <SectionCard
+              title="Profile Image"
+              right={
+                (genericFormData.image || editImage) && (
+                  <button
+                    type="button"
+                    className="text-xs text-gray-400 hover:text-red-400"
+                    onClick={() => {
+                      setGeneric((p) => ({ ...p, image: "", imageType: "" }));
+                      setEditImage("");
+                    }}
+                  >
+                    <FiTrash2 className="inline-block mr-1" /> Clear
+                  </button>
+                )
+              }
+            >
+              <div className="grid grid-cols-1 gap-3">
+                <UploadImage
+                  onImageSelect={(image) => {
+                    setGeneric((prev) => ({ ...prev, image, imageType: image.type }));
+                    setEditImage("");
+                  }}
+                  showPreview={false}
+                />
 
-
-          <div className="mt-16">
-            {selectedProperties.length > 0 && (
-              <div>
-                <h2 className="text-2xl underline">Properties</h2>
-                {selectedProperties.map((property) => (
-                  <div key={property.prop_id} className="mb-1 bg-gray-700">
-                    {property.Property_Name || 'Unnamed Property'}
-                    <button onClick={() => RemoveEntity(property, setSelectedProperties, setProperties)}><FiX /></button>
+                {/* Live preview */}
+                {genericFormData.image instanceof File ? (
+                  <img src={URL.createObjectURL(genericFormData.image)} alt="Selected preview" className="w-32 h-32 object-cover rounded-xl ring-1 ring-gray-800" />
+                ) : editImage ? (
+                  <img src={editImage} alt="Existing preview" className="w-32 h-32 object-cover rounded-xl ring-1 ring-gray-800" />
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <FiImage /> No image selected
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            </SectionCard>
 
-            {selectedUnits.length > 0 && (
-              <div>
-                <h2 className="text-2xl underline">Units</h2>
-                {selectedUnits.map((unit) => (
-                  <div key={unit.unit_id} className="mb-1 bg-gray-700">
-                    {unit.address || 'Unnamed Unit'}
-                    <button onClick={() => RemoveEntity(unit, setSelectedUnits, setUnits)}><FiX /></button>
+            {(selectedProperties.length > 0 || selectedUnits.length > 0 || selectedTenants.length > 0) && (
+              <SectionCard title="Selections Overview">
+                {selectedProperties.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Properties</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProperties.map((property) => (
+                        <Chip key={property.prop_id} onRemove={() => removeEntity(property, setSelectedProperties, setProperties, "prop_id")}>{propertyLabel(property)}</Chip>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {selectedTenants.length > 0 && (
-              <div>
-                <h2 className='text-2xl underline'>Tenants</h2>
-                {selectedTenants.map((tenant) => (
-                  <div key={tenant.tenant_id} className='mb-1 bg-gray-700'>
-                    {tenant.Tenant_Name || "Unnamed Tenant"}
-                    <button onClick={() => RemoveEntity(tenant, setSelectedTenant, setTenants)}><FiX /></button>
+                {selectedUnits.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Units</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUnits.map((unit) => (
+                        <Chip key={unit.unit_id} onRemove={() => removeEntity(unit, setSelectedUnits, setUnits, "unit_id")}>{unitLabel(unit)}</Chip>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+
+                {selectedTenants.length > 0 && (
+                  <div>
+                    <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Tenants</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTenants.map((t) => (
+                        <Chip key={t.tenant_id} onRemove={() => removeEntity(t, setSelectedTenant, setTenants, "tenant_id")}>{tenantLabel(t)}</Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
             )}
           </div>
         </div>

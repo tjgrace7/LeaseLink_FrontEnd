@@ -1,128 +1,218 @@
 // src/pages/CreateUnitProperty.jsx
-import { useState, useEffect } from 'react';
-import { useAuth } from '../components/AuthProvider';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+// ------------------------------------------------------------
+// LeaseLink — Create/Edit Property or Unit (Refreshed)
+// Goals
+// 1) Clean, modern UI with softer cards (no heavy borders)
+// 2) Mobile-first responsive grid + sticky submit on mobile
+// 3) Clear comments + defensive data handling
+// 4) Preserve existing data flow, utilities, and endpoints
+// ------------------------------------------------------------
 
-import DisplayBox from '../components/DisplayBox';
-import UploadImage from '../components/upload_image';
-import Dropdown from '../components/dropdown';
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../components/AuthProvider";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { get_entity_image } from '../utilities/get_entity_image';
-import { fileToBase64 } from '../utilities/imageConverter';
-import { getTable } from '../utilities/supabaseCalls';
+import DisplayBox from "../components/DisplayBox";
+import UploadImage from "../components/upload_image";
+import Dropdown from "../components/dropdown";
 
+import { get_entity_image } from "../utilities/get_entity_image";
+import { fileToBase64 } from "../utilities/imageConverter";
+import { getTable } from "../utilities/supabaseCalls";
+import { FiChevronLeft, FiTrash2, FiImage, FiX } from "react-icons/fi";
+import DropdownPortal from "../components/portal";
 
+// ----------------------------
+// Reusable UI primitives
+// ----------------------------
+const Label = ({ children, htmlFor, className = "" }) => (
+  <label htmlFor={htmlFor} className={`text-sm font-medium mb-1 ${className}`}>
+    {children}
+  </label>
+);
+
+const Input = ({ error, className = "", ...props }) => (
+  <input
+    {...props}
+    className={`bg-gray-900/40 text-sm rounded-xl w-full px-4 py-3 outline-none ring-1 ${error ? "ring-red-500" : "ring-gray-800"
+      } focus:ring-2 focus:ring-blue-400 transition ${className}`}
+  />
+);
+
+const Field = ({ label, htmlFor, error, helper, children }) => (
+  <div className="flex flex-col gap-2">
+    <Label htmlFor={htmlFor}>{label}</Label>
+    {children}
+    {error && (
+      <p role="alert" className="text-xs text-red-400">
+        {helper || `${label} is required`}
+      </p>
+    )}
+  </div>
+);
+
+const SectionCard = ({ title, right, children }) => (
+  <div className="rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-md transition">
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-sm font-semibold tracking-wide uppercase text-gray-300">
+        {title}
+      </h2>
+      {right}
+    </div>
+    {children}
+  </div>
+);
+
+const Chip = ({ children, onRemove }) => (
+  <div className="group inline-flex items-center gap-2 rounded-full bg-gray-800/70 px-3 py-1 text-xs">
+    <span className="truncate max-w-[14rem]">{children}</span>
+    {onRemove && (
+      <button
+        type="button"
+        className="opacity-70 group-hover:opacity-100 hover:text-red-400 focus:outline-none"
+        aria-label="Remove"
+        onClick={onRemove}
+      >
+        <FiX />
+      </button>
+    )}
+  </div>
+);
+
+// ----------------------------
+// Component
+// ----------------------------
 const CreateUnitProperty = () => {
   const { session, userData, roleData } = useAuth();
   const navigate = useNavigate();
   const supabaseurl = import.meta.env.VITE_SUPABASE_URL;
   const [searchParams] = useSearchParams();
-  const id = searchParams.get('id');
-  const type = searchParams.get('type');
+
+  const id = searchParams.get("id");
+  const type = searchParams.get("type"); // "Property" | "Unit"
   const isEditMode = !!id;
 
-  const [entityOptions, setEntityOptions] = useState([])
+  // Selection + form state
+  const [entityOptions, setEntityOptions] = useState([]);
   const [selectedEntity, selectEntity] = useState(type || null);
-  const [Name, setName] = useState("")
-  const [namePlaceholder, setNamePlaceholder] = useState("")
-  const [dropdownPlaceholder, setPlaceholder] = useState("")
-  const [clearSelection, setClearSelection] = useState(false)
+
+  const [nameLabel, setNameLabel] = useState("");
+  const [namePlaceholder, setNamePlaceholder] = useState("");
+  const [parentPlaceholder, setParentPlaceholder] = useState("");
+  const [clearSelection, setClearSelection] = useState(false);
+
   const [Entity, setEntity] = useState({
-    square_footage: '',
-    label: '',
-    image: '',
-    imageType: '',
-    suite: '',
-    city: '',
+    square_footage: "",
+    label: "", // Address (Unit) or Property Name (Property)
+    image: "",
+    imageType: "",
+    suite: "",
+    city: "",
     state: "",
-    zip: '',
+    zip: "",
   });
-  const [initialData, setInitialData] = useState({})
-  const [Parent, setParent] = useState([]);
+
+  const [initialData, setInitialData] = useState({});
+  const [Parent, setParent] = useState([]); // Properties for Unit, Owners for Property
   const [selectedParent, setSelectedParent] = useState(null);
   const [errors, setErrors] = useState({});
-  const [editImage, setEditImage] = useState('')
+  const [editImage, setEditImage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
+  // Show available entity types based on role
   useEffect(() => {
-    if(!roleData) return
+    if (!roleData) return;
     const options = [
       ...(roleData.Create_Properties ? ["Property"] : []),
-      ...(roleData.Create_Unit ? ["Unit"] : [])
-    ]
-    setEntityOptions(options)
+      ...(roleData.Create_Unit ? ["Unit"] : []),
+    ];
+    setEntityOptions(options);
+  }, [roleData]);
 
-  }, [roleData])
-
+  // Load lists and prefill when selection changes
   useEffect(() => {
     if (!session || !userData || !selectedEntity) return;
 
     const loadData = async () => {
-      let data
-      if (selectedEntity === 'Unit') {
-        data = await getTable('properties', 'pm_company', userData.company_id)
-        if (!data) return;
-        setParent(data);
-        setName("Unit Address");
-        setNamePlaceholder("Enter Address");
-        setPlaceholder("Select Property");
-      }
-
-      if (selectedEntity === 'Property') {
-        data = await getTable('building_owner', 'company_id', userData.company_id)
-        if (!data) return;
-        setParent(data);
-        setName("Property Name");
-        setNamePlaceholder("Enter Property Name");
-        setPlaceholder("Select Owner");
-      }
-
-      if (isEditMode) {
-        const table = selectedEntity === 'Unit' ? 'Units' : 'properties';
-        const column = selectedEntity === 'Unit' ? 'unit_id' : 'prop_id';
-        const result = await getTable(table, column, id);
-        if (!result?.[0]) return;
-        const item = result[0];
-        const image = await get_entity_image(item.photo_file_path, session);
-        setEditImage(image);
-        const payload = {
-          label: selectedEntity === 'Unit' ? item.address : item.Property_Name,
-          square_footage: item.square_footage || '',
-          image: '',
-          imageType: '',
-          suite: item.Suite || '',
-          city: item.City || '',
-          state: item.State || '',
-          zip: item.Zip_Code || ''
+      try {
+        // Configure per-entity labels/placeholders
+        if (selectedEntity === "Unit") {
+          const props = await getTable("properties", "pm_company", userData.company_id);
+          if (!props) return;
+          setParent(props);
+          setNameLabel("Unit Address");
+          setNamePlaceholder("Enter address");
+          setParentPlaceholder("Select Property");
         }
-        setEntity(payload);
-        setInitialData({ ...payload, image });
 
-        const parentKey = selectedEntity === 'Unit' ? 'property_id' : 'owner_id';
-        const pKey2 = selectedEntity === 'Unit' ? 'prop_id' : 'owner_id';
-        const selected = (data || []).find((p) => p[pKey2] === item[parentKey]);
-        setSelectedParent(selected);
+        if (selectedEntity === "Property") {
+          const owners = await getTable("building_owner", "company_id", userData.company_id);
+          if (!owners) return;
+          setParent(owners);
+          setNameLabel("Property Name");
+          setNamePlaceholder("Enter property name");
+          setParentPlaceholder("Select Owner");
+        }
+
+        // Edit mode: fetch existing record
+        if (isEditMode) {
+          const table = selectedEntity === "Unit" ? "Units" : "properties";
+          const column = selectedEntity === "Unit" ? "unit_id" : "prop_id";
+          const result = await getTable(table, column, id);
+          if (!result?.[0]) return;
+          const item = result[0];
+
+          const image = await get_entity_image(item.photo_file_path, session);
+          setEditImage(image);
+
+          const payload = {
+            label: selectedEntity === "Unit" ? item.address : item.Property_Name,
+            square_footage: item.square_footage || "",
+            image: "",
+            imageType: "",
+            suite: item.Suite || "",
+            city: item.City || "",
+            state: item.State || "",
+            zip: item.Zip_Code || "",
+          };
+          setEntity(payload);
+          setInitialData({ ...payload, image });
+
+          // Select correct parent
+          const parentKey = selectedEntity === "Unit" ? "property_id" : "owner_id";
+          const pKey2 = selectedEntity === "Unit" ? "prop_id" : "owner_id";
+          const selected = (selectedEntity === "Unit" ? await getTable("properties", "pm_company", userData.company_id) : await getTable("building_owner", "company_id", userData.company_id)) || [];
+          setParent(selected);
+          const parentMatch = selected.find((p) => p[pKey2] === item[parentKey]);
+          setSelectedParent(parentMatch || null);
+        }
+      } catch (err) {
+        console.error("CreateUnitProperty loadData error:", err);
       }
     };
 
     loadData();
-  }, [session, userData, selectedEntity, isEditMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, userData, selectedEntity, isEditMode, id]);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
+  // Generic change handler
+  const handleChange = (e) => {
+    const { name, value } = e.target;
     setEntity((prev) => ({ ...prev, [name]: value }));
   };
 
-  const hasChanged = async () => {
+  // Simple change detection to skip wasted UPDATEs
+  const hasChanged = useCallback(async () => {
     const { image: initialImage, ...initialRest } = initialData;
     const { image: currentImage, ...currentRest } = Entity;
-
     const baseChanged = JSON.stringify(initialRest) !== JSON.stringify(currentRest);
     const imageChanged = currentImage?.startsWith("data:") || (currentImage && currentImage !== initialImage);
-
     return baseChanged || imageChanged;
-  };
+  }, [Entity, initialData]);
 
+  // Submit handler
   const Submit = async () => {
+    if (submitting) return;
     if (isEditMode && !(await hasChanged())) {
       console.log("No changes detected — skipping update.");
       return;
@@ -131,219 +221,304 @@ const CreateUnitProperty = () => {
     const newErrors = {};
     if (!Entity.label) newErrors.label = true;
     if (!selectedParent) newErrors.parent = true;
-    if (selectedEntity === 'Property') {
+
+    if (selectedEntity === "Property") {
       if (!Entity.city) newErrors.city = true;
       if (!Entity.state) newErrors.state = true;
       if (!Entity.zip) newErrors.zip = true;
     }
-    if (selectedEntity === "Unit") {
-      console.log(Entity.suite)
-      if (!Entity.suite) {
-        newErrors.suite = true;
 
-      }
-      if (!Entity.square_footage) {
-        newErrors.square_footage = true;
-        
-      }
+    if (selectedEntity === "Unit") {
+      if (!Entity.suite) newErrors.suite = true; // suite can be alphanumeric, leave as text
+      if (!Entity.square_footage) newErrors.square_footage = true;
     }
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const imageBase64 = Entity.image ? await fileToBase64(Entity.image) : null;
-    let payload;
-    let endpoint;
-    if (selectedEntity === "Unit") {
-      payload = {
-        unitId: id,
-        square_footage: Entity.square_footage,
-        property_id: selectedParent.prop_id,
-        address: Entity.label,
-        suite: Entity.suite,
-        image: imageBase64,
-        imageType: Entity.imageType,
-        user_id: session.user.id,
-        company_id: userData.company_id,
-      };
-      endpoint = 'CreateUnit';
+    setSubmitting(true);
+    try {
+      const imageBase64 = Entity.image ? await fileToBase64(Entity.image) : null;
+
+      let payload;
+      let endpoint;
+
+      if (selectedEntity === "Unit") {
+        payload = {
+          unitId: id,
+          square_footage: Entity.square_footage,
+          property_id: selectedParent.prop_id,
+          address: Entity.label,
+          suite: Entity.suite,
+          image: imageBase64,
+          imageType: Entity.imageType,
+          user_id: session.user.id,
+          company_id: userData.company_id,
+        };
+        endpoint = "CreateUnit";
+      }
+
+      if (selectedEntity === "Property") {
+        payload = {
+          propertyId: id,
+          square_footage: Entity.square_footage,
+          name: Entity.label,
+          owner_id: selectedParent.owner_id,
+          image: imageBase64,
+          imageType: Entity.imageType,
+          user_id: session.user.id,
+          company_id: userData.company_id,
+          city: Entity.city,
+          state: Entity.state,
+          zip: Entity.zip,
+        };
+        endpoint = "CreateProperty";
+      }
+
+      const response = await fetch(`${supabaseurl}/functions/v1/${endpoint}`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        console.error(endpoint + " error:", result);
+        alert(result.error || `Failed to ${isEditMode ? "update" : "create"} entity.`);
+        setSubmitting(false);
+        return;
+      }
+
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Failed to save. See console for details.");
+    } finally {
+      setSubmitting(false);
     }
-
-    if (selectedEntity === "Property") {
-      payload = {
-        propertyId: id,
-        square_footage: Entity.square_footage,
-        name: Entity.label,
-        owner_id: selectedParent.owner_id,
-        image: imageBase64,
-        imageType: Entity.imageType,
-        user_id: session.user.id,
-        company_id: userData.company_id,
-        city: Entity.city,
-        state: Entity.state,
-        zip: Entity.zip
-      };
-      endpoint = 'CreateProperty';
-    }
-
-    const response = await fetch(`${supabaseurl}/functions/v1/${endpoint}`, {
-      method: isEditMode ? 'PUT' : 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-    if (!response.ok) {
-      console.error(endpoint + ' error:', result);
-      alert(result.error || `Failed to ${isEditMode ? 'update' : 'create'} entity.`);
-      return;
-    }
-
-    navigate('/dashboard');
   };
+
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
-    <div>
-      <div className="flex items-center justify-center mt-5 text-2xl">
-        <h1>{isEditMode ? 'Edit' : 'Create'} Property/Unit</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8 py-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+        >
+          <FiChevronLeft /> Back
+        </button>
+        <h1 className="text-xl md:text-2xl font-semibold">
+          {isEditMode ? "Edit" : "Create"} Property/Unit
+        </h1>
       </div>
 
-      <DisplayBox className="flex flex-row justify-between">
-        <div className="flex flex-col p-6 w-1/2">
-          {!isEditMode && (
-            <Dropdown options={entityOptions}
-              onSelect={(entity) => {
-                selectEntity(entity);
-                setEntity({ square_footage: '', label: '', image: '', imageType: '', suite: '' });
-                setSelectedParent(null);
-                setErrors({});
-                setClearSelection(true);
-              }}
-              placeholder='Unit or Property' />
-          )}
-
-          {selectedEntity && (
-            <>
-              {selectedEntity === "Unit" && (
-                <div className='mt-4'>
-                  <h2 className='text-xl'>Unit Suite</h2>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border ${errors.suite ? 'border-red-500' : 'border-gray-300'}`}
-                    type="number"
-                    name="suite"
-                    placeholder='Enter Suite Name'
-                    value={Entity.suite}
-                    onChange={handleChange} />
-                </div>
-              )}
-              <div className='mt-4'>
-                <h2 className="text-xl">{Name}</h2>
-                <input
-                  className={`bg-gray-700 p-4 rounded w-full border ${errors.label ? 'border-red-500' : 'border-gray-300'}`}
-                  type="text"
-                  name="label"
-                  placeholder={namePlaceholder}
-                  value={Entity.label}
-                  onChange={handleChange}
-                />
-              </div>
-              {selectedEntity === "Unit" && (
-                <div>
-                  <h2 className="text-xl mt-4">Square Footage</h2>
-                  <input
-                    className={`bg-gray-700 p-4 rounded w-full border ${errors.square_footage ? 'border-red-500' : 'border-gray-300'}`}
-                    type="number"
-                    name="square_footage"
-                    placeholder="Enter Unit Square Footage"
-                    value={Entity.square_footage}
-                    onChange={handleChange}
-                  />
-                </div>
-              )}
-              {selectedEntity === "Property" && (
-
-                <div>
-                  <div>
-                    <h2 className="text-xl mt-4">City</h2>
-                    <input
-                      className={`bg-gray-700 p-4 rounded w-full border ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
-                      type="text"
-                      name="city"
-                      placeholder="Enter Unit Square Footage"
-                      value={Entity.city}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-xl mt-4">State</h2>
-                    <input
-                      className={`bg-gray-700 p-4 rounded w-full border ${errors.state ? 'border-red-500' : 'border-gray-300'}`}
-                      type="text"
-                      name="state"
-                      placeholder="Enter Unit Square Footage"
-                      value={Entity.state}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-xl mt-4">Zip Code</h2>
-                    <input
-                      className={`bg-gray-700 p-4 rounded w-full border ${errors.zip ? 'border-red-500' : 'border-gray-300'}`}
-                      type="text"
-                      name="zip"
-                      placeholder="Enter Unit Square Footage"
-                      value={Entity.zip}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="mt-4">
+      <DisplayBox className="p-0 md:p-0">
+        {/* Responsive grid: form left, preview right */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Form (2 cols on desktop) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Entity selector when creating */}
+            {!isEditMode && (
+              <SectionCard title="Entity Type">
                 <Dropdown
-                  options={Parent}
-                  value={selectedParent}
-                  onSelect={setSelectedParent}
-                  placeholder={dropdownPlaceholder}
-                  getOptionId={(option) => option.prop_id || option.owner_id}
-                  getOptionTitle={(option) => option.Property_Name || option.owner_name}
-                  clearSelection={clearSelection}
+                  usePortal
+                  options={entityOptions}                 // ["Property", "Unit"]
+                  value={selectedEntity || ""}            // string value
+                  onSelect={(entity) => {
+                    selectEntity(entity);
+                    setEntity({
+                      square_footage: "",
+                      label: "",
+                      image: "",
+                      imageType: "",
+                      suite: "",
+                      city: "",
+                      state: "",
+                      zip: "",
+                    });
+                    setSelectedParent(null);
+                    setErrors({});
+                    setClearSelection(true);
+                  }}
+                  placeholder="Unit or Property"
+                  clearSelection={false}
+                />
+              </SectionCard>
+            )}
+            {/* Basic details */}
+            {selectedEntity && (
+              <SectionCard title="Details">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedEntity === "Unit" && (
+                    <Field label="Unit Suite" htmlFor="suite" error={errors.suite}>
+                      <Input
+                        id="suite"
+                        name="suite"
+                        placeholder="Enter suite (e.g., 12A)"
+                        value={Entity.suite}
+                        onChange={handleChange}
+                      />
+                    </Field>
+                  )}
+
+                  <Field label={nameLabel || (selectedEntity === "Unit" ? "Unit Address" : "Property Name")} htmlFor="label" error={errors.label}>
+                    <Input
+                      id="label"
+                      name="label"
+                      placeholder={namePlaceholder || (selectedEntity === "Unit" ? "Enter address" : "Enter property name")}
+                      value={Entity.label}
+                      onChange={handleChange}
+                    />
+                  </Field>
+
+                  {selectedEntity === "Unit" && (
+                    <Field label="Square Footage" htmlFor="square_footage" error={errors.square_footage}>
+                      <Input
+                        id="square_footage"
+                        name="square_footage"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Enter unit square footage"
+                        value={Entity.square_footage}
+                        onChange={handleChange}
+                      />
+                    </Field>
+                  )}
+
+                  {selectedEntity === "Property" && (
+                    <>
+                      <Field label="City" htmlFor="city" error={errors.city}>
+                        <Input
+                          id="city"
+                          name="city"
+                          placeholder="Enter city"
+                          value={Entity.city}
+                          onChange={handleChange}
+                        />
+                      </Field>
+                      <Field label="State" htmlFor="state" error={errors.state}>
+                        <Input
+                          id="state"
+                          name="state"
+                          placeholder="Enter state (e.g., IN)"
+                          value={Entity.state}
+                          onChange={handleChange}
+                        />
+                      </Field>
+                      <Field label="Zip Code" htmlFor="zip" error={errors.zip}>
+                        <Input
+                          id="zip"
+                          name="zip"
+                          placeholder="Enter ZIP"
+                          value={Entity.zip}
+                          onChange={handleChange}
+                        />
+                      </Field>
+                    </>
+                  )}
+                </div>
+
+                {/* Parent selector */}
+                <div className="mt-4">
+                  <Label>{selectedEntity === "Unit" ? "Property" : "Owner"}</Label>
+                  <Dropdown
+                    usePortal
+                    options={Parent}                           // objects (properties or owners)
+                    value={selectedParent}                     // object value
+                    onSelect={setSelectedParent}
+                    placeholder={parentPlaceholder || (selectedEntity === "Unit" ? "Select Property" : "Select Owner")}
+                    getOptionId={(o) => o.prop_id || o.owner_id}
+                    getOptionTitle={(o) => o.Property_Name || o.owner_name}
+                    clearSelection={clearSelection}
+                  />
+                  {errors.parent && (
+                    <p className="text-xs text-red-400 mt-1">Selection is required.</p>
+                  )}
+
+
+                  {/* Show selected parent as a chip */}
+                  {selectedParent && (
+                    <div className="mt-3">
+                      <Chip onRemove={() => setSelectedParent(null)}>
+                        {selectedParent.Property_Name || selectedParent.owner_name}
+                      </Chip>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Sticky submit */}
+            {selectedEntity && (
+              <div className="sticky bottom-3 z-10">
+                <div className="rounded-2xl bg-gray-900/70 backdrop-blur p-3 flex items-center justify-end shadow-sm">
+                  <button
+                    type="button"
+                    onClick={Submit}
+                    disabled={submitting}
+                    className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? "Saving…" : "Submit"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Image uploader + preview */}
+          <div className="space-y-6 lg:sticky lg:top-6 h-fit">
+            <SectionCard
+              title="Image"
+              right={
+                (Entity.image || editImage) && (
+                  <button
+                    type="button"
+                    className="text-xs text-gray-400 hover:text-red-400"
+                    onClick={() => {
+                      setEntity((p) => ({ ...p, image: "", imageType: "" }));
+                      // keep editImage cleared only for UX predictability
+                      // so that a user can reselect later without confusion
+                      // but here we clear it to reflect the action
+                      // comment out next line if you prefer persistent existing preview
+                      // setEditImage("");
+                    }}
+                  >
+                    <FiTrash2 className="inline-block mr-1" /> Clear
+                  </button>
+                )
+              }
+            >
+              <div className="grid grid-cols-1 gap-3">
+                <UploadImage
+                  onImageSelect={(file) =>
+                    setEntity((prev) => ({ ...prev, image: file, imageType: file.type }))
+                  }
+                  showPreview={false}
                 />
 
-
-                {errors.parent && (
-                  <p className="text-red-500 text-sm">Selection is required.</p>
+                {(Entity.image || editImage) ? (
+                  <img
+                    src={Entity.image ? URL.createObjectURL(Entity.image) : editImage}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-xl ring-1 ring-gray-800"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <FiImage /> No image selected
+                  </div>
                 )}
               </div>
-              <div className="mt-6">
-                <button
-                  className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  onClick={Submit}
-                >
-                  Submit
-                </button>
-              </div>
-            </>
-          )}
+            </SectionCard>
+          </div>
         </div>
-
-        <UploadImage
-          onImageSelect={(file) =>
-            setEntity((prev) => ({
-              ...prev,
-              image: file,
-              imageType: file.type,
-            }))
-          }
-          showPreview={false}
-        />
-        {(Entity.image || editImage) && (
-          <img
-            src={editImage || URL.createObjectURL(Entity.image)}
-            alt="Preview"
-            className="w-32 h-32 object-cover mt-4 rounded"
-          />
-        )}
       </DisplayBox>
     </div>
   );

@@ -1,56 +1,63 @@
-import { useState, useEffect, useRef } from 'react';
-import SearchBar from '../components/SearchBar';
-import ChatSidebar from '../components/ChatSidebar';
-import Spinner from '../components/Spinner';
-import { useAuth } from '../components/AuthProvider'
-import { supabase } from '../supabaseClient'
-import { getPreviousChats, getLeaseDocs } from '../utilities/GetMessages'
-import { get_entity_image } from '../utilities/get_entity_image';
-import PopUp from '../components/popUp';
+import { useEffect, useMemo, useRef, useState } from "react";
+import SearchBar from "../components/SearchBar";
+import ChatSidebar from "../components/ChatSidebar";
+import Spinner from "../components/Spinner";
+import { useAuth } from "../components/AuthProvider";
+import { supabase } from "../supabaseClient";
+import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
+import { get_entity_image } from "../utilities/get_entity_image";
+import PopUp from "../components/popUp";
 
-//The Chat Page is the main use feature of the app. PM can ask the chat questions about properties, units, or tenants. It has access to all leasing data applied to those properties.
+/**
+ * ChatPage (UI cleanup + mobile-first)
+ * ---------------------------------------------------------------------------
+ * - Mobile-first responsive layout: sticky header, collapsible sidebar drawer
+ * - Safer effects (dependency arrays + unmount guards)
+ * - LocalStorage hydrate/persist without reading in dependency arrays
+ * - Consistent Tailwind tokens & better spacing
+ * - Accessibility: labels, buttons have aria-labels, focus outlines
+ * - Bug fixes: console error var, True->true, null checks, trimming
+ */
+
 const ChatPage = () => {
-    //The entity sets the chatpage up to know what type of data to reference
-    const [entity_id, setEntityId] = useState('');
-    const [entity_type, setEntityType] = useState('');
+    // ------------------------- entity context -------------------------
+    const [entity_id, setEntityId] = useState("");
+    const [entity_type, setEntityType] = useState("");
     const [entitySelected, setSelectedEntity] = useState(false);
-    const [entity_image, setEntityImage] = useState('');
-    const [entity_name, setEntityName] = useState('')
+    const [entity_image, setEntityImage] = useState("");
+    const [entity_name, setEntityName] = useState("");
 
-    //The message variables store what is sent to chatGPT
+    // ------------------------- chat state ----------------------------
     const [messages, setMessages] = useState([]);
-    const [input, setInput] = useState('');
+    const [input, setInput] = useState("");
 
-    //Sessions are message threads. They store different message history throughout the PM's time
-    const [session_id, setSessionId] = useState(null); // initially null
+    // sessions
+    const [session_id, setSessionId] = useState(null);
     const [sessionReady, setSessionReady] = useState(false);
 
-    //previous chats is a list of previous chats or sessions used for the UI only
+    // sidebar + resources
     const [previousChats, setPreviousChats] = useState([]);
-
-    //The Sources variables store what source is being called upon for the current message
     const [currentSources, setSources] = useState([]);
     const [selectedSource, setSelectedSource] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
-    const [terms, setTerms] = useState([])
-    const [popUp, setPopUp] = useState(false)
+    // lease terms quick-view
+    const [terms, setTerms] = useState([]);
+    const [popUp, setPopUp] = useState(false);
 
     const messagesEndRef = useRef(null);
 
+    // env + auth
     const server_url = import.meta.env.VITE_SERVER_URL;
-
-
-    //Temporary hardcoded user access_token that refreshes every hour
     const { session, loading, userData, loadingUserData } = useAuth();
     const access_token = session?.access_token;
     const auth_id = session?.user.id;
+    const company_id = userData?.company_id;
 
-    const company_id = userData?.company_id
-
-
-    // Load messages from localStorage on first mount. Only used when page is refreshed. W
+    // ------------------------- initial hydrate -----------------------
     useEffect(() => {
+        let cancelled = false;
         const init = async () => {
             const storedSessionId = localStorage.getItem("chat_session_id");
             const storedEntityId = localStorage.getItem("entity_id");
@@ -59,21 +66,16 @@ const ChatPage = () => {
 
             let newSessionId;
 
-            // ✅ If we're resuming a specific session (via loadChat or reload)
             if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
+                if (cancelled) return;
                 setEntityId(storedEntityId);
                 setEntityType(storedEntityType);
                 setSelectedEntity(true);
                 await getPreviousChats(storedEntityId, session, setPreviousChats);
-
                 await getEntityNameImage(storedEntityType, storedEntityId);
-
                 newSessionId = storedSessionId;
             } else {
-                // 🆕 New session (e.g. typed /chat directly or via link without preloaded context)
                 newSessionId = crypto.randomUUID();
-
-                // Clear any leftover context just to be safe
                 localStorage.removeItem("chat_session_id");
                 localStorage.removeItem("entity_id");
                 localStorage.removeItem("entity_type");
@@ -82,248 +84,309 @@ const ChatPage = () => {
             }
 
             localStorage.setItem("chat_session_id", newSessionId);
-            setSessionId(newSessionId);
-            setSessionReady(true);
+            if (!cancelled) {
+                setSessionId(newSessionId);
+                setSessionReady(true);
+            }
         };
 
         init();
-    }, []);
+        return () => { cancelled = true; };
+    }, [session]);
 
-    //Gets messages from local storage or supabase if the session is loaded (page refreshed or old session selected)
+    // ------------------------- load existing thread ------------------
     useEffect(() => {
         if (!sessionReady || !session_id) return;
 
         const cached = localStorage.getItem(`chat_thread_${session_id}`);
         if (cached) {
             try {
-                //parses messages to appear in chronological order
                 const parsed = JSON.parse(cached);
                 const normalized = parsed.map((msg) => ({
                     ...msg,
                     message: msg.message || msg.text,
-                    role: msg.role
+                    role: msg.role,
                 }));
-                //sets page messages to parsed data
                 setMessages(normalized);
             } catch (err) {
                 console.warn("Failed to parse cached messages:", err);
             }
         } else {
-            //is localStorage for session is empty loads session from supabase
             getMessages(session_id).then((msgs) => {
-                if (msgs && msgs.length > 0) {
-                    setMessages(msgs);
-                }
-            })
-            // clear if no messages for this session
+                if (msgs && msgs.length > 0) setMessages(msgs);
+            });
         }
-    }, [session_id, sessionReady]);
+    }, [sessionReady, session_id]);
 
-
-
-    // Cache messages whenever they change. 
+    // ------------------------- persist messages ----------------------
     useEffect(() => {
-        if (messages.length > 0) {
+        if (messages.length > 0 && session_id) {
             try {
-                //Trims messages if too long
-                const trimmedMessages = messages.slice(-50)
-                    .map(({ message, text, role }) => ({
-                        message: message || text,
-                        role,
-                    }));
-                //Stores messages, entity, session id when messages change on page
+                const trimmed = messages
+                    .slice(-50)
+                    .map(({ message, text, role }) => ({ message: message || text, role }));
                 localStorage.setItem("chat_session_id", session_id);
-                localStorage.setItem(`chat_thread_${session_id}`, JSON.stringify(trimmedMessages));
-                localStorage.setItem(`entity_id`, entity_id);
-                localStorage.setItem('entity_type', entity_type);
-                localStorage.setItem('entity_selected', true);
-            }
-            catch (Error) {
-                console.log("Set localstorage error", Error)
+                localStorage.setItem(`chat_thread_${session_id}`, JSON.stringify(trimmed));
+                if (entity_id) localStorage.setItem("entity_id", entity_id);
+                if (entity_type) localStorage.setItem("entity_type", entity_type);
+                localStorage.setItem("entity_selected", String(!!entitySelected));
+            } catch (err) {
+                console.log("Set localStorage error", err);
             }
         }
-    }, [messages, session_id]);
+    }, [messages, session_id, entity_id, entity_type, entitySelected]);
 
-    // Auto-scroll to bottom on message update
+    // ------------------------- autoscroll ----------------------------
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    // ------------------------- fetch tenant terms --------------------
     useEffect(() => {
-        const entityType = localStorage.getItem('entity_type')
-        if (entityType != 'tenant' || !entity_id) return;
-        const LeaseFetch = async () => {
-            const leases = await getLeaseDocs(entity_id);
-            console.log(leases)
-            setTerms(leases.terms_Rent)
-        }
-        LeaseFetch()
-    }, [localStorage.getItem('entity_type'), entity_id])
-    //Gets messages from supabase based on sessionId
+        if (entity_type !== "tenant" || !entity_id) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const leases = await getLeaseDocs(entity_id);
+                if (!cancelled) setTerms(leases?.basic_lease ?? []);
+            } catch (_e) {
+                // ignore
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [entity_type, entity_id]);
+
+    // ------------------------- data helpers --------------------------
     const getMessages = async (sessionId) => {
-        //Gets directly from supabase table. The messages for the session in order of creation. Newest at bottom
-        //TODO set up RLS security for table
-        const { data, error } = await supabase.from('entity_questions').select("*").eq('session_id', sessionId).order('created_at', { ascending: true });
+        const { data, error } = await supabase
+            .from("entity_questions")
+            .select("*")
+            .eq("session_id", sessionId)
+            .order("created_at", { ascending: true });
+
         if (error) {
-            console.error('Failed to fetch messages', await supabase_messages.text());
+            console.error("Failed to fetch messages", error);
             return [];
         }
-
-        return data
-
-
-    }
+        return data;
+    };
 
     const getEntityNameImage = async (storedEntityType, storedEntityId) => {
-        let columnName
-        let tableName
-        let Uid
-        let file_path
+        let columnName = "";
+        let tableName = "";
+        let Uid = "";
+        let file_path = "";
+
         switch (storedEntityType) {
-            case 'unit':
-                columnName = 'address'
-                tableName = 'Units'
-                Uid = 'unit_id'
-                file_path = 'photo_file_path'
+            case "unit":
+                columnName = "address";
+                tableName = "Units";
+                Uid = "unit_id";
+                file_path = "photo_file_path";
                 break;
-            case 'tenant':
-                columnName = 'Tenant_Name'
-                tableName = 'tenant'
-                Uid = 'tenant_id'
-                file_path = 'photo_file_path'
+            case "tenant":
+                columnName = "Tenant_Name";
+                tableName = "tenant";
+                Uid = "tenant_id";
+                file_path = "photo_file_path";
                 break;
-            case 'property':
-                columnName = 'Property_Name'
-                tableName = 'properties'
-                Uid = 'prop_id'
-                file_path = 'photo_file_path'
+            case "property":
+                columnName = "Property_Name";
+                tableName = "properties";
+                Uid = "prop_id";
+                file_path = "photo_file_path";
                 break;
             default:
-                columnName = ''
-                tableName = ''
-                Uid = ''
-                file_path = ''
+                return;
         }
-        if (columnName === '') return;
-        const { data, error } = await supabase.from(tableName).select('*').eq(Uid, storedEntityId).single();
+
+        const { data, error } = await supabase.from(tableName).select("*").eq(Uid, storedEntityId).single();
         if (error || !data) {
             console.error("Failed to fetch entity Info:", error);
-            return
-        }
-        setEntityName(data[columnName])
-        console.log(entity_name)
-        localStorage.setItem('entity_name', data[columnName]);
-
-        const imageurl = await get_entity_image(data[file_path], session);
-        console.log(imageurl)
-        setEntityImage(imageurl)
-
-        if (storedEntityType === "tenant" && data.Available) {
-            setPopUp(True)
+            return;
         }
 
-    }
-    //Once an entity is selected from the search bar. Clears old entity data and replaces it with new in local storage
+        setEntityName(data[columnName] ?? "");
+        localStorage.setItem("entity_name", data[columnName] ?? "");
+
+        try {
+            const imageurl = await get_entity_image(data[file_path], session);
+            setEntityImage(imageurl);
+        } catch (_e) {
+            setEntityImage("");
+        }
+
+        if (storedEntityType === "tenant") {
+            const ready = String(data.Available).toLowerCase() === "true";
+            setPopUp(!ready); // show popup only when NOT ready
+        }
+    };
+
     const selectEntity = async (entityId, entityType) => {
-        localStorage.removeItem('chat_session_id');
-        localStorage.removeItem('entity_id');
-        localStorage.removeItem('entity_type');
-        localStorage.removeItem(`chat_thread_${session_id}`);
-
-        localStorage.setItem('entity_id', entityId);
-        localStorage.setItem('entity_type', entityType);
-        localStorage.setItem('entity_selected', true)
-        //Creates new session id for entity
+        // clear old thread context
+        localStorage.removeItem("chat_session_id");
+        localStorage.removeItem("entity_id");
+        localStorage.removeItem("entity_type");
+        if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
+        setPopUp(false)
+        // create new session
         const newId = crypto.randomUUID();
         setSessionId(newId);
-        localStorage.setItem('chat_session_id', newId)
-        //Sets Entity Local Variables to be used by page
+        localStorage.setItem("chat_session_id", newId);
+
+        // set new entity context
         setEntityId(entityId);
         setEntityType(entityType);
         setSelectedEntity(true);
-        getEntityNameImage(entityType, entityId)
-        //Calls Get Previous Chats for entity
+        await getEntityNameImage(entityType, entityId);
+
+        // load previous chats for entity
         getPreviousChats(entityId, session, setPreviousChats);
-    }
+    };
+
     const pollForNextAssistantResponse = async (existingAssistantCount, retries = 20, delay = 1500) => {
         for (let i = 0; i < retries; i++) {
-            const messages = await getMessages(session_id);
-            const newAssistantMessages = messages.filter(m => m.role === 'assistant');
+            const msgs = await getMessages(session_id);
+            const newAssistantMessages = msgs.filter((m) => m.role === "assistant");
 
             if (newAssistantMessages.length > existingAssistantCount) {
-                setMessages(messages);
-                const last = messages[messages.length - 1];
-                if (last.sources) {
-                    setSources(last.sources);
-                }
+                setMessages(msgs);
+                const last = msgs[msgs.length - 1];
+                if (last?.sources) setSources(last.sources);
                 return;
             }
-
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
         }
 
-        setMessages(prev => [
+        setMessages((prev) => [
             ...prev.slice(0, -1),
-            { role: 'assistant', text: '⚠️ No response received. Please try again later.' }
+            { role: "assistant", text: "⚠️ No response received. Please try again later." },
         ]);
     };
 
-    //This function handles the logic when a message is sent for an entity
     const handleSend = async () => {
-        if (!input.trim()) return;
+        const trimmed = input.trim();
+        if (!trimmed) return;
 
-        // Optimistically show message
         setMessages((prev) => [
             ...prev,
-            { role: 'user', text: input },
-            { role: 'assistant', text: '...', loading: true }
+            { role: "user", text: trimmed },
+            { role: "assistant", text: "...", loading: true },
         ]);
-        setInput('');
+        setInput("");
 
         const payload = {
             entity_id,
             company_id,
-            message: input,
+            message: trimmed,
             session_id,
             auth_id,
-            entity_type
+            entity_type,
         };
 
         try {
             const res = await fetch(`${server_url}/entity_questions`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${access_token}`
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${access_token}`,
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
-                const error = await res.json();
+                const error = await res.json().catch(() => ({}));
                 console.error("Server Error:", error);
-                setMessages(prev => [
+                setMessages((prev) => [
                     ...prev.slice(0, -1),
-                    { role: 'assistant', text: '⚠️ An error occurred. Please try again.' }
+                    { role: "assistant", text: "⚠️ An error occurred. Please try again." },
                 ]);
                 return;
             }
 
-            // 🔥 Count how many assistant messages already exist before polling
             const current = await getMessages(session_id);
-            const assistantCount = current.filter(m => m.role === 'assistant').length;
-
+            const assistantCount = current.filter((m) => m.role === "assistant").length;
             pollForNextAssistantResponse(assistantCount);
-
         } catch (err) {
             console.error("Message Send Failed", err);
+            setMessages((prev) => [
+                ...prev.slice(0, -1),
+                { role: "assistant", text: "⚠️ Network error. Please try again." },
+            ]);
         }
     };
 
-    if (loading) return <div>Loading...</div>
-    if (loadingUserData) return <div>Loading...</div>
-    if (!userData) return <div>User record not found</div>
+    // ------------------------- render helpers ------------------------
+    const Header = () => (
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4 md:px-6">
+                {/* Entity label */}
+                <div className="min-w-0 flex items-center gap-3">
+                    {entitySelected && entity_name && (
+                        <div className="flex min-w-0 items-center gap-2">
+                            {entity_image && (
+                                <img
+                                    src={entity_image}
+                                    alt="Entity"
+                                    className="h-10 w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                                />
+                            )}
+                            <p className="truncate text-sm font-medium text-white/90">
+                                {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}
+                                {" "}-{" "}
+                                <span className="text-white/60">
+                                    {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
+                                </span>
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Search (shrinks on mobile) */}
+                <div className="w-full max-w-lg flex-1">
+                    <SearchBar
+                        placeholder="Search Entities"
+                        access_token={access_token}
+                        selectEntity={(id, type) => selectEntity(id, type)}
+                        type="units_properties_tenants"
+                        entityDisplay={true}
+                    />
+                </div>
+
+                {/* Sidebar toggle on mobile */}
+                <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    className="ml-2 inline-flex items-center rounded-lg px-3 py-2 text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+                    aria-label="Open chat sidebar"
+                >
+                    History
+                </button>
+            </div>
+        </header>
+    );
+
+    const ChatBubble = ({ role, text, loading }) => (
+        <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+                className={`max-w-3xl whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
+                    }`}
+            >
+                {loading ? (
+                    <div className="text-white"><Spinner /></div>
+                ) : (
+                    <p>{text}</p>
+                )}
+            </div>
+        </div>
+    );
+
+    // ------------------------- main render ---------------------------
+    if (loading || loadingUserData) return <div className="p-6 text-white">Loading…</div>;
+    if (!userData) return <div className="p-6 text-white">User record not found</div>;
+
     return (
-        <div className="flex h-screen bg-[#1e1e1e]">
+        <div className="flex h-dvh bg-[#1b1b1b] text-white">
             {popUp && (
                 <PopUp
                     title={`${entity_name} Not Updated`}
@@ -332,133 +395,139 @@ const ChatPage = () => {
                 />
             )}
 
-            {/* Left: main chat area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Header: entity info + search bar */}
-                <div className="flex items-center justify-between px-6 h-20 border-b border-gray-700">
-                    {/* Left: Image and label */}
-                    <div className="flex items-center space-x-3">
-                        {entitySelected && entity_name !== '' && (
-                            <div className="flex items-center space-x-2">
-                                {entity_image && (
-                                    <img
-                                        src={entity_image || ''}
-                                        alt="Profile"
-                                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
-                                    />
-                                )}
-                                <p className="text-white font-medium">
-                                    {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)} - {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
-                                </p>
-                            </div>
-                        )}
-                    </div>
+            {/* Left: main area */}
+            <div className="flex min-w-0 flex-1 flex-col">
+                <Header />
 
-                    {/* Right: SearchBar */}
-                    <div className="w-full max-w-lg">
-                        <SearchBar
-                            placeholder="Search Entities"
-                            access_token={access_token}
-                            selectEntity={(entityId, entityType) => {
-                                selectEntity(entityId, entityType);
-                            }}
-                            type="units_properties_tenants"
-                            entityDisplay={true}
-                        />
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 md:px-6">
+                    <div className="mx-auto grid max-w-4xl gap-3">
+                        {messages.map((m, i) => (
+                            <ChatBubble key={i} role={m.role} text={m.message || m.text} loading={m.loading} />
+                        ))}
+                        <div ref={messagesEndRef} />
                     </div>
                 </div>
 
-                {/* Chat message history */}
-                <div className="flex-1 overflow-y-auto p-6 ml-6 mr-6 rounded-half space-y-4 bg-lease-gradient">
-                    {messages.map((msg, i) => (
-                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div
-                                className={`max-w-3xl px-4 py-3 rounded-lg whitespace-pre-wrap ${msg.role === 'user' ? 'bg-[#343541] text-white' : 'bg-[#444654] text-white'
-                                    }`}
-                            >
-                                {msg.loading ? (
-                                    <div className="text-white">
-                                        <Spinner />
-                                    </div>
-                                ) : (
-                                    <p>{msg.message || msg.text}</p>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </div>
-
-                {/* Chat input */}
-                <div className="p-4 border-t border-gray-700">
-                    {entitySelected && (
-                        <div className="bg-[#343541] max-w-3xl rounded-xl px-4 py-3 shadow-md w-full mx-auto">
+                {/* Composer */}
+                <div className="border-t border-white/10 bg-[#0f0f0f] px-3 py-3 sm:px-4 md:px-6">
+                    {entitySelected ? (
+                        <div className="mx-auto w-full max-w-4xl">
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
                                     handleSend();
                                 }}
-                                className="flex items-center"
+                                className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a] px-3 py-2 ring-1 ring-inset ring-white/10"
                             >
                                 <input
                                     type="text"
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask a question..."
-                                    className="flex-1 bg-transparent text-white outline-none placeholder-gray-400"
+                                    placeholder="Ask a question…"
+                                    className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
                                 />
                                 <button
                                     type="submit"
-                                    className="ml-3 text-white px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700"
+                                    className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60"
                                 >
                                     Send
                                 </button>
                             </form>
                         </div>
+                    ) : (
+                        <p className="mx-auto max-w-4xl text-center text-sm text-white/60">
+                            Select a property, unit, or tenant to start chatting.
+                        </p>
                     )}
                 </div>
             </div>
 
-            {/* Right: Sidebar */}
-            <ChatSidebar
-                previousChats={previousChats}
-                sources={currentSources}
-                onSelectChat={async (sessionId) => {
-                    setSessionId(sessionId);
-                    localStorage.setItem('chat_session_id', sessionId);
-                    const oldmessages = await getMessages(sessionId);
-                    setMessages(oldmessages);
-                }}
-                onSourceClick={(source) => {
-                    setSelectedSource(source);
-                    setShowModal(true);
-                }}
-                termsRent={terms}
-            />
+            {/* Right: sidebar (desktop) */}
+            <div className="hidden w-[370px] flex-none border-l border-white/10 lg:flex">
+                <ChatSidebar
+                    previousChats={previousChats}
+                    sources={currentSources}
+                    onSelectChat={async (sid) => {
+                        setSessionId(sid);
+                        localStorage.setItem("chat_session_id", sid);
+                        const oldmessages = await getMessages(sid);
+                        setMessages(oldmessages);
+                    }}
+                    onSourceClick={(source) => {
+                        setSelectedSource(source);
+                        setShowModal(true);
+                    }}
+                    termsRent={terms}
+                />
+            </div>
+
+            {/* Sidebar Drawer (mobile) */}
+            {sidebarOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+                    <div
+                        className="absolute inset-0 bg-black/60"
+                        onClick={() => setSidebarOpen(false)}
+                        aria-hidden
+                    />
+                    <div className="absolute inset-y-0 right-0 flex w-[86%] max-w-xs flex-col bg-[#111215] ring-1 ring-white/10">
+                        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                            <h2 className="text-sm font-semibold">History</h2>
+                            <button
+                                type="button"
+                                onClick={() => setSidebarOpen(false)}
+                                className="rounded-lg px-2 py-1 text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20"
+                                aria-label="Close sidebar"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                            <ChatSidebar
+                                previousChats={previousChats}
+                                sources={currentSources}
+                                onSelectChat={async (sid) => {
+                                    setSessionId(sid);
+                                    localStorage.setItem("chat_session_id", sid);
+                                    const oldmessages = await getMessages(sid);
+                                    setMessages(oldmessages);
+                                    setSidebarOpen(false);
+                                }}
+                                onSourceClick={(source) => {
+                                    setSelectedSource(source);
+                                    setShowModal(true);
+                                }}
+                                termsRent={terms}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Source modal */}
             {showModal && selectedSource && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-                    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 relative">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
                         <button
-                            className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl"
+                            className="absolute right-3 top-2 rounded-md px-2 text-2xl leading-none text-gray-500 hover:text-black"
                             onClick={() => setShowModal(false)}
+                            aria-label="Close modal"
                         >
                             &times;
                         </button>
-                        <h2 className="text-lg font-semibold mb-2">Document Excerpt</h2>
-                        <p className="mb-4 whitespace-pre-wrap text-gray-800">{selectedSource.highlight_text}</p>
-                        <iframe
-                            src={selectedSource.viewer_url}
-                            title="Document Viewer"
-                            className="w-full h-[500px] border"
-                        ></iframe>
+                        <div className="max-h-[80vh] overflow-y-auto p-6">
+                            <h2 className="mb-2 text-lg font-semibold">Document Excerpt</h2>
+                            <p className="mb-4 whitespace-pre-wrap text-gray-800">{selectedSource.highlight_text}</p>
+                            <iframe
+                                src={selectedSource.viewer_url}
+                                title="Document Viewer"
+                                className="h-[480px] w-full rounded-md border"
+                            />
+                        </div>
                     </div>
                 </div>
             )}
         </div>
-
-
     );
 };
 

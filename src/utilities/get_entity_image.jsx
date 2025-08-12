@@ -1,28 +1,36 @@
-import {useAuth} from '../components/AuthProvider'
+// utilities/get_entity_image.jsx
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-//Calls Supabase to get signed url for provided filepath
 export const get_entity_image = async (filePath, session) => {
+  try {
+    // Guard: null/undefined/empty/whitespace → don't call function
+    if (typeof filePath !== 'string' || !filePath.trim()) return null;
 
+    const url = `${supabaseUrl}/functions/v1/get_entity_photo?file_path=${encodeURIComponent(
+      filePath
+    )}`;
 
-    const supabase_url = import.meta.env.VITE_SUPABASE_URL;
-    
-    //Calls Suapbase Edge Function get_entity_photo to get signed url from supabase with filepath
-    if(filePath === "") return null;
-        
-    const res = await fetch(`${supabase_url}/functions/v1/get_entity_photo?file_path=${encodeURIComponent(filePath)}`,
-        {
-            method: 'GET',
-            headers: {
-                Authorization: `Bearer ${session.access_token}`
-            }
-        }
-    )
-    if (!res.ok)
-    {
-        console.error('Failed to get Signed URL');
-        return null
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        // Both headers are useful with Supabase Edge Functions
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        apikey: anonKey,
+      },
+    });
+
+    if (!res.ok) {
+      // Read body so you can see *why* the function refused it (bucket? path? method?)
+      const body = await res.text().catch(() => '');
+      console.error('Failed to get Signed URL', res.status, body);
+      return null;
     }
-    const photourl = await res.json()
-    //returns only the signed url ready to be used
-    return photourl.signedUrl;
-}
+
+    const data = await res.json().catch(() => ({}));
+    return data?.signedUrl || data?.url || null;
+  } catch (e) {
+    console.error('get_entity_image error', e);
+    return null;
+  }
+};
