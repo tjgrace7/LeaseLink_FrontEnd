@@ -1,52 +1,59 @@
 // src/components/LoadPreviousMessages.jsx
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPreviousChats, getCompanyPreviousChats } from '../utilities/GetMessages';
 import DisplayBox from './DisplayBox';
 
-/**
- * LoadPreviousMessages
- * Displays a list of previous chat sessions for a given entity.
- *
- * Props:
- * - entityId: ID of the selected tenant/property/unit
- * - session: Supabase session object
- * - entityType: type of entity ('tenant', 'property', etc.)
- * - className: optional additional CSS classes for styling
- */
 const LoadPreviousMessages = ({ entityId, session, entityType, className = '' }) => {
   const [previousChats, setPreviousChats] = useState([]);
-  const navigation = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Fetch previous chats when entityId or session changes
   useEffect(() => {
     if (!entityId || !session) return;
+    let cancelled = false;
 
     const getChats = async () => {
-      if(entityType != 'company')
-        await getPreviousChats(entityId, session, setPreviousChats);
-      else if(entityType === 'company') await getCompanyPreviousChats(entityId, session, setPreviousChats)
+      setIsLoading(true);
+      try {
+        if (entityType === 'company') {
+          await getCompanyPreviousChats(entityId, session, (rows) => {
+            if (!cancelled) setPreviousChats(Array.isArray(rows) ? rows : []);
+          });
+        } else {
+          await getPreviousChats(entityId, session, (rows) => {
+            if (!cancelled) setPreviousChats(Array.isArray(rows) ? rows : []);
+          });
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
     getChats();
-  }, [entityId, session]);
+    return () => {
+      cancelled = true;
+    };
+  }, [entityId, session, entityType]);
 
-  // Load a selected chat by saving info to localStorage and navigating
   const loadChat = (chat) => {
-    console.log(entityId, entityType);
+    if (!chat?.session_id) return;
 
-    // Store session info in localStorage for retrieval on /chat page
+    // Persist selection for ChatPage hydration
     localStorage.setItem('chat_session_id', chat.session_id);
     localStorage.setItem('entity_id', entityId);
     localStorage.setItem('entity_type', entityType);
     localStorage.setItem('entity_selected', 'true');
 
-    // Optionally clear cached chat data
+    // Optional: if your chat objects carry an entity name, store it for instant header paint
+    if (chat.entity_name) {
+      localStorage.setItem('entity_name', chat.entity_name);
+    }
+
+    // Clear cached thread for this session so /chat reloads fresh
     localStorage.removeItem(`chat_thread_${chat.session_id}`);
 
-    // Navigate to the chat page
-    navigation('/chat');
+    navigate('/chat');
   };
 
   return (
@@ -54,17 +61,20 @@ const LoadPreviousMessages = ({ entityId, session, entityType, className = '' })
       <div>
         <h1 className="font-bold text-2xl text-center mb-4">Previous Messages</h1>
 
-        {previousChats.length === 0 ? (
+        {isLoading ? (
+          <div className="text-sm text-gray-400 self-start">Loading…</div>
+        ) : previousChats.length === 0 ? (
           <div className="text-sm text-gray-400 self-start">No Previous Chats</div>
         ) : (
-          <div className="flex flex-col space-y-2 overflow-y-auto self-start">
-            {previousChats.map((chat, inx) => (
+          <div className="flex flex-col max-h-80 space-y-2 overflow-y-auto self-start">
+            {previousChats.map((chat, idx) => (
               <button
-                key={inx}
+                key={chat.session_id || idx}
                 className="cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left"
                 onClick={() => loadChat(chat)}
+                title={chat.title || chat.session_id}
               >
-                {chat.title || `Chat ${inx + 1}`}
+                {chat.title || `Chat ${idx + 1}`}
               </button>
             ))}
           </div>

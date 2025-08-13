@@ -136,19 +136,18 @@ const Dashboard = () => {
   }, [isReady, fetchKpis, fetchProperties]);
 
   // ——— Reusable tiny KPI card (keeps JSX clean)
-  const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
-    <DisplayBox className="w-full sm:w-auto flex-1 min-w-[140px] p-4 md:p-5">
-      <div className="flex flex-col items-center justify-center text-center">
-        <h2 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h2>
-        {sublabel ? (
-          <p className="text-xs opacity-60 mt-0.5">{sublabel}</p>
-        ) : null}
-        <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
-          {isLoading ? '—' : value}
-        </p>
-      </div>
-    </DisplayBox>
-  );
+const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
+  <DisplayBox className="w-full sm:w-auto flex-1 min-w-[140px] p-4 md:p-5
+                         min-h-[120px] grid place-items-center">
+    <div className="text-center">
+      <h2 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h2>
+      {sublabel ? <p className="text-xs opacity-60 mt-0.5">{sublabel}</p> : null}
+      <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
+        {isLoading ? '—' : value}
+      </p>
+    </div>
+  </DisplayBox>
+);
 
   // ——— Empty state for lists
   const Empty = ({ title = 'No data', hint }) => (

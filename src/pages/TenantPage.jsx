@@ -287,10 +287,8 @@ const TenantPage = () => {
           )}
         </DisplayBox>
 
-        <DisplayBox className="w-full max-h-[32rem] overflow-y-auto">
-          <h2 className="text-xl sm:text-2xl underline mb-3">Previous Messages</h2>
           <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
-        </DisplayBox>
+
       </div>
 
       {/* Middle: Lease Summary + Contacts */}
