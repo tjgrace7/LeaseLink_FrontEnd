@@ -158,71 +158,84 @@ const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
   );
 
   return (
-    <div className="mt-4 md:mt-6">
-      {/* Page header */}
-      <header className="px-4 sm:px-6 md:px-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-sans font-bold">Dashboard</h1>
-        </div>
-      </header>
-
-      {/* KPI grid — responsive, stacks on mobile */}
-      <section className="px-4 sm:px-6 md:px-8 mt-4 sm:mt-6">
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <KpiCard label="Monthly Answered Questions" value={messageCount} loading={loading.kpis} />
-          <KpiCard label="Tenant Docs Extracted" value={docsCount} loading={loading.kpis} />
-          <KpiCard label="Current Tenants" value={tenantCount} loading={loading.kpis} />
-          <KpiCard label="Number of Properties" value={properties.length} loading={loading.properties} />
-        </div>
-        {error.kpis && (
-          <p className="text-red-300 text-sm mt-3" role="alert">{error.kpis}</p>
-        )}
-      </section>
-
-      {/* Properties list */}
-      <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
-
-        {/* Loading shimmer / placeholder */}
-        {loading.properties ? (
-          <div className="animate-pulse">
-            <div className="h-24 rounded-2xl bg-white/10" />
+    // Mobile: full viewport minus nav | Desktop: normal flow
+    <div className="
+      w-full 
+      md:mt-6
+      md:static
+      md:min-h-0
+      px-0 md:px-0
+    ">
+      <div
+        className="
+          fixed inset-x-0 top-14 bottom-0 overflow-y-auto
+          md:static md:inset-auto md:overflow-visible
+        "
+      >
+        {/* Page header */}
+        <header className="px-4 sm:px-6 md:px-8 pt-4 md:pt-0">
+          <div className="flex items-center justify-between">
+            <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-sans font-bold">Dashboard</h1>
           </div>
-        ) : properties.length === 0 ? (
-          <Empty title="No properties yet" hint="Create a property to see it here." />
-        ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-            <EntityListBox
-              type="units_properties_tenants"
-              entities={properties}
-              selectEntity={navigateEntity}
-              getEntityLabel={(p) => p.Property_Name || 'Unnamed Property'}
-              getEntityId={(p) => p.prop_id}
-              getSQ={(p) => p.square_footage}
-              Label="Properties"
-              placeholder="Search or scroll properties…"
-              boxType="property"
-            />
-          </div>
-        )}
-        {error.properties && (
-          <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
-        )}
-      </section>
+        </header>
 
-      {/* Previous messages (company scope) */}
-      {companyId && (
-        <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-10 pb-8">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-            <LoadPreviousMessages
-              entityId={companyId}
-              session={session}
-              entityType="company"
-            />
+        {/* KPI grid */}
+        <section className="px-4 sm:px-6 md:px-8 mt-4 sm:mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <KpiCard label="Monthly Answered Questions" value={messageCount} loading={loading.kpis} />
+            <KpiCard label="Tenant Docs Extracted" value={docsCount} loading={loading.kpis} />
+            <KpiCard label="Current Tenants" value={tenantCount} loading={loading.kpis} />
+            <KpiCard label="Number of Properties" value={properties.length} loading={loading.properties} />
           </div>
+          {error.kpis && (
+            <p className="text-red-300 text-sm mt-3" role="alert">{error.kpis}</p>
+          )}
         </section>
-      )}
+
+        {/* Properties list */}
+        <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
+          {loading.properties ? (
+            <div className="animate-pulse">
+              <div className="h-24 rounded-2xl bg-white/10" />
+            </div>
+          ) : properties.length === 0 ? (
+            <Empty title="No properties yet" hint="Create a property to see it here." />
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+              <EntityListBox
+                type="units_properties_tenants"
+                entities={properties}
+                selectEntity={navigateEntity}
+                getEntityLabel={(p) => p.Property_Name || 'Unnamed Property'}
+                getEntityId={(p) => p.prop_id}
+                getSQ={(p) => p.square_footage}
+                Label="Properties"
+                placeholder="Properties"
+                boxType="property"
+              />
+            </div>
+          )}
+          {error.properties && (
+            <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
+          )}
+        </section>
+
+        {/* Previous messages */}
+        {companyId && (
+          <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-10 pb-8">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+              <LoadPreviousMessages
+                entityId={companyId}
+                session={session}
+                entityType="company"
+              />
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 };
+
 
 export default Dashboard;

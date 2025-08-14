@@ -360,7 +360,7 @@ const ChatPage = () => {
                     className="ml-2 inline-flex items-center rounded-lg px-3 py-2 text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
                     aria-label="Open chat sidebar"
                 >
-                    History
+                    Sources
                 </button>
             </div>
         </header>

@@ -27,7 +27,7 @@ const ChatSidebar = ({
       <SectionTitle>Sources</SectionTitle>
       <ul className="text-sm space-y-1 mb-6">
         {sources.length === 0 ? (
-          <li className="text-gray-400">No sources available</li>
+          <li className="text-gray-400">Ask a Question for Sources</li>
         ) : (
           sources.map((source, idx) => (
             <li
