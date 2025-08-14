@@ -36,14 +36,16 @@ const TermsList = ({ title, items }) => {
 
   return (
     <DisplayBox className="w-full">
-      <h2 className="text-xl sm:text-2xl underline mb-3">{title}</h2>
       <div>
-        {items.map((item, idx) => {
-          const entries = Object.entries(item || {});
-          if (entries.length === 0) return null;
-          const [key, value] = entries[0];
-          return <InfoRow key={`${title}-${idx}-${key}`} label={key} value={value} />;
-        })}
+        <h2 className="text-xl sm:text-2xl underline mb-3">{title}</h2>
+        <div>
+          {items.map((item, idx) => {
+            const entries = Object.entries(item || {});
+            if (entries.length === 0) return null;
+            const [key, value] = entries[0];
+            return <InfoRow key={`${title}-${idx}-${key}`} label={key} value={value} />;
+          })}
+        </div>
       </div>
     </DisplayBox>
   );
@@ -222,10 +224,10 @@ const TenantPage = () => {
 
   const hasAnyTerms =
     (leaseSummary?.length ?? 0) +
-      (financial?.length ?? 0) +
-      (responsibility?.length ?? 0) +
-      (keyDates?.length ?? 0) +
-      (rights?.length ?? 0) >
+    (financial?.length ?? 0) +
+    (responsibility?.length ?? 0) +
+    (keyDates?.length ?? 0) +
+    (rights?.length ?? 0) >
     0;
 
   // ---------- Render ----------
@@ -260,34 +262,35 @@ const TenantPage = () => {
 
       {/* Top: Profile & Messages (stack on mobile, side-by-side on lg) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <DisplayBox className="w-full">
-          {roleData && (
-            <Profile
-              entity={tenant}
-              session={session}
-              getFilePath={(t) => t?.photo_file_path}
-              getLabel={(t) => t?.Tenant_Name}
-              getRelatedEntity={async () => {
-                if (!unitsIds || unitsIds.length === 0) return [];
-                const { data, error } = await supabase.from("Units").select("*").in("unit_id", unitsIds);
-                if (error) {
-                  console.error("Error Fetching Units", error);
-                  return [];
-                }
-                return data || [];
-              }}
-              getRelatedFilePath={(unit) => unit?.photo_file_path}
-              getRelatedLabel={(unit) => unit?.address}
-              RelatedTitle="Unit(s)"
-              getRelatedEntityId={(unit) => unit?.unit_id}
-              Title="Tenant"
-              getEntityId={(t) => t?.tenant_id}
-              edit_Entity={roleData?.Edit_Tenants}
-            />
-          )}
-        </DisplayBox>
+        {roleData && (
+          <div className="flex justify-center">
+          <Profile
+            entity={tenant}
+            session={session}
+            getFilePath={(t) => t?.photo_file_path}
+            getLabel={(t) => t?.Tenant_Name}
+            getRelatedEntity={async () => {
+              if (!unitsIds || unitsIds.length === 0) return [];
+              const { data, error } = await supabase.from("Units").select("*").in("unit_id", unitsIds);
+              if (error) {
+                console.error("Error Fetching Units", error);
+                return [];
+              }
+              return data || [];
+            }}
+            getRelatedFilePath={(unit) => unit?.photo_file_path}
+            getRelatedLabel={(unit) => unit?.address}
+            RelatedTitle="Unit(s)"
+            getRelatedEntityId={(unit) => unit?.unit_id}
+            Title="Tenant"
+            getEntityId={(t) => t?.tenant_id}
+            edit_Entity={roleData?.Edit_Tenants}
+            className="w-full max-w-2xl"
+          />
+          </div>
+        )}
 
-          <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
+        <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
 
       </div>
 
@@ -303,26 +306,28 @@ const TenantPage = () => {
         )}
 
         <DisplayBox className="w-full">
-          <h2 className="text-xl sm:text-2xl underline mb-3">Contact Info</h2>
-          {contacts?.length ? (
-            <div className="flex flex-col gap-3">
-              {contacts.map((contact) => (
-                <button
-                  key={contact?.contact_id}
-                  className="text-left text-white rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  onClick={() => navigate(`/contact/${contact?.contact_id}`)}
-                >
-                  <InfoRow label="Name" value={contact?.Contact_Name} />
-                  <InfoRow label="Type" value={contact?.Contact_Type} />
-                  <InfoRow label="Phone" value={contact?.Phone} />
-                  <InfoRow label="Email" value={contact?.Email} />
-                  <InfoRow label="Address" value={contact?.Address} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="No contacts found." />
-          )}
+          <div>
+            <h2 className="text-xl sm:text-2xl underline mb-3">Contact Info</h2>
+            {contacts?.length ? (
+              <div className="flex flex-col gap-3">
+                {contacts.map((contact) => (
+                  <button
+                    key={contact?.contact_id}
+                    className="text-left text-white rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    onClick={() => navigate(`/contact/${contact?.contact_id}`)}
+                  >
+                    <InfoRow label="Name" value={contact?.Contact_Name} />
+                    <InfoRow label="Type" value={contact?.Contact_Type} />
+                    <InfoRow label="Phone" value={contact?.Phone} />
+                    <InfoRow label="Email" value={contact?.Email} />
+                    <InfoRow label="Address" value={contact?.Address} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No contacts found." />
+            )}
+          </div>
         </DisplayBox>
       </div>
 
@@ -338,101 +343,106 @@ const TenantPage = () => {
         )}
 
         <DisplayBox className="w-full">
-          <h2 className="text-xl sm:text-2xl underline mb-3">Responsibility</h2>
-          {responsibility?.length ? (
-            <div className="mb-4">
-              {responsibility.map((item, idx) => {
-                const entries = Object.entries(item || {});
-                if (entries.length === 0) return null;
-                const [key, value] = entries[0];
-                return <InfoRow key={`resp-${idx}-${key}`} label={key} value={value} />;
-              })}
-            </div>
-          ) : (
-            <EmptyState title="No responsibilities found." />
-          )}
+          <div>
+            <h2 className="text-xl sm:text-2xl underline mb-3">Responsibility</h2>
+            {responsibility?.length ? (
+              <div className="mb-4">
+                {responsibility.map((item, idx) => {
+                  const entries = Object.entries(item || {});
+                  if (entries.length === 0) return null;
+                  const [key, value] = entries[0];
+                  return <InfoRow key={`resp-${idx}-${key}`} label={key} value={value} />;
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No responsibilities found." />
+            )}
 
-          <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Key Dates</h2>
-          {keyDates?.length ? (
-            <div className="mb-4">
-              {keyDates.map((item, idx) => {
-                const entries = Object.entries(item || {});
-                if (entries.length === 0) return null;
-                const [key, value] = entries[0];
-                return <InfoRow key={`dates-${idx}-${key}`} label={key} value={value} />;
-              })}
-            </div>
-          ) : (
-            <EmptyState title="No key dates found." />
-          )}
+            <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Key Dates</h2>
+            {keyDates?.length ? (
+              <div className="mb-4">
+                {keyDates.map((item, idx) => {
+                  const entries = Object.entries(item || {});
+                  if (entries.length === 0) return null;
+                  const [key, value] = entries[0];
+                  return <InfoRow key={`dates-${idx}-${key}`} label={key} value={value} />;
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No key dates found." />
+            )}
 
-          <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Critical Rights and Options</h2>
-          {rights?.length ? (
-            <div>
-              {rights.map((item, idx) => {
-                const entries = Object.entries(item || {});
-                if (entries.length === 0) return null;
-                const [key, value] = entries[0];
-                return <InfoRow key={`rights-${idx}-${key}`} label={key} value={value} />;
-              })}
-            </div>
-          ) : (
-            <EmptyState title="No rights or options found." />
-          )}
+            <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Critical Rights and Options</h2>
+            {rights?.length ? (
+              <div>
+                {rights.map((item, idx) => {
+                  const entries = Object.entries(item || {});
+                  if (entries.length === 0) return null;
+                  const [key, value] = entries[0];
+                  return <InfoRow key={`rights-${idx}-${key}`} label={key} value={value} />;
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No rights or options found." />
+            )}
+          </div>
         </DisplayBox>
+
       </div>
 
       {/* Lease Documents */}
       <div className="mb-6">
         <DisplayBox className="w-full">
-          <h2 className="text-xl sm:text-2xl underline mb-3">Lease Documents</h2>
+          <div>
+            <h2 className="text-xl sm:text-2xl underline mb-3">Lease Documents</h2>
 
-          {leaseDocs?.length ? (
-            <div className="flex flex-col gap-3">
-              {leaseDocs.map((lease) => {
-                const title = (lease?.lease_file_path || "").split("/").pop();
-                const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
+            {leaseDocs?.length ? (
+              <div className="flex flex-col gap-3">
+                {leaseDocs.map((lease) => {
+                  const title = (lease?.lease_file_path || "").split("/").pop();
+                  const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
 
-                return (
-                  <div
-                    key={lease?.lease_id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
-                  >
-                    <button
-                      className="text-left underline hover:text-gray-200"
-                      onClick={async () => {
-                        const signedUrl = await getSignedUrl(lease?.lease_file_path);
-                        if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
-                      }}
+                  return (
+                    <div
+                      key={lease?.lease_id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
                     >
-                      {title || "Lease Document"}
-                    </button>
+                      <button
+                        className="text-left underline hover:text-gray-200"
+                        onClick={async () => {
+                          const signedUrl = await getSignedUrl(lease?.lease_file_path);
+                          if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        {title || "Lease Document"}
+                      </button>
 
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="opacity-75">Status:</span>
-                      <span className="font-medium">
-                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
-                      </span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="opacity-75">Status:</span>
+                        <span className="font-medium">
+                          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
+                        </span>
 
-                      {status === "error" && (
-                        <>
-                          <span className="opacity-50">•</span>
-                          <button
-                            className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
-                            onClick={() => navigate("/upload_docs")}
-                          >
-                            Reupload
-                          </button>
-                        </>
-                      )}
+                        {status === "error" && (
+                          <>
+                            <span className="opacity-50">•</span>
+                            <button
+                              className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
+                              onClick={() => navigate("/upload_docs")}
+                            >
+                              Reupload
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
+            )}
+          </div>
         </DisplayBox>
       </div>
 

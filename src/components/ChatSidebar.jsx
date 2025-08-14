@@ -22,7 +22,7 @@ const ChatSidebar = ({
   termsRent = [],
 }) => {
   return (
-    <aside className="w-80 min-w-[16rem] bg-[#2c2c2e] text-white flex flex-col p-4 border-r border-gray-700 overflow-y-auto">
+    <aside className="w-full min-w-[16rem] bg-[#2c2c2e] text-white flex flex-col p-4 border-r border-gray-700 overflow-y-auto">
       {/* Sources */}
       <SectionTitle>Sources</SectionTitle>
       <ul className="text-sm space-y-1 mb-6">

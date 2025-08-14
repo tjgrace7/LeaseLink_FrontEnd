@@ -175,6 +175,7 @@ const PropertyPage = () => {
           getRelatedEntity={async (unit) => fetchTenantById(unit.tenant_id)}
           renderRelatedLabel={(tenant) => tenant?.Tenant_Name}
           loading={loading.units}
+          boxType='unit'
         />
         {error.units && (
           <p className="text-red-300 text-sm mt-2" role="alert">{error.units}</p>

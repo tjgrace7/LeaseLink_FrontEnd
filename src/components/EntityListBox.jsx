@@ -103,6 +103,7 @@ const EntityListBox = ({
       if (typeof getRelatedEntity === "function") {
         const related = await getRelatedEntity(entity);
         // If related tenant exists, route to tenant
+        console.log(related)
         if (related?.tenant_id) {
           selectEntity?.(related.tenant_id, "tenant");
           return;

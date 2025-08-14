@@ -412,7 +412,7 @@ const ChatPage = () => {
                 {/* Composer */}
                 <div className="border-t border-white/10 bg-[#0f0f0f] px-3 py-3 sm:px-4 md:px-6">
                     {entitySelected ? (
-                        <div className="mx-auto w-full max-w-4xl">
+                        <div className="mx-auto w-full max-w-4xl mt-2">
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
@@ -434,6 +434,11 @@ const ChatPage = () => {
                                     Send
                                 </button>
                             </form>
+
+                            {/* Disclaimer under the input */}
+                            <p className="mt-2 text-xs text-gray-400 text-center">
+                                LeaseLink can make mistakes — be sure to check original sources.
+                            </p>
                         </div>
                     ) : (
                         <p className="mx-auto max-w-4xl text-center text-sm text-white/60">
