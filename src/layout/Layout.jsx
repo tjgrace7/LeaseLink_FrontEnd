@@ -46,12 +46,11 @@ const Layout = () => {
       </div>
 
       {/* Main area */}
-      <div className="flex-1 min-h-screen flex flex-col">
-        {/* TopNav with higher z-index to stay above mobile sidebar */}
-        <div className="relative z-50">
-          <TopNav toggleSidebar={() => setSideBarOpen((prev) => !prev)} />
-        </div>
+      <div className="flex-1 flex flex-col">
+        {/* TopNav - Fixed positioning to avoid scroll issues */}
+        <TopNav toggleSidebar={() => setSideBarOpen((prev) => !prev)} />
         
+        {/* Main content with proper spacing */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>

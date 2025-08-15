@@ -202,13 +202,28 @@ const CreateUnitProperty = () => {
   };
 
   // Simple change detection to skip wasted UPDATEs
-  const hasChanged = useCallback(async () => {
-    const { image: initialImage, ...initialRest } = initialData;
-    const { image: currentImage, ...currentRest } = Entity;
-    const baseChanged = JSON.stringify(initialRest) !== JSON.stringify(currentRest);
-    const imageChanged = currentImage?.startsWith("data:") || (currentImage && currentImage !== initialImage);
-    return baseChanged || imageChanged;
-  }, [Entity, initialData]);
+const hasChanged = useCallback(() => {
+  const { image: initialImage, ...initialRest } = initialData;
+  const { image: currentImage, ...currentRest } = Entity;
+
+  const baseChanged =
+    JSON.stringify(initialRest) !== JSON.stringify(currentRest);
+
+  // image can be:
+  // - File (newly chosen)  => definitely changed
+  // - string (URL/dataURL) => compare to initial string if present
+  // - empty/undefined      => not changed
+  let imageChanged = false;
+  if (currentImage instanceof File) {
+    imageChanged = true;
+  } else if (typeof currentImage === "string") {
+    imageChanged =
+      typeof initialImage !== "string" || currentImage !== initialImage;
+  }
+
+  return baseChanged || imageChanged;
+}, [Entity, initialData]);
+
 
   // Submit handler
   const Submit = async () => {
