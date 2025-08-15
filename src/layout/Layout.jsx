@@ -1,33 +1,65 @@
 import Sidebar from '../components/Sidebar';
 import TopNav from '../components/TopNav';
 import { Outlet } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TicketSystem from '../components/TicketSystem';
 
-//Shows the Layout of the App for main to use when loading pages
 const Layout = () => {
-    const [sidebarOpen, setSideBarOpen] = useState(true);
-    return (
-        <div className="flex min-h-screen bg-[#222222] text-white">
+  const [sidebarOpen, setSideBarOpen] = useState(false); // closed by default on mobile
 
-            {/* Sidebar (fixed width, full height. Controls Sliding Animation) */}
-            <div className={`transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-0'} bg-[#000000] flex flex-col overflow-hidden`}>
-                <Sidebar />
-            </div>
+  // Lock body scroll when overlay is open (optional)
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+  }, [sidebarOpen]);
 
-            {/* Main area (takes remaining width, full height) */}
-            <div className="flex-1 min-h-screen">
-                <TopNav toggleSidebar={() => setSideBarOpen(prev => !prev)} />
-                <main className="flex-1 overflow-y-auto">
-
-                        <Outlet />
-
-                </main>
-            </div>
-            <TicketSystem/>
+  return (
+    <div className="flex min-h-screen bg-[#222222] text-white">
+      
+      {/* --- Mobile: full-screen overlay sidebar --- */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden transition-opacity duration-200 ${
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60"
+          onClick={() => setSideBarOpen(false)}
+        />
+        {/* Sidebar Panel - Full Screen */}
+        <div
+          className={`absolute inset-0 bg-[#000000] flex flex-col overflow-y-auto transform transition-transform duration-300 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <Sidebar />
         </div>
-    );
+      </div>
+
+      {/* --- Desktop: static sidebar --- */}
+      <div
+        className={`hidden md:flex transition-all duration-300 ${
+          sidebarOpen ? 'w-64' : 'w-64'
+        } bg-[#000000] flex-col overflow-hidden`}
+      >
+        <Sidebar />
+      </div>
+
+      {/* Main area */}
+      <div className="flex-1 min-h-screen">
+        {/* TopNav with higher z-index to stay above mobile sidebar */}
+        <div className="relative z-50">
+          <TopNav toggleSidebar={() => setSideBarOpen((prev) => !prev)} />
+        </div>
+        
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
+
+      <TicketSystem />
+    </div>
+  );
 };
 
 export default Layout;
-

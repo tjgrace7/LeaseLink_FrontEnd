@@ -211,7 +211,7 @@ const Settings = () => {
                   const profileType = 'User Profile';
                   return (
                     <li key={user.user_id}>
-                      <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center justify-between px-4 py-3 space-x-2">
                         <div className="min-w-0">
                           <p className="text-base font-medium truncate">{user.Name}</p>
                           <p className="text-sm opacity-70 truncate">{user.role}</p>
@@ -260,7 +260,7 @@ const Settings = () => {
               <ul className="divide-y divide-white/10 rounded-2xl overflow-hidden border border-white/10">
                 {roles.map((role) => (
                   <li key={role.id}>
-                    <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center justify-between px-4 py-3 space-x-2">
                       <p className="text-base font-medium">{role.Role_Name}</p>
                       {role.Role_Name !== 'Company Admin' && (
                         <button

@@ -459,7 +459,7 @@ const CreateUnitProperty = () => {
             {/* Sticky submit */}
             {selectedEntity && (
               <div className="sticky bottom-3 z-10">
-                <div className="rounded-2xl bg-gray-900/70 backdrop-blur p-3 flex items-center justify-end shadow-sm">
+                <div className="w-fit rounded-2xl bg-gray-900/70 backdrop-blur px-3 py-2 shadow-sm ml-4 mb-4">
                   <button
                     type="button"
                     onClick={Submit}

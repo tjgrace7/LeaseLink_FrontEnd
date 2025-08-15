@@ -223,6 +223,10 @@ const ChatPage = () => {
     };
 
     const selectEntity = async (entityId, entityType) => {
+        setMessages([]);
+        setSources([]);
+            setSelectedSource(null)
+            setShowModal(false)
         // clear old thread context
         localStorage.removeItem("chat_session_id");
         localStorage.removeItem("entity_id");

@@ -1,35 +1,32 @@
 import { useAuth } from "./AuthProvider";
-import { useState,  } from 'react'
+import { useState } from 'react'
 import { getLogs, getErrors, clearLogs } from "../utilities/logCollector";
 import { supabase } from "../supabaseClient";
-
 
 const TicketSystem = () => {
     const asanaaccess = import.meta.env.VITE_ASANA_ACCESS_TOKEN;
     const { userData } = useAuth();
     const [isOpen, setIsOpen] = useState(false)
 
+    const SubmitTicket = async (message) => {
+        const today = new Date().toISOString().split("T")[0];
+        const logs = getLogs();
+        const errors = getErrors();
 
+        const { data: Company, error: companyError } = await supabase
+            .from('Property_Management_Companies')
+            .select("*")
+            .eq('company_id', userData.company_id)
+            .single();
 
-const SubmitTicket = async (message) => {
-  const today = new Date().toISOString().split("T")[0];
-  const logs = getLogs();
-  const errors = getErrors();
+        if (companyError) {
+            console.error("Error fetching company name:", companyError);
+            return;
+        }
 
-  const { data: Company, error: companyError } = await supabase
-    .from('Property_Management_Companies')
-    .select("*")
-    .eq('company_id', userData.company_id)
-    .single();
+        const taskName = `${userData.Name|| userData.auth_id}  ${Company.company_name}  ${today}`;
 
-  if (companyError) {
-    console.error("Error fetching company name:", companyError);
-    return;
-  }
-
-  const taskName = `${userData.Name|| userData.auth_id}  ${Company.company_name}  ${today}`;
-
-  const notes = `User: ${userData.Name || 'Unknown'} 
+        const notes = `User: ${userData.Name || 'Unknown'} 
 \nUser_Auth_Id: ${userData.auth_id} 
 \nCompany_Name: ${Company.company_name} 
 \nCompany_Id: ${userData.company_id} 
@@ -39,47 +36,47 @@ const SubmitTicket = async (message) => {
 \nConsole Logs:\n${logs} 
 \nConsole Errors:\n${errors}`;
 
-  try {
-    const response = await fetch('https://app.asana.com/api/1.0/tasks', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${asanaaccess}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        data: {
-          'name': taskName,
-          'notes': notes,
-          'projects': ["1210831492845292"],
-          "due_on": today
+        try {
+            const response = await fetch('https://app.asana.com/api/1.0/tasks', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${asanaaccess}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    data: {
+                        'name': taskName,
+                        'notes': notes,
+                        'projects': ["1210831492845292"],
+                        "due_on": today
+                    }
+                })
+            });
+
+            const task = await response.json();
+
+            await fetch(`https://app.asana.com/api/1.0/sections/1210831492845293/addTask`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${asanaaccess}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    data: {
+                        task: task.data.gid
+                    }
+                })
+            });
+
+            clearLogs();
+        } catch (err) {
+            console.error("Error submitting ticket:", err);
         }
-      })
-    });
-
-    const task = await response.json();
-
-    await fetch(`https://app.asana.com/api/1.0/sections/1210831492845293/addTask`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${asanaaccess}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        data: {
-          task: task.data.gid
-        }
-      })
-    });
-
-    clearLogs();
-  } catch (err) {
-    console.error("Error submitting ticket:", err);
-  }
-};
-
+    };
 
     return (
-        <div className="fixed bottom-6 right-6 z-50">
+        // Hide on mobile (hidden md:block) and only show on medium screens and up
+        <div className="hidden md:block fixed bottom-6 right-6 z-50">
             {/* Toggle button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -116,4 +113,5 @@ const SubmitTicket = async (message) => {
         </div>
     );
 };
+
 export default TicketSystem

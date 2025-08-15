@@ -31,9 +31,8 @@ const Label = ({ children, htmlFor, className = "" }) => (
 const Input = ({ error, className = "", ...props }) => (
   <input
     {...props}
-    className={`bg-gray-900/40 text-sm rounded-xl w-full px-4 py-3 outline-none ring-1 ${
-      error ? "ring-red-500" : "ring-gray-800"
-    } focus:ring-2 focus:ring-blue-400 transition ${className}`}
+    className={`bg-gray-900/40 text-sm rounded-xl w-full px-4 py-3 outline-none ring-1 ${error ? "ring-red-500" : "ring-gray-800"
+      } focus:ring-2 focus:ring-blue-400 transition ${className}`}
   />
 );
 
@@ -275,12 +274,12 @@ const CreateEditPerson = () => {
             normalizedType === "Tenant"
               ? data.Tenant_Name || ""
               : normalizedType === "App User"
-              ? data.Name || ""
-              : normalizedType === "Contact"
-              ? data.Contact_Name || ""
-              : normalizedType === "Building Owner"
-              ? data.owner_name || ""
-              : "",
+                ? data.Name || ""
+                : normalizedType === "Contact"
+                  ? data.Contact_Name || ""
+                  : normalizedType === "Building Owner"
+                    ? data.owner_name || ""
+                    : "",
           email:
             normalizedType === "App User" || normalizedType === "Contact" || normalizedType === "Building Owner"
               ? email || data.Email || ""
@@ -441,8 +440,8 @@ const CreateEditPerson = () => {
       const storagePath = genericFormData.image
         ? `${company_name}/${selectedPerson}/${genericFormData.name}`
         : isEditMode
-        ? previousImage
-        : "";
+          ? previousImage
+          : "";
 
       const imageBase64 = genericFormData.image ? await fileToBase64(genericFormData.image) : null;
       const tenantIds = selectedTenants.map((t) => t.tenant_id);
@@ -544,28 +543,30 @@ const CreateEditPerson = () => {
                 <div className="bg-gray-900/40 rounded-xl px-4 py-3 text-sm">{selectedPerson}</div>
               </SectionCard>
             )}
+            {selectedPerson && (
+              <div>
+                {/* Basic Info */}
+                <SectionCard title="Basic Information">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="Full Name" htmlFor="name" error={errors.name}>
+                      <Input id="name" name="name" placeholder="Enter name" value={genericFormData.name} onChange={handleChange} />
+                    </Field>
 
-            {/* Basic Info */}
-            <SectionCard title="Basic Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Full Name" htmlFor="name" error={errors.name}>
-                  <Input id="name" name="name" placeholder="Enter name" value={genericFormData.name} onChange={handleChange} />
-                </Field>
+                    {selectedPerson !== "Tenant" && (
+                      <Field label="Email" htmlFor="email" error={errors.email}>
+                        <Input id="email" type="email" name="email" placeholder="name@company.com" value={genericFormData.email} onChange={handleChange} />
+                      </Field>
+                    )}
 
-                {selectedPerson !== "Tenant" && (
-                  <Field label="Email" htmlFor="email" error={errors.email}>
-                    <Input id="email" type="email" name="email" placeholder="name@company.com" value={genericFormData.email} onChange={handleChange} />
-                  </Field>
-                )}
-
-                {selectedPerson !== "Tenant" && (
-                  <Field label="Phone" htmlFor="phone" error={errors.phone}>
-                    <Input id="phone" type="tel" name="phone" placeholder="(555) 555-5555" value={genericFormData.phone} onChange={handleChange} />
-                  </Field>
-                )}
+                    {selectedPerson !== "Tenant" && (
+                      <Field label="Phone" htmlFor="phone" error={errors.phone}>
+                        <Input id="phone" type="tel" name="phone" placeholder="(555) 555-5555" value={genericFormData.phone} onChange={handleChange} />
+                      </Field>
+                    )}
+                  </div>
+                </SectionCard>
               </div>
-            </SectionCard>
-
+            )}
             {/* Tenant-only */}
             {selectedPerson === "Tenant" && (
               <SectionCard title="Tenant Details">
@@ -728,20 +729,23 @@ const CreateEditPerson = () => {
                 </div>
               </SectionCard>
             )}
-
-            {/* Submit CTA */}
-            <div className="sticky bottom-3 z-10">
-              <div className="rounded-2xl bg-gray-900/70 backdrop-blur p-3 flex items-center justify-end shadow-sm">
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? "Saving…" : "Submit"}
-                </button>
-              </div>
-            </div>
+            {selectedPerson && (
+              <>
+                {/* Submit CTA */}
+                < div className="sticky bottom-3 z-10">
+                  <div className=" ml-4 mb-4 w-fit rounded-2xl bg-gray-900/70 backdrop-blur px-3 py-2 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? "Saving…" : "Submit"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right: Image + summaries */}
@@ -823,8 +827,8 @@ const CreateEditPerson = () => {
             )}
           </div>
         </div>
-      </DisplayBox>
-    </div>
+      </DisplayBox >
+    </div >
   );
 };
 

@@ -266,7 +266,7 @@ const UploadLeases = () => {
             <Dropdown
               options={tenants}
               onSelect={tenantSelected}
-              placeholder="Select Tenant"
+              placeholder= {selectedTenant?.Tenant_Name || "Select Tenant"}
               getOptionId={(t) => t?.tenant_id}
               getOptionTitle={(t) => t?.Tenant_Name}
             />

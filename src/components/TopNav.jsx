@@ -26,7 +26,7 @@ const TopNav = ({ toggleSidebar }) => {
   const activeClass = 'text-blue-400';
 
   return (
-    <div className="bg-black text-white flex items-center p-4 justify-between sticky top-0 z-50 h-14">
+    <div className="bg-black text-white flex items-center p-4 justify-between sticky">
       {/* Sidebar toggle */}
       <button
         onClick={toggleSidebar}
