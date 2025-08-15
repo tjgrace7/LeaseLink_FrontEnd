@@ -46,7 +46,7 @@ const Layout = () => {
       </div>
 
       {/* Main area */}
-      <div className="flex-1 min-h-screen">
+      <div className="flex-1 min-h-screen flex flex-col">
         {/* TopNav with higher z-index to stay above mobile sidebar */}
         <div className="relative z-50">
           <TopNav toggleSidebar={() => setSideBarOpen((prev) => !prev)} />
