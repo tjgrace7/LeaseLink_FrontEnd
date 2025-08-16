@@ -57,6 +57,11 @@ const UserDropdown = () => {
                     {roleData && roleData.Access_Settings && (
                     <a href="/settings" className='block px-4 py-2 hover:bg-gray-700'>Settings</a>
                     )}
+                    {userData.company_id === '74326e0e-58c6-4ba4-9d50-caf5670402f0' && (
+                        <a href='/admindashboard' className='block px-4 py-2 hover:bg-gray-700'>
+                            LeaseLink
+                        </a>
+                    )}
                     <div className='block px-4 py-2 hover:bg-gray-700'>
                         <SignOut/>
                     </div>

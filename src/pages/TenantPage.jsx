@@ -184,8 +184,8 @@ const TenantPage = () => {
       try {
         const leaseIds = leaseDocs.map((l) => l.lease_id).filter(Boolean);
         if (leaseIds.length === 0) return;
-
         const response = await getTableIdList("Upload_Job_Status", "lease_id", leaseIds);
+        console.log(response)
         const latestStatusByLease = (response || []).reduce((acc, status) => {
           const leaseId = status?.lease_id;
           if (!leaseId) return acc;

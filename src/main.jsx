@@ -29,6 +29,7 @@ import ThankYou from './pages/thank-you';
 import Settings from './pages/settings';
 import Roles from './pages/Roles';
 import TenantTerms from './pages/tenantTerms';
+import LeaseLinkDashboard from './pages/LeaseLinkDashboard';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -64,6 +65,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/roles' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
             <Route path='/roles/edit/:roleId' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
+            <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

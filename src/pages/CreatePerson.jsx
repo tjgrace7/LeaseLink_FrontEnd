@@ -611,9 +611,12 @@ const CreateEditPerson = () => {
 
                 {/* Units after selecting properties */}
                 {selectedProperties.length > 0 && (
-                  <div className="mt-6">
+
+                  <div className="mt-6 mb-6">
+                    {console.log(units)}
                     <Label>Units</Label>
                     <Dropdown
+                      usePortal
                       options={units}
                       onSelect={(unit) => {
                         if (!selectedUnits.some((u) => u.unit_id === unit.unit_id)) {
@@ -625,6 +628,7 @@ const CreateEditPerson = () => {
                       getOptionTitle={unitLabel}
                       getOptionId={(u) => u.unit_id}
                       clearAfterSelect
+                      menuClassName="max-h-[60vh] overflow-y-auto overscroll-contain py-1 touch-pan-y"
                     />
 
                     {selectedUnits.length > 0 && (

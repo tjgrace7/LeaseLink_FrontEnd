@@ -1,6 +1,6 @@
 // src/pages/UploadLeases.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useAuth } from "../components/AuthProvider";
 import { useNavigate } from "react-router-dom";
 
@@ -10,18 +10,12 @@ import { supabase } from "../supabaseClient";
 import Spinner from "../components/Spinner";
 
 /**
- * UploadLeases
- * - Pick a Tenant
- * - (Auto) Pick Property & Unit if there's exactly one each, otherwise let the user select
- * - Upload one or more lease files
- * - For each file:
- *    1) Request signed URL (Edge Function)
- *    2) PUT file to Storage
- *    3) Trigger processing (Edge Function)
- *
- * Notes:
- * - We fetch Property names from `properties` table because `Property_Tenant` join rows
- *   typically won't carry display info like Property_Name.
+ * UploadLeases — with per-file progress UI + post-run lock/reset
+ * Steps per file:
+ *  1) Requesting URL
+ *  2) Uploading (progress % with XHR)
+ *  3) Processing
+ *  4) Done / Error
  */
 
 const UploadLeases = () => {
@@ -45,8 +39,44 @@ const UploadLeases = () => {
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [submittingFiles, setSubmittingFiles] = useState(false);
+  const [completed, setCompleted] = useState(false); // 🔐 lock after a run
+
+  // Per-file status map: { [id]: { name, step, progress, message, error, done } }
+  const [fileStatuses, setFileStatuses] = useState({});
+
+  // File input ref to clear chooser after success
+  const fileInputRef = useRef(null);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+  // A stable ID per file (good enough for the session)
+  const fileId = (f) => `${f.name}-${f.size}-${f.lastModified}`;
+
+  const setStatus = (id, patch) =>
+    setFileStatuses((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), ...patch },
+    }));
+
+  // XHR PUT to get upload progress (fetch has no native upload progress)
+  const putWithProgress = (signedUrl, file, contentType, onProgress) =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl, true);
+      xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && typeof onProgress === "function") {
+          const pct = Math.round((evt.loaded / evt.total) * 100);
+          onProgress(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || ""}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
+    });
 
   // ----------------- Fetch Tenants on Load -----------------
   useEffect(() => {
@@ -143,13 +173,30 @@ const UploadLeases = () => {
   // ----------------- Files: capture user selection -----------------
   const handleFileChange = (event) => {
     const incoming = Array.from(event.target.files || []);
-    // Optional: basic client-side filtering
-    // const allowed = incoming.filter(f => f.type === "application/pdf");
+    // If picking new files after a completed run, unlock a new run
+    if (incoming.length > 0 && completed) setCompleted(false);
+
     setFileList(incoming);
+
+    // Initialize statuses
+    const init = {};
+    for (const f of incoming) {
+      const id = fileId(f);
+      init[id] = {
+        name: f.name,
+        step: "Ready",
+        progress: 0,
+        message: "",
+        error: null,
+        done: false,
+      };
+    }
+    setFileStatuses(init);
   };
 
-  // ----------------- Submit Uploads -----------------
+  // ----------------- Submit Uploads with per-file progress -----------------
   const Submit = useCallback(async () => {
+    if (submittingFiles || completed) return; // prevent double-run
     if (!selectedTenant || !selectedProperty || !selectedUnit || fileList.length === 0) {
       alert("Please select a tenant, property, unit, and at least one file.");
       return;
@@ -164,84 +211,108 @@ const UploadLeases = () => {
 
     try {
       for (const file of fileList) {
-        // 1) Generate Signed URL
-        const res = await fetch(`${supabaseUrl}/functions/v1/generate_upload_url`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            company_id: userData.company_id,
-            tenant_id: selectedTenant.tenant_id,
-            property_id: selectedProperty.prop_id, // NOTE: using properties table ID
-            unit_id: selectedUnit.unit_id,
-            filename: file.name,
-            contentType: file.type || "application/octet-stream",
-            user_id: session.user.id,
-          }),
-        });
+        const id = fileId(file);
+        try {
+          // Step 1: Request signed URL
+          setStatus(id, { step: "Requesting URL", message: "Generating signed upload URL…" });
 
-        if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
+          const res = await fetch(`${supabaseUrl}/functions/v1/generate_upload_url`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              company_id: userData.company_id,
+              tenant_id: selectedTenant.tenant_id,
+              property_id: selectedProperty.prop_id,
+              unit_id: selectedUnit.unit_id,
+              filename: file.name,
+              contentType: file.type || "application/octet-stream",
+              user_id: session.user.id,
+            }),
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
+          }
+
+          const { signed_url, lease_file_path, bucket, error: fxError } = await res.json();
+          if (fxError) throw new Error(fxError);
+          if (!signed_url || !lease_file_path || !bucket) {
+            throw new Error("Edge function did not return expected fields.");
+          }
+
+          // Step 2: Upload with progress
+          setStatus(id, { step: "Uploading", message: "Uploading to storage…", progress: 0 });
+          await putWithProgress(
+            signed_url,
+            file,
+            file.type || "application/octet-stream",
+            (pct) => setStatus(id, { progress: pct })
+          );
+
+          // Step 3: Trigger processing
+          setStatus(id, { step: "Processing", message: "Starting file processing…" });
+          const processRes = await fetch(`${supabaseUrl}/functions/v1/new_upload`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: lease_file_path,
+              bucket,
+            }),
+          });
+
+          if (!processRes.ok) {
+            const err = await processRes.text().catch(() => "");
+            throw new Error(`Processing failed (${processRes.status}): ${err}`);
+          }
+
+          // Done
+          setStatus(id, { step: "Done", message: "Finished!", progress: 100, done: true });
+          console.log(`✅ File processed: ${file.name}`);
+        } catch (err) {
+          console.error("❌ Error during upload for", file.name, err);
+          setStatus(id, {
+            step: "Error",
+            message: err?.message || "Unknown error",
+            error: true,
+          });
         }
-
-        const { signed_url, lease_file_path, bucket, error: fxError } = await res.json();
-        if (fxError) throw new Error(fxError);
-        if (!signed_url || !lease_file_path || !bucket) throw new Error("Edge function did not return expected fields.");
-
-        // 2) PUT file to Storage (signed URL)
-        const uploadRes = await fetch(signed_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type || "application/octet-stream" },
-          body: file,
-        });
-
-        if (!uploadRes.ok) {
-          const errText = await uploadRes.text().catch(() => "");
-          throw new Error(`Upload failed (${uploadRes.status}): ${errText}`);
-        }
-
-        // 3) Trigger processing
-        const processRes = await fetch(`${supabaseUrl}/functions/v1/new_upload`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: lease_file_path,
-            bucket,
-          }),
-        });
-
-        if (!processRes.ok) {
-          const err = await processRes.text().catch(() => "");
-          throw new Error(`Processing failed (${processRes.status}): ${err}`);
-        }
-
-        console.log(`✅ File processed: ${file.name}`);
       }
 
-      alert("🎉 All files uploaded and processing triggered.");
-      navigate("/dashboard");
+      // After the whole run, lock + clear input/queues
+      setCompleted(true);           // 🔐 lock UI to prevent accidental re-run
+      setFileList([]);              // clear queue
+      setFileStatuses({});          // or keep if you want a summary
+      if (fileInputRef.current) fileInputRef.current.value = ""; // clear <input type="file" />
+
+      // Optional: navigate immediately
+      // navigate("/dashboard");
+      alert("🎉 Uploads finished. Processing triggered for successful files.");
     } catch (err) {
       console.error("❌ Error during upload flow:", err);
       alert(`Error: ${err.message}`);
     } finally {
       setSubmittingFiles(false);
     }
-  }, [fileList, navigate, selectedProperty, selectedTenant, selectedUnit, session, supabaseUrl, userData?.company_id]);
+  }, [
+    fileList,
+    selectedProperty,
+    selectedTenant,
+    selectedUnit,
+    session,
+    supabaseUrl,
+    userData?.company_id,
+    submittingFiles,
+    completed,
+  ]);
 
   // ----------------- Render -----------------
-  if (submittingFiles) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <Spinner />
-      </div>
-    );
-  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-3xl mx-auto">
@@ -266,9 +337,9 @@ const UploadLeases = () => {
             <Dropdown
               options={tenants}
               onSelect={tenantSelected}
-              placeholder= {selectedTenant?.Tenant_Name || "Select Tenant"}
+              placeholder={selectedTenant?.DBA || selectedTenant?.Tenant_Name || "Select Tenant"}
               getOptionId={(t) => t?.tenant_id}
-              getOptionTitle={(t) => t?.Tenant_Name}
+              getOptionTitle={(t) => t?.DBA || t?.Tenant_Name}
             />
           )}
         </div>
@@ -308,7 +379,7 @@ const UploadLeases = () => {
                 className="mt-1"
                 options={units}
                 onSelect={setSelectedUnit}
-                placeholder="Select Unit"
+                placeholder={selectedUnit?.Suite || "Select Unit"}
                 getOptionId={(u) => u?.unit_id}
                 getOptionTitle={(u) => u?.address}
               />
@@ -328,22 +399,75 @@ const UploadLeases = () => {
             <label className="block mb-2 font-medium">Upload Lease Files</label>
             <div className="bg-gray-700 p-4 rounded-xl">
               <input
+                ref={fileInputRef}
                 type="file"
                 multiple
                 onChange={handleFileChange}
-                className="block text-white"
+                className="block text-white disabled:opacity-50"
+                disabled={submittingFiles || completed}
                 aria-label="Select one or more lease files to upload"
               />
-              {fileList.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="font-medium mb-1">Selected Files</h3>
-                  <ul className="list-disc ml-5 space-y-1 text-sm">
-                    {fileList.map((file, i) => (
-                      <li key={`${file.name}-${file.size}-${i}`} className="break-all">
-                        {file.name}
-                      </li>
-                    ))}
-                  </ul>
+
+              {/* Live per-file statuses */}
+              {Object.keys(fileStatuses).length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {fileList.map((file) => {
+                    const id = fileId(file);
+                    const s = fileStatuses[id] || {};
+                    const isWorking = s.step && !["Done", "Error", "Ready"].includes(s.step);
+                    return (
+                      <div
+                        key={id}
+                        className="rounded-lg border border-gray-600 p-3 bg-gray-800/70"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium break-all">{s.name || file.name}</div>
+                          <div
+                            className={`text-xs px-2 py-1 rounded ${
+                              s.step === "Done"
+                                ? "bg-green-600/30 text-green-300"
+                                : s.step === "Error"
+                                ? "bg-red-600/30 text-red-300"
+                                : "bg-blue-600/30 text-blue-200"
+                            }`}
+                          >
+                            {s.step || "Ready"}
+                          </div>
+                        </div>
+
+                        {/* Progress bar only during Uploading */}
+                        {s.step === "Uploading" && (
+                          <div className="mt-2">
+                            <div className="h-2 w-full bg-gray-600 rounded-full overflow-hidden">
+                              <div
+                                className="h-2 bg-blue-500 transition-all"
+                                style={{ width: `${Math.min(s.progress || 0, 100)}%` }}
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-gray-300">
+                              {Math.min(s.progress || 0, 100)}%
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Spinner-ish hint during non-upload working steps */}
+                        {isWorking && s.step !== "Uploading" && (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-gray-300">
+                            <div className="animate-spin h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent" />
+                            <span>{s.message || "Working…"}</span>
+                          </div>
+                        )}
+
+                        {/* Messages / Errors */}
+                        {(s.message && !s.error) && s.step !== "Uploading" && (
+                          <div className="mt-1 text-xs text-gray-300">{s.message}</div>
+                        )}
+                        {s.error && (
+                          <div className="mt-1 text-xs text-red-300">Error: {s.message}</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -357,6 +481,8 @@ const UploadLeases = () => {
               className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50"
               onClick={Submit}
               disabled={
+                submittingFiles ||
+                completed || // 🔐 lock after first run
                 !selectedTenant ||
                 !selectedProperty ||
                 !selectedUnit ||
@@ -364,12 +490,27 @@ const UploadLeases = () => {
                 loadingLinks
               }
             >
-              {loadingLinks
-                ? "Preparing…"
+              {completed
+                ? "Finished"
+                : submittingFiles
+                ? "Uploading…"
                 : fileList.length > 0
                 ? `Upload ${fileList.length} File${fileList.length > 1 ? "s" : ""}`
                 : "Submit"}
             </button>
+
+            {/* Optional post-run CTA */}
+            {completed && (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="text-sm text-green-300">All done!</span>
+                <button
+                  className="px-4 py-2 rounded-xl bg-green-700 hover:bg-green-600 text-white"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            )}
           </div>
         )}
       </DisplayBox>
