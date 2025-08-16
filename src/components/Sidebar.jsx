@@ -69,7 +69,7 @@ const Sidebar = () => {
           onClick={() => {
             // If SignOut is a component UI, render it above; otherwise do your sign-out here:
             // await supabase.auth.signOut(); navigate('/login');
-            navigate('/logout'); // or replace with <SignOut />
+            <SignOut/> // or replace with <SignOut />
           }}
           className="flex items-center space-x-2 text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
           aria-label="Sign out"
