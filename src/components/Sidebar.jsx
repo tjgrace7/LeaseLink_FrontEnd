@@ -65,18 +65,12 @@ const Sidebar = () => {
       <div className="pl-4 pt-6 border-t border-white/10">
         {/* If your SignOut component already handles the click/auth, keep it. 
             Otherwise, you can render a button with FiLogOut and call your sign-out logic. */}
-        <button
-          onClick={() => {
-            // If SignOut is a component UI, render it above; otherwise do your sign-out here:
-            // await supabase.auth.signOut(); navigate('/login');
-            <SignOut/> // or replace with <SignOut />
-          }}
-          className="flex items-center space-x-2 text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
-          aria-label="Sign out"
-        >
-          <FiLogOut />
-          <span className="text-base">Sign out</span>
-        </button>
+
+        <SignOut />
+
+
+        <FiLogOut />
+
       </div>
     </aside>
   );

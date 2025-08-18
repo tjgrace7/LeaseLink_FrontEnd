@@ -30,6 +30,7 @@ import Settings from './pages/settings';
 import Roles from './pages/Roles';
 import TenantTerms from './pages/tenantTerms';
 import LeaseLinkDashboard from './pages/LeaseLinkDashboard';
+import Home from './pages/Home';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -42,7 +43,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path='/home' element={<Home/>}/>
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>

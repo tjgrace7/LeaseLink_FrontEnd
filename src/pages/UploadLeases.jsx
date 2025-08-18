@@ -255,7 +255,7 @@ const UploadLeases = () => {
 
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
-          const processRes = await fetch(`${supabaseUrl}/functions/v1/new_upload`, {
+         /* const processRes = await fetch(`${supabaseUrl}/functions/v1/new_upload`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${session.access_token}`,
@@ -271,7 +271,7 @@ const UploadLeases = () => {
             const err = await processRes.text().catch(() => "");
             throw new Error(`Processing failed (${processRes.status}): ${err}`);
           }
-
+            */
           // Done
           setStatus(id, { step: "Done", message: "Finished!", progress: 100, done: true });
           console.log(`✅ File processed: ${file.name}`);
