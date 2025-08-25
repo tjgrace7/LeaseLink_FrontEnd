@@ -30,7 +30,7 @@ const TopNav = ({ toggleSidebar }) => {
 
   return (
     <div className="sticky top-0 z-40 bg-black text-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-2 md:px-4 md:py-3">
+      <div className="mx-auto flex max-w-full items-center justify-between px-3 py-2 md:px-4 md:py-3">
         {/* Brand / Home */}
         <button
           onClick={() => navigate('dashboard')}
