@@ -15,7 +15,7 @@ export default function DropdownPortal({ position, children, menuClassName = "" 
     setRoot(el);
   }, []);
 
-  if (!root) return null;
+  if (!root || !position) return null;
 
   const style = {
     position: "fixed",
