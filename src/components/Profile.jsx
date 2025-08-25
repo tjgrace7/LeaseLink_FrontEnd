@@ -114,48 +114,83 @@ const Profile = ({
 
   return (
     <div
-      className={`w-full !max-w-none self-stretch bg-lease-gradient rounded-lg p-6 pb-20
-      grid ${edit_Entity ? 'grid-cols-[auto_2fr_1fr]' : 'grid-cols-[2fr_1fr]'}
-      gap-8 items-start min-h-[260px] ${className}`}
+      className={[
+        // Container
+        'relative w-full !max-w-none self-stretch rounded-lg p-4 sm:p-6 pb-24 sm:pb-20',
+        'bg-lease-gradient min-h-[260px]',
+        // Layout: 1 col on mobile; add columns on >= md
+        edit_Entity
+          ? 'grid grid-cols-1 md:grid-cols-[auto_1.6fr_1fr]'
+          : 'grid grid-cols-1 md:grid-cols-[1.6fr_1fr]',
+        'gap-6 sm:gap-8 items-start',
+        className,
+      ].join(' ')}
     >
-      {/* Col 1: Edit button */}
+      {/* Edit button — mobile: floating top-right; desktop: left column */}
       {edit_Entity && (
-        <div className="flex flex-col items-start text-white hover:text-gray-200 place-self-start">
-          <button onClick={handleEditClick} aria-label={`Edit ${Title || 'entity'}`} title="Edit">
-            <FiEdit size={24} />
+        <>
+          {/* Mobile (md:hidden): floating FAB */}
+          <button
+            onClick={handleEditClick}
+            aria-label={`Edit ${Title || 'entity'}`}
+            title="Edit"
+            className="md:hidden absolute top-3 right-3 inline-flex items-center justify-center rounded-full p-3 ring-1 ring-inset ring-white/15 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white backdrop-blur"
+          >
+            <FiEdit size={20} />
           </button>
-        </div>
+
+          {/* Desktop (md:flex): left column icon */}
+          <div className="hidden md:flex flex-col items-start text-white hover:text-gray-200 place-self-start">
+            <button
+              onClick={handleEditClick}
+              aria-label={`Edit ${Title || 'entity'}`}
+              title="Edit"
+              className="inline-flex items-center justify-center rounded-xl p-2 ring-1 ring-inset ring-white/15 hover:bg-white/10"
+            >
+              <FiEdit size={22} />
+            </button>
+          </div>
+        </>
       )}
 
-      {/* Col 2: Main entity */}
-      <div className="flex flex-col items-center justify-start text-center gap-2">
-        {Title ? <h1 className="text-2xl font-bold text-white underline">{Title}</h1> : null}
+      {/* Main entity */}
+      <div className="flex flex-col items-center md:items-start justify-start text-center md:text-left gap-2">
+        {Title ? (
+          <h1 className="text-xl sm:text-2xl font-bold text-white underline underline-offset-4 decoration-white/30">
+            {Title}
+          </h1>
+        ) : null}
 
         {/* Only show image container if image exists */}
         {image && (
-          <div className="w-32 h-32 rounded-full border-4 border-white shadow-md mb-2 overflow-hidden">
+          <div className="mt-1 sm:mt-2 w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white/80 shadow-md overflow-hidden">
             <img
               src={image}
               alt={`${Title || 'Profile'} image`}
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           </div>
         )}
 
-        <div className="text-xl font-semibold text-white">
-          {getLabel?.(entity) || 'Unnamed Entity'}
+        <div className="mt-2 text-lg sm:text-xl font-semibold text-white max-w-full">
+          <span className="block truncate">{getLabel?.(entity) || 'Unnamed Entity'}</span>
         </div>
       </div>
 
-      {/* Col 3: Related entities */}
+      {/* Related entities */}
       <div className="flex flex-col items-start text-white">
         {(relatedEntities?.length || 0) > 0 && (
           <div className="w-full">
-            <div className="text-l font-medium mb-2">
-              <u>{RelatedTitle}</u>
+            <div className="text-base sm:text-lg font-medium mb-2">
+              <span className="underline underline-offset-4 decoration-white/30">
+                {RelatedTitle}
+              </span>
             </div>
 
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+            {/* Scroll area with comfortable touch targets */}
+            <div className="space-y-3 sm:space-y-4 max-h-64 overflow-y-auto pr-1 sm:pr-2 custom-scroll">
               {loadingRelated ? (
                 <div className="text-white/80 text-sm">Loading…</div>
               ) : (
@@ -163,23 +198,30 @@ const Profile = ({
                   const keyCandidate =
                     (getRelatedEntityId && getRelatedEntityId(rel)) ||
                     `${getRelatedLabel?.(rel) || 'related'}-${i}`;
+                  const imgUrl = relatedImages[i];
+
                   return (
-                    <div key={keyCandidate} className="flex items-center space-x-2">
+                    <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3">
                       {/* Only show image container if image exists */}
-                      {relatedImages[i] && (
-                        <div className="w-12 h-12 rounded border-2 border-white shadow-md overflow-hidden flex-shrink-0">
+                      {imgUrl && (
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
                           <img
-                            src={relatedImages[i]}
+                            src={imgUrl}
                             alt={`${getRelatedLabel?.(rel) || 'Related'} image`}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         </div>
                       )}
+
                       <button
-                        className="cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left flex-1"
+                        className="flex-1 cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition"
                         onClick={() => handleRelatedClick(rel)}
                       >
-                        {getRelatedLabel?.(rel) || 'Unnamed'}
+                        <span className="block text-sm sm:text-base truncate">
+                          {getRelatedLabel?.(rel) || 'Unnamed'}
+                        </span>
                       </button>
                     </div>
                   );
@@ -187,13 +229,16 @@ const Profile = ({
               )}
             </div>
 
-            <div className="flex flex-col mt-4">
+            {/* Quick actions */}
+            <div className="flex flex-col mt-4 gap-2">
               {(Title === 'Unit' || Title === 'Property') && (
                 <div>
-                  <h2 className="underline">Add Entities</h2>
+                  <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
+                    Add Entities
+                  </h2>
                   <button
                     onClick={() => navigate('/create_person')}
-                    className="cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left"
+                    className="mt-1 cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
                   >
                     Create Tenant
                   </button>
@@ -202,7 +247,7 @@ const Profile = ({
               {Title === 'Property' && (
                 <button
                   onClick={() => navigate('/create_building')}
-                  className="cursor-pointer hover:bg-[#3a3a3d] p-2 rounded text-left"
+                  className="cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
                 >
                   Create Unit
                 </button>
@@ -211,6 +256,13 @@ const Profile = ({
           </div>
         )}
       </div>
+
+      {/* Small custom scrollbar for WebKit (optional) */}
+      <style>{`
+        .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 9999px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+      `}</style>
     </div>
   );
 };
