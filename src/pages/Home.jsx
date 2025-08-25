@@ -1,20 +1,23 @@
 import { motion } from "framer-motion";
 import { Building2, FileUp, MessageSquare, BookOpenCheck, ArrowRight, CheckCircle, Shield, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import logo from '../assets/Lease_Link_Logo.png'
 
 // Dark-mode first design (Tailwind). Uses framer-motion & lucide-react only.
 // Drop this as src/pages/Home.jsx and route to it.
 
 export default function HomePage() {
-    const navigate = useNavigate()
+  const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-neutral-950/70 backdrop-blur border-b border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-neutral-200" />
-            <span className="font-semibold">Lease Link</span>
+            <img
+              src={logo}
+              className=" h-16 w-16text-neutral-200" />
+
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-neutral-300">
             <a href="#story" className="hover:text-white">Our Story</a>
@@ -24,6 +27,14 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <button className="px-4 py-2 text-sm rounded-xl hover:bg-neutral-900" onClick={() => navigate('/login')}>Login</button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500" onClick={() => navigate('/request')}>Request a Demo</button>
+            <a
+              href="https://calendly.com/jtaylor-leaselink"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+            >
+              Book a Call
+            </a>
           </div>
         </div>
       </header>
@@ -45,7 +56,7 @@ export default function HomePage() {
               Lease Link was born out of frustration. Managing over $100M in commercial real estate, we wasted years hunting through leases for answers that should have been at our fingertips. We built Lease Link to solve that problem — and now it’s helping property managers everywhere do the same.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-      
+
               <button className="px-6 py-3 border border-neutral-800 rounded-xl hover:bg-neutral-900">Talk to a Specialist</button>
             </div>
             <div className="mt-6 flex items-center gap-4 text-sm text-neutral-400">
@@ -196,6 +207,14 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 lg:justify-end">
               <button className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500" onClick={() => navigate('/request')}>Request a Demo</button>
+                          <a
+              href="https://calendly.com/jtaylor-leaselink"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+            >
+              Book a Call
+            </a>
             </div>
           </div>
         </div>
@@ -206,7 +225,10 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 font-semibold text-white">
-              <Building2 className="h-5 w-5" /> Lease Link
+              <img
+                src={logo}
+                className=" h-16 w-16text-neutral-200" />
+
             </div>
             <p className="mt-3 text-sm text-neutral-400 max-w-xs">Instant, cited answers from your lease universe.</p>
           </div>
@@ -243,7 +265,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </footer >
+    </div >
   );
 }

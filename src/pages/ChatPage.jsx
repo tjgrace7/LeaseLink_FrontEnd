@@ -9,14 +9,11 @@ import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
 
 /**
- * ChatPage (UI cleanup + mobile-first)
+ * ChatPage with Fixed Header and Composer
  * ---------------------------------------------------------------------------
- * - Mobile-first responsive layout: sticky header, collapsible sidebar drawer
- * - Safer effects (dependency arrays + unmount guards)
- * - LocalStorage hydrate/persist without reading in dependency arrays
- * - Consistent Tailwind tokens & better spacing
- * - Accessibility: labels, buttons have aria-labels, focus outlines
- * - Bug fixes: console error var, True->true, null checks, trimming
+ * - Fixed header at top and composer at bottom
+ * - Only the messages area scrolls between them
+ * - Mobile-responsive with collapsible sidebar
  */
 
 const ChatPage = () => {
@@ -40,7 +37,7 @@ const ChatPage = () => {
     const [currentSources, setSources] = useState([]);
     const [selectedSource, setSelectedSource] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // lease terms quick-view
     const [terms, setTerms] = useState([]);
@@ -218,33 +215,30 @@ const ChatPage = () => {
 
         if (storedEntityType === "tenant") {
             const ready = String(data.Available).toLowerCase() === "true";
-            setPopUp(!ready); // show popup only when NOT ready
+            setPopUp(!ready);
         }
     };
 
     const selectEntity = async (entityId, entityType) => {
         setMessages([]);
         setSources([]);
-            setSelectedSource(null)
-            setShowModal(false)
-        // clear old thread context
+        setSelectedSource(null)
+        setShowModal(false)
         localStorage.removeItem("chat_session_id");
         localStorage.removeItem("entity_id");
         localStorage.removeItem("entity_type");
         if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
         setPopUp(false)
-        // create new session
+        
         const newId = crypto.randomUUID();
         setSessionId(newId);
         localStorage.setItem("chat_session_id", newId);
 
-        // set new entity context
         setEntityId(entityId);
         setEntityType(entityType);
         setSelectedEntity(true);
         await getEntityNameImage(entityType, entityId);
 
-        // load previous chats for entity
         getPreviousChats(entityId, session, setPreviousChats);
     };
 
@@ -322,22 +316,24 @@ const ChatPage = () => {
 
     // ------------------------- render helpers ------------------------
     const Header = () => (
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4 md:px-6">
+        <div className="border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
                 {/* Entity label */}
-                <div className="min-w-0 flex items-center gap-3">
+                <div className="min-w-0 flex items-center gap-2 sm:gap-3">
                     {entitySelected && entity_name && (
-                        <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                             {entity_image && (
                                 <img
                                     src={entity_image}
                                     alt="Entity"
-                                    className="h-10 w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                                    className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
                                 />
                             )}
-                            <p className="truncate text-sm font-medium text-white/90">
-                                {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}
-                                {" "}-{" "}
+                            <p className="truncate text-xs sm:text-sm font-medium text-white/90">
+                                <span className="hidden sm:inline">
+                                    {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}
+                                    {" "}-{" "}
+                                </span>
                                 <span className="text-white/60">
                                     {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
                                 </span>
@@ -347,7 +343,7 @@ const ChatPage = () => {
                 </div>
 
                 {/* Search (shrinks on mobile) */}
-                <div className="w-full max-w-lg flex-1">
+                <div className="w-full max-w-xs sm:max-w-lg flex-1">
                     <SearchBar
                         placeholder="Search Entities"
                         access_token={access_token}
@@ -361,25 +357,61 @@ const ChatPage = () => {
                 <button
                     type="button"
                     onClick={() => setSidebarOpen(true)}
-                    className="ml-2 inline-flex items-center rounded-lg px-3 py-2 text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+                    className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
                     aria-label="Open chat sidebar"
                 >
-                    Sources
+                    <span className="hidden sm:inline">Sources</span>
+                    <span className="sm:hidden">•••</span>
                 </button>
             </div>
-        </header>
+        </div>
+    );
+
+    const Composer = () => (
+        <div className="border-t border-white/10 bg-[#0f0f0f]/95 backdrop-blur px-2 py-2 sm:px-4 sm:py-3 md:px-6">
+            {entitySelected ? (
+                <div className="mx-auto w-full max-w-4xl">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                        className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a] px-3 py-2 ring-1 ring-inset ring-white/10"
+                    >
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder="Ask a question…"
+                            className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!input.trim()}
+                            className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Send
+                        </button>
+                    </form>
+                    <p className="mt-2 text-xs text-gray-400 text-center">
+                        LeaseLink can make mistakes — be sure to check original sources.
+                    </p>
+                </div>
+            ) : (
+                <p className="mx-auto max-w-4xl text-center text-sm text-white/60">
+                    Select a property, unit, or tenant to start chatting.
+                </p>
+            )}
+        </div>
     );
 
     const ChatBubble = ({ role, text, loading }) => (
         <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-                className={`max-w-3xl whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
+                className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
                     }`}
             >
                 {loading ? (
                     <div className="text-white"><Spinner /></div>
                 ) : (
-                    <p>{text}</p>
+                    <p className="break-words">{text}</p>
                 )}
             </div>
         </div>
@@ -391,68 +423,35 @@ const ChatPage = () => {
 
     return (
         <div className="flex h-dvh bg-[#1b1b1b] text-white">
-            {popUp && (
-                <PopUp
-                    title={`${entity_name} Not Updated`}
-                    message={`${entity_name} may not have accurate context. Documents are still uploading.`}
-                    onClose={() => setPopUp(false)}
-                />
-            )}
-
-            {/* Left: main area */}
+            {/* LEFT: main chat area with fixed header/composer */}
             <div className="flex min-w-0 flex-1 flex-col">
-                <Header />
+                {/* Fixed Header */}
+                <div className="flex-none">
+                    <Header />
+                </div>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 md:px-6">
-                    <div className="mx-auto grid max-w-4xl gap-3">
+                {/* Scrollable Messages Area */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 sm:px-4 md:px-6 py-3 sm:py-4">
+                    <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
                         {messages.map((m, i) => (
-                            <ChatBubble key={i} role={m.role} text={m.message || m.text} loading={m.loading} />
+                            <ChatBubble
+                                key={i}
+                                role={m.role}
+                                text={m.message || m.text}
+                                loading={m.loading}
+                            />
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
                 </div>
 
-                {/* Composer */}
-                <div className="border-t border-white/10 bg-[#0f0f0f] px-3 py-3 sm:px-4 md:px-6">
-                    {entitySelected ? (
-                        <div className="mx-auto w-full max-w-4xl mt-2">
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    handleSend();
-                                }}
-                                className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a] px-3 py-2 ring-1 ring-inset ring-white/10"
-                            >
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask a question…"
-                                    className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
-                                />
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60"
-                                >
-                                    Send
-                                </button>
-                            </form>
-
-                            {/* Disclaimer under the input */}
-                            <p className="mt-2 text-xs text-gray-400 text-center">
-                                LeaseLink can make mistakes — be sure to check original sources.
-                            </p>
-                        </div>
-                    ) : (
-                        <p className="mx-auto max-w-4xl text-center text-sm text-white/60">
-                            Select a property, unit, or tenant to start chatting.
-                        </p>
-                    )}
+                {/* Fixed Composer */}
+                <div className="flex-none">
+                    <Composer />
                 </div>
             </div>
 
-            {/* Right: sidebar (desktop) */}
+            {/* RIGHT: sidebar (desktop) */}
             <div className="hidden w-[370px] flex-none border-l border-white/10 lg:flex">
                 <ChatSidebar
                     previousChats={previousChats}
@@ -474,21 +473,17 @@ const ChatPage = () => {
             {/* Sidebar Drawer (mobile) */}
             {sidebarOpen && (
                 <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-                    <div
-                        className="absolute inset-0 bg-black/60"
-                        onClick={() => setSidebarOpen(false)}
-                        aria-hidden
-                    />
-                    <div className="absolute inset-y-0 right-0 flex w-[86%] max-w-xs flex-col bg-[#111215] ring-1 ring-white/10">
-                        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                            <h2 className="text-sm font-semibold">History</h2>
+                    <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} aria-hidden />
+                    <div className="absolute inset-y-0 right-0 flex w-[90%] max-w-sm flex-col bg-[#111215] ring-1 ring-white/10">
+                        <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
+                            <h2 className="text-sm font-semibold">History & Sources</h2>
                             <button
                                 type="button"
                                 onClick={() => setSidebarOpen(false)}
                                 className="rounded-lg px-2 py-1 text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20"
                                 aria-label="Close sidebar"
                             >
-                                Close
+                                ✕
                             </button>
                         </div>
                         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -505,6 +500,7 @@ const ChatPage = () => {
                                 onSourceClick={(source) => {
                                     setSelectedSource(source);
                                     setShowModal(true);
+                                    setSidebarOpen(false); // Close sidebar when viewing source
                                 }}
                                 termsRent={terms}
                             />
@@ -515,29 +511,35 @@ const ChatPage = () => {
 
             {/* Source modal */}
             {showModal && selectedSource && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-                    <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
-                        <button
-                            className="absolute right-3 top-2 rounded-md px-2 text-2xl leading-none text-gray-500 hover:text-black"
-                            onClick={() => setShowModal(false)}
-                            aria-label="Close modal"
-                        >
-                            &times;
-                        </button>
-                        <div className="max-h-[80vh] overflow-y-auto p-6">
-                            <h2 className="mb-2 text-lg font-semibold">Document Excerpt</h2>
-                            <p className="mb-4 whitespace-pre-wrap text-gray-800">{selectedSource.highlight_text}</p>
-                            <iframe
-                                src={selectedSource.viewer_url}
-                                title="Document Viewer"
-                                className="h-[480px] w-full rounded-md border"
-                            />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4">
+                    <div className="relative w-full max-w-4xl max-h-[95vh] overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 flex items-center justify-between">
+                            <h2 className="text-base sm:text-lg font-semibold truncate pr-4">Document Excerpt</h2>
+                            <button
+                                className="flex-none rounded-md p-1 text-2xl leading-none text-gray-500 hover:text-black hover:bg-gray-100"
+                                onClick={() => setShowModal(false)}
+                                aria-label="Close modal"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto px-4 py-3 sm:px-6 sm:py-4" style={{ maxHeight: 'calc(95vh - 80px)' }}>
+                            <p className="mb-4 whitespace-pre-wrap text-sm sm:text-base text-gray-800 break-words">
+                                {selectedSource.highlight_text}
+                            </p>
+                            <div className="w-full overflow-hidden rounded-md border">
+                                <iframe
+                                    src={selectedSource.viewer_url}
+                                    title="Document Viewer"
+                                    className="w-full h-[50vh] sm:h-[60vh]"
+                                    loading="lazy"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
         </div>
     );
-};
-
+}
 export default ChatPage;

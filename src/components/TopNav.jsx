@@ -1,3 +1,4 @@
+
 import { HiMenu, HiPlus, HiOfficeBuilding } from 'react-icons/hi';
 import { FaUserPlus } from 'react-icons/fa';
 import { FiUpload } from 'react-icons/fi';
@@ -25,16 +26,30 @@ const TopNav = ({ toggleSidebar }) => {
   const iconSize = 'w-8 h-8';
   const activeClass = 'text-blue-400';
 
+  // Debug function to test if toggleSidebar is being called
+  const handleMenuClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Menu button clicked!', typeof toggleSidebar);
+    
+    if (typeof toggleSidebar === 'function') {
+      toggleSidebar();
+    } else {
+      console.error('toggleSidebar is not a function:', toggleSidebar);
+    }
+  };
+
   return (
     <div className="bg-black text-white flex items-center p-4 justify-between sticky top-0 z-40 shrink-0">
       {/* Sidebar toggle */}
       <button
-        onClick={toggleSidebar}
+        onClick={handleMenuClick}
+        type="button"
         aria-label="Toggle sidebar"
-        className={`${linkBase} p-1`}
+        className={`${linkBase} p-2 hover:bg-gray-800 transition-colors`}
         title="Toggle sidebar"
       >
-        <HiMenu className="text-white w-10 h-10" />
+        <HiMenu className="text-white w-8 h-8" />
       </button>
 
       <div className="flex items-center space-x-4">
@@ -44,7 +59,7 @@ const TopNav = ({ toggleSidebar }) => {
           aria-label="Upload documents"
           title="Upload documents"
           className={({ isActive }) =>
-            `${linkBase} ${isActive ? activeClass : 'text-white'}`
+            `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
           }
         >
           <FiUpload className={iconSize} />
@@ -57,7 +72,7 @@ const TopNav = ({ toggleSidebar }) => {
             aria-label="Create person"
             title="Create person"
             className={({ isActive }) =>
-              `${linkBase} ${isActive ? activeClass : 'text-white'}`
+              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
             }
           >
             <FaUserPlus className={iconSize} />
@@ -71,7 +86,7 @@ const TopNav = ({ toggleSidebar }) => {
             aria-label="Create property/unit"
             title="Create property/unit"
             className={({ isActive }) =>
-              `${linkBase} ${isActive ? activeClass : 'text-white'}`
+              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
             }
           >
             <span className="relative inline-flex items-center">
