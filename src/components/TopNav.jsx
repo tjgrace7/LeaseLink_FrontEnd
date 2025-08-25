@@ -1,11 +1,12 @@
 
 import { HiMenu, HiPlus, HiOfficeBuilding } from 'react-icons/hi';
 import { FaUserPlus } from 'react-icons/fa';
-import { FiUpload } from 'react-icons/fi';
+import { FiUpload, FiMessageCircle } from 'react-icons/fi';
 import { NavLink, useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import UserDropdown from './UserDropdown';
 import { useAuth } from './AuthProvider';
+import logo from '../assets/Lease_Link_Logo.png'
 
 const TopNav = ({ toggleSidebar }) => {
   const { roleData } = useAuth();
@@ -41,18 +42,29 @@ const TopNav = ({ toggleSidebar }) => {
 
   return (
     <div className="bg-black text-white flex items-center p-4 justify-between sticky top-0 z-40 shrink-0">
-      {/* Sidebar toggle */}
+      {/* Home Link */}
       <button
-        onClick={handleMenuClick}
+        onClick={() => navigate('dashboard')}
         type="button"
         aria-label="Toggle sidebar"
         className={`${linkBase} p-2 hover:bg-gray-800 transition-colors`}
         title="Toggle sidebar"
       >
-        <HiMenu className="text-white w-8 h-8" />
+        <img src={logo} alt="Lease Link Logo" className="h-12 w-auto" />
       </button>
 
       <div className="flex items-center space-x-4">
+        {/* Chat Page */}
+                <NavLink
+          to="/chat"
+          aria-label="Chat Page"
+          title="Chat Page"
+          className={({ isActive }) =>
+            `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+          }
+        >
+          <FiMessageCircle className={iconSize} />
+        </NavLink>
         {/* Upload Docs */}
         <NavLink
           to="/upload_docs"
