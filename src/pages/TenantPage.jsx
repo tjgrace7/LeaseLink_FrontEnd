@@ -1,6 +1,6 @@
 // src/pages/TenantPage.jsx
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthProvider";
@@ -21,9 +21,9 @@ import { getTableIdList } from "../utilities/supabaseCalls";
 const InfoRow = ({ label, value }) => {
   if (value == null || value === "" || (Array.isArray(value) && value.length === 0)) return null;
   return (
-    <div className="mb-3">
+    <div className="mb-2 sm:mb-3">
       <div className="flex flex-col sm:flex-row sm:items-center">
-        <h3 className="text-base sm:text-lg font-medium sm:mr-2">{label}:</h3>
+        <h3 className="text-sm sm:text-base font-medium sm:mr-2">{label}:</h3>
         <p className="text-sm sm:text-base break-words">{String(value)}</p>
       </div>
     </div>
@@ -37,7 +37,7 @@ const TermsList = ({ title, items }) => {
   return (
     <DisplayBox className="w-full">
       <div>
-        <h2 className="text-xl sm:text-2xl underline mb-3">{title}</h2>
+        <h2 className="text-lg sm:text-xl underline mb-3">{title}</h2>
         <div>
           {items.map((item, idx) => {
             const entries = Object.entries(item || {});
@@ -108,8 +108,11 @@ const TenantPage = () => {
           .select("*")
           .eq("tenant_id", tenant_id);
 
-        const [{ data: tenantData, error: tenantErr }, { data: unitLinks, error: unitErr }, { data: contactLinks, error: linkErr }] =
-          await Promise.all([tenantPromise, unitsPromise, contactLinkPromise]);
+        const [
+          { data: tenantData, error: tenantErr },
+          { data: unitLinks, error: unitErr },
+          { data: contactLinks, error: linkErr },
+        ] = await Promise.all([tenantPromise, unitsPromise, contactLinkPromise]);
 
         if (tenantErr) throw tenantErr;
         if (unitErr) throw unitErr;
@@ -185,7 +188,7 @@ const TenantPage = () => {
         const leaseIds = leaseDocs.map((l) => l.lease_id).filter(Boolean);
         if (leaseIds.length === 0) return;
         const response = await getTableIdList("Upload_Job_Status", "lease_id", leaseIds);
-        console.log(response)
+
         const latestStatusByLease = (response || []).reduce((acc, status) => {
           const leaseId = status?.lease_id;
           if (!leaseId) return acc;
@@ -193,7 +196,9 @@ const TenantPage = () => {
           const prev = acc[leaseId];
           const isNewer =
             !prev ||
-            (status?.created_at && prev?.created_at && new Date(status.created_at) > new Date(prev.created_at));
+            (status?.created_at &&
+              prev?.created_at &&
+              new Date(status.created_at) > new Date(prev.created_at));
           if (isNewer) acc[leaseId] = status;
           return acc;
         }, {});
@@ -224,10 +229,10 @@ const TenantPage = () => {
 
   const hasAnyTerms =
     (leaseSummary?.length ?? 0) +
-    (financial?.length ?? 0) +
-    (responsibility?.length ?? 0) +
-    (keyDates?.length ?? 0) +
-    (rights?.length ?? 0) >
+      (financial?.length ?? 0) +
+      (responsibility?.length ?? 0) +
+      (keyDates?.length ?? 0) +
+      (rights?.length ?? 0) >
     0;
 
   // ---------- Render ----------
@@ -241,12 +246,12 @@ const TenantPage = () => {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-7xl mx-auto">
+    <div className="px-3 sm:px-5 lg:px-10 py-5 lg:py-10 max-w-7xl mx-auto">
       {/* Header / Actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600"
+          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-[0.99] transition"
           aria-label="Go back"
         >
           ← Back
@@ -254,67 +259,69 @@ const TenantPage = () => {
 
         <button
           onClick={() => navigate(`/terms/${tenant_id}`)}
-          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
+          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline active:scale-[0.99] transition"
         >
           View All Terms
         </button>
       </div>
 
       {/* Top: Profile & Messages (stack on mobile, side-by-side on lg) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
         {roleData && (
           <div className="flex justify-center">
-          <Profile
-            entity={tenant}
-            session={session}
-            getFilePath={(t) => t?.photo_file_path}
-            getLabel={(t) => t?.Tenant_Name}
-            getRelatedEntity={async () => {
-              if (!unitsIds || unitsIds.length === 0) return [];
-              const { data, error } = await supabase.from("Units").select("*").in("unit_id", unitsIds);
-              if (error) {
-                console.error("Error Fetching Units", error);
-                return [];
-              }
-              return data || [];
-            }}
-            getRelatedFilePath={(unit) => unit?.photo_file_path}
-            getRelatedLabel={(unit) => unit?.address}
-            RelatedTitle="Unit(s)"
-            getRelatedEntityId={(unit) => unit?.unit_id}
-            Title="Tenant"
-            getEntityId={(t) => t?.tenant_id}
-            edit_Entity={roleData?.Edit_Tenants}
-            className="w-full max-w-2xl"
-          />
+            <Profile
+              entity={tenant}
+              session={session}
+              getFilePath={(t) => t?.photo_file_path}
+              getLabel={(t) => t?.Tenant_Name}
+              getRelatedEntity={async () => {
+                if (!unitsIds || unitsIds.length === 0) return [];
+                const { data, error } = await supabase.from("Units").select("*").in("unit_id", unitsIds);
+                if (error) {
+                  console.error("Error Fetching Units", error);
+                  return [];
+                }
+                return data || [];
+              }}
+              getRelatedFilePath={(unit) => unit?.photo_file_path}
+              getRelatedLabel={(unit) => unit?.address}
+              RelatedTitle="Unit(s)"
+              getRelatedEntityId={(unit) => unit?.unit_id}
+              Title="Tenant"
+              getEntityId={(t) => t?.tenant_id}
+              edit_Entity={roleData?.Edit_Tenants}
+              className="w-full max-w-2xl"
+            />
           </div>
         )}
 
-        <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
-
+        <div className="min-h-[200px]">
+          <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
+        </div>
       </div>
 
       {/* Middle: Lease Summary + Contacts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
         {leaseSummary?.length ? (
           <TermsList title="Lease Summary" items={leaseSummary} />
         ) : (
           <DisplayBox className="w-full">
-            <h2 className="text-xl sm:text-2xl underline mb-3">Lease Summary</h2>
+            <h2 className="text-lg sm:text-xl underline mb-3">Lease Summary</h2>
             <EmptyState title="No summary found." hint="Upload or re-process a lease to populate this section." />
           </DisplayBox>
         )}
 
         <DisplayBox className="w-full">
           <div>
-            <h2 className="text-xl sm:text-2xl underline mb-3">Contact Info</h2>
+            <h2 className="text-lg sm:text-xl underline mb-3">Contact Info</h2>
             {contacts?.length ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl bg-gray-800/40">
                 {contacts.map((contact) => (
                   <button
                     key={contact?.contact_id}
-                    className="text-left text-white rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    className="text-left text-white p-3 sm:p-4 hover:bg-gray-700/60 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
                     onClick={() => navigate(`/contact/${contact?.contact_id}`)}
+                    aria-label={`Open contact ${contact?.Contact_Name || ""}`}
                   >
                     <InfoRow label="Name" value={contact?.Contact_Name} />
                     <InfoRow label="Type" value={contact?.Contact_Type} />
@@ -332,21 +339,21 @@ const TenantPage = () => {
       </div>
 
       {/* Bottom: Financial + Responsibility/Dates/Rights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
         {financial?.length ? (
           <TermsList title="Financial Snapshot" items={financial} />
         ) : (
           <DisplayBox className="w-full">
-            <h2 className="text-xl sm:text-2xl underline mb-3">Financial Snapshot</h2>
+            <h2 className="text-lg sm:text-xl underline mb-3">Financial Snapshot</h2>
             <EmptyState title="No financial terms found." />
           </DisplayBox>
         )}
 
         <DisplayBox className="w-full">
           <div>
-            <h2 className="text-xl sm:text-2xl underline mb-3">Responsibility</h2>
+            <h2 className="text-lg sm:text-xl underline mb-3">Responsibility</h2>
             {responsibility?.length ? (
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 {responsibility.map((item, idx) => {
                   const entries = Object.entries(item || {});
                   if (entries.length === 0) return null;
@@ -358,9 +365,9 @@ const TenantPage = () => {
               <EmptyState title="No responsibilities found." />
             )}
 
-            <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Key Dates</h2>
+            <h2 className="text-lg sm:text-xl underline mt-3 sm:mt-4 mb-3">Key Dates</h2>
             {keyDates?.length ? (
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 {keyDates.map((item, idx) => {
                   const entries = Object.entries(item || {});
                   if (entries.length === 0) return null;
@@ -372,7 +379,7 @@ const TenantPage = () => {
               <EmptyState title="No key dates found." />
             )}
 
-            <h2 className="text-xl sm:text-2xl underline mt-4 mb-3">Critical Rights and Options</h2>
+            <h2 className="text-lg sm:text-xl underline mt-3 sm:mt-4 mb-3">Critical Rights and Options</h2>
             {rights?.length ? (
               <div>
                 {rights.map((item, idx) => {
@@ -387,17 +394,16 @@ const TenantPage = () => {
             )}
           </div>
         </DisplayBox>
-
       </div>
 
       {/* Lease Documents */}
       <div className="mb-6">
         <DisplayBox className="w-full">
           <div>
-            <h2 className="text-xl sm:text-2xl underline mb-3">Lease Documents</h2>
+            <h2 className="text-lg sm:text-xl underline mb-3">Lease Documents</h2>
 
             {leaseDocs?.length ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 sm:gap-3">
                 {leaseDocs.map((lease) => {
                   const title = (lease?.lease_file_path || "").split("/").pop();
                   const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
@@ -405,19 +411,20 @@ const TenantPage = () => {
                   return (
                     <div
                       key={lease?.lease_id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 sm:p-4 rounded-xl bg-gray-800/60"
                     >
                       <button
-                        className="text-left underline hover:text-gray-200"
+                        className="text-left underline hover:text-gray-200 break-words"
                         onClick={async () => {
                           const signedUrl = await getSignedUrl(lease?.lease_file_path);
                           if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
                         }}
+                        aria-label={`Open ${title || "lease document"}`}
                       >
                         {title || "Lease Document"}
                       </button>
 
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
                         <span className="opacity-75">Status:</span>
                         <span className="font-medium">
                           {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
