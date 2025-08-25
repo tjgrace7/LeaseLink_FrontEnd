@@ -13,7 +13,7 @@ const Layout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Pass noop only if TopNav expects a toggleSidebar prop */}
         <TopNav toggleSidebar={noop} />
-        <main className="flex-1 overflow-y-auto bg-[#222222]">
+        <main className="flex-1 overflow-y-auto bg-[#222222] mt-12 md:mt-0">
           <Outlet />
         </main>
       </div>
