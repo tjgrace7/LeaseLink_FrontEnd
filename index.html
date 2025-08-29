@@ -2,50 +2,125 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- Responsive + safe for mobile zoom -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leaselink</title>
 
+  <title>LeaseLink — AI Lease Extraction & Search</title>
+
+  <!-- Canonical + robots -->
+  <link rel="canonical" href="https://www.leaselink.ai/">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+
+  <!-- Basic SEO -->
+  <meta name="description" content="LeaseLink helps commercial property managers extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
+  <meta name="author" content="LeaseLink">
+  <meta name="theme-color" content="#111215">
+  <meta name="color-scheme" content="dark light">
+
+  <!-- Icons / Manifest (add the sizes you actually ship) -->
   <link rel="icon" type="image/png" href="/LeaseLink.png" />
+  <!-- <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"> -->
+  <!-- <link rel="manifest" href="/site.webmanifest"> -->
 
-  <!-- 1) Speed up Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- Resource Hints: DNS + Preconnect (keep this list short) -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://your-supabase-project.supabase.co">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+  <link rel="preconnect" href="https://your-supabase-project.supabase.co" crossorigin>
 
-  <!-- Load fonts without blocking first paint -->
+  <!-- Google Fonts: non-blocking load + swap -->
   <link rel="preload" as="style"
         href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap"
-        media="print"
-        onload="this.media='all'">
+        media="print" onload="this.media='all'">
   <noscript>
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
   </noscript>
 
-  <!-- 2) Make your main CSS non-blocking -->
-  <!-- Replace the href below with your actual built CSS name: e.g. /assets/index-CFWAbpIJ.css -->
-  <link rel="preload" href="/assets/index-CFWAbpIJ.css" as="style">
-  <link rel="stylesheet" href="/assets/index-CFWAbpIJ.css" media="print" onload="this.media='all'">
+  <!-- If you self-host any WOFF2 fonts, preload them (otherwise remove this) -->
+  <!--
   <link rel="preload" href="/assets/orbitron-latin.woff2" as="font" type="font/woff2" crossorigin>
+  -->
 
-  <noscript><link rel="stylesheet" href="/assets/index-CFWAbpIJ.css"></noscript>
+  <!-- App CSS: non-blocking (update the filename to your current build hash) -->
+  <link rel="preload" href="/assets/index-BQwak9Xg.css" as="style">
+  <link rel="stylesheet" href="/assets/index-BQwak9Xg.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="/assets/index-BQwak9Xg.css"></noscript>
 
-  <!-- 3) (Optional) Preload your LCP/hero image if you have one -->
-  <!-- <link rel="preload" as="image" href="/hero.webp" fetchpriority="high"> -->
+  <!-- (Optional) Inline *minimal* critical CSS for above-the-fold shell
+  <style>
+    html,body{margin:0}
+    body{background:#1b1b1b;color:#fff}
+    .sticky{position:sticky;top:0}
+  </style>
+  -->
 
-  <!-- Google Analytics (kept async) -->
+  <!-- (Optional) Preload your LCP/hero image -->
+  <!--
+  <link rel="preload" as="image" href="/hero.webp" fetchpriority="high" imagesrcset="/hero@2x.webp 2x">
+  -->
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:title" content="LeaseLink — AI Lease Extraction & Search">
+  <meta property="og:description" content="Extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
+  <meta property="og:url" content="https://www.leaselink.ai/">
+  <meta property="og:image" content="https://www.leaselink.ai/LeaseLink.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="LeaseLink">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LeaseLink — AI Lease Extraction & Search">
+  <meta name="twitter:description" content="Extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
+  <meta name="twitter:image" content="https://www.leaselink.ai/LeaseLink.png">
+
+  <!-- Structured Data: Organization + WebSite with SearchAction -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [{
+      "@type": "Organization",
+      "name": "LeaseLink",
+      "url": "https://www.leaselink.ai/",
+      "logo": "https://www.leaselink.ai/LeaseLink.png"
+    },{
+      "@type": "WebSite",
+      "url": "https://www.leaselink.ai/",
+      "name": "LeaseLink",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://www.leaselink.ai/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }]
+  }
+  </script>
+
+  <!-- Google Analytics (async, after preconnect) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X3H684JXMV"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){ dataLayer.push(arguments); }
+    function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-X3H684JXMV');
+    gtag('config', 'G-X3H684JXMV', { anonymize_ip: true });
   </script>
 </head>
 <body>
   <div id="root"></div>
-  <!-- type="module" already defers execution until after HTML parse -->
+
+  <!-- In dev, Vite serves /src/main.jsx; in prod, Vite injects hashed assets automatically -->
   <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Noscript fallback -->
+  <noscript>
+    <p style="color:#fff; background:#111; padding:1rem; text-align:center;">
+      LeaseLink requires JavaScript to run properly. Please enable JavaScript in your browser.
+    </p>
+  </noscript>
 </body>
 </html>
