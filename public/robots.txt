@@ -1,0 +1,32 @@
+# robots.txt for LeaseLink App
+
+User-agent: *
+# Disallow private or app-only routes
+Disallow: /chat
+Disallow: /unit
+Disallow: /dashboard
+Disallow: /property
+Disallow: /tenant
+Disallow: /create_building
+Disallow: /edit_building
+Disallow: /create_person
+Disallow: /edit_person
+Disallow: /owner
+Disallow: /contact
+Disallow: /upload_docs
+Disallow: /profile
+Disallow: /settings
+Disallow: /roles
+Disallow: /roles/edit
+Disallow: /terms
+Disallow: /server
+Disallow: /admindashboard
+Disallow: /login
+Disallow: /signup
+
+# Allow public pages (marketing site, docs, etc.)
+Allow: /home
+Allow: /request
+
+# Sitemap 
+Sitemap: https://www.leaselink.ai/sitemap.xml
