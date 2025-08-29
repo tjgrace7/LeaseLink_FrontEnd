@@ -59,3 +59,16 @@
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
+
+@font-face {
+  font-family: "OrbitronCustom";
+  src: url("/assets/orbitron-latin.woff2") format("woff2");
+  font-weight: 400 700;   /* adjust to the weights you downloaded */
+  font-style: normal;
+  font-display: swap;     /* or optional for faster LCP */
+}
+
+/* Apply it globally */
+body {
+  font-family: "OrbitronCustom", ui-sans-serif, system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}

@@ -1,26 +1,51 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/LeaseLink.png" />
-  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap"
-    rel="stylesheet" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Leaselink</title>
+
+  <link rel="icon" type="image/png" href="/LeaseLink.png" />
+
+  <!-- 1) Speed up Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Load fonts without blocking first paint -->
+  <link rel="preload" as="style"
+        href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap"
+        media="print"
+        onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
+  </noscript>
+
+  <!-- 2) Make your main CSS non-blocking -->
+  <!-- Replace the href below with your actual built CSS name: e.g. /assets/index-CFWAbpIJ.css -->
+  <link rel="preload" href="/assets/index-CFWAbpIJ.css" as="style">
+  <link rel="stylesheet" href="/assets/index-CFWAbpIJ.css" media="print" onload="this.media='all'">
+  <link rel="preload" href="/assets/orbitron-latin.woff2" as="font" type="font/woff2" crossorigin>
+
+  <noscript><link rel="stylesheet" href="/assets/index-CFWAbpIJ.css"></noscript>
+
+  <!-- 3) (Optional) Preload your LCP/hero image if you have one -->
+  <!-- <link rel="preload" as="image" href="/hero.webp" fetchpriority="high"> -->
+
+  <!-- Google Analytics (kept async) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X3H684JXMV"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
+    function gtag(){ dataLayer.push(arguments); }
     gtag('js', new Date());
-
     gtag('config', 'G-X3H684JXMV');
   </script>
 </head>
-
 <body>
   <div id="root"></div>
+  <!-- type="module" already defers execution until after HTML parse -->
   <script type="module" src="/src/main.jsx"></script>
 </body>
-
 </html>

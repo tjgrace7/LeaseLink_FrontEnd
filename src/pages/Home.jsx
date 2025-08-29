@@ -15,8 +15,58 @@ import {
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/Lease_Link_Logo.png";
 
-// Dark-mode first design (Tailwind). Uses framer-motion & lucide-react only.
-// Drop this as src/pages/Home.jsx and route to it.
+// 👇 CHANGE THIS TO YOUR LIVE OR PREVIEW BASE URL (no trailing slash)
+const SITE_URL = "https://leaselink.ai";
+const OG_IMAGE = `${SITE_URL}/og/lease-link-og.jpg`; // provide a 1200x630 image
+
+// Lightweight SEO utility (no external deps, React 19 friendly)
+function ensureTag(selector, create) {
+  let el = document.querySelector(selector);
+  if (!el) { el = create(); document.head.appendChild(el); }
+  return el;
+}
+function setMetaAttr(attr, key, value) {
+  const sel = `meta[${attr}="${key}"]`;
+  const el = ensureTag(sel, () => { const m = document.createElement('meta'); m.setAttribute(attr, key); return m; });
+  el.setAttribute('content', value);
+}
+function Seo({ title, description, canonical, robots, og, twitter, jsonLd }) {
+  if (typeof document !== 'undefined') {
+    document.title = title || document.title;
+
+    if (canonical) {
+      const link = ensureTag('link[rel="canonical"]', () => { const l = document.createElement('link'); l.setAttribute('rel','canonical'); return l; });
+      link.setAttribute('href', canonical);
+    }
+    if (description) setMetaAttr('name', 'description', description);
+    setMetaAttr('name', 'robots', robots || 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+
+    // Open Graph
+    if (og) {
+      if (og.title) setMetaAttr('property','og:title', og.title);
+      if (og.description) setMetaAttr('property','og:description', og.description);
+      if (og.type) setMetaAttr('property','og:type', og.type);
+      if (og.url) setMetaAttr('property','og:url', og.url);
+      if (og.image) setMetaAttr('property','og:image', og.image);
+      if (og.site_name) setMetaAttr('property','og:site_name', og.site_name);
+      if (og.imageWidth) setMetaAttr('property','og:image:width', String(og.imageWidth));
+      if (og.imageHeight) setMetaAttr('property','og:image:height', String(og.imageHeight));
+    }
+    // Twitter
+    if (twitter) {
+      if (twitter.card) setMetaAttr('name','twitter:card', twitter.card);
+      if (twitter.title) setMetaAttr('name','twitter:title', twitter.title);
+      if (twitter.description) setMetaAttr('name','twitter:description', twitter.description);
+      if (twitter.image) setMetaAttr('name','twitter:image', twitter.image);
+    }
+    // JSON-LD (replace/insert by id)
+    const id = 'ld-home';
+    let script = document.getElementById(id);
+    if (!script) { script = document.createElement('script'); script.type = 'application/ld+json'; script.id = id; document.head.appendChild(script); }
+    if (jsonLd) script.textContent = JSON.stringify(jsonLd);
+  }
+  return null;
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -28,15 +78,117 @@ export default function HomePage() {
     navigate(path);
   };
 
+  // JSON‑LD (Organization + WebSite + SoftwareApplication)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "Lease Link",
+        "url": SITE_URL,
+        "logo": `${SITE_URL}/logo.png`,
+        "sameAs": [
+          // add relevant profiles when available, e.g. LinkedIn
+        ],
+        "contactPoint": [{
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "email": "hello@leaselink.ai"
+        }]
+      },
+      {
+        "@type": "WebSite",
+        "url": SITE_URL,
+        "name": "Lease Link — AI Lease Answers",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": `${SITE_URL}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Lease Link",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": SITE_URL,
+        "description": "Instant, cited answers from your lease universe. AI-powered lease analysis for commercial property managers.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      {/* SEO / Sharing (no external deps) */}
+<Seo
+  title="Lease Link — AI Lease Answers for Commercial Property Managers"
+  description="Lease Link provides instant, cited answers from your lease universe. Upload leases, ask questions, and get page-level citations. Built by commercial property managers for commercial property managers."
+  canonical={`${SITE_URL}/`}
+  robots="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+  og={{
+    title: 'Lease Link — AI Lease Answers for Commercial Property Managers',
+    description: 'Instant, cited answers from your lease universe. Built by commercial property managers for commercial property managers.',
+    type: 'website',
+    url: `${SITE_URL}/`,
+    image: OG_IMAGE,
+    imageWidth: 1200,
+    imageHeight: 630,
+    site_name: 'Lease Link'
+  }}
+  twitter={{
+    card: 'summary_large_image',
+    title: 'Lease Link — AI Lease Answers for Commercial Property Managers',
+    description: 'Instant, cited answers from your lease universe.',
+    image: OG_IMAGE
+  }}
+  jsonLd={{
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: 'Lease Link',
+        url: SITE_URL,
+        logo: `${SITE_URL}/logo.png`,
+        contactPoint: [{ '@type': 'ContactPoint', contactType: 'sales', email: 'hello@leaselink.ai' }]
+      },
+      {
+        '@type': 'WebSite',
+        url: SITE_URL,
+        name: 'Lease Link — AI Lease Answers',
+        potentialAction: { '@type': 'SearchAction', target: `${SITE_URL}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' }
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'Lease Link',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        url: SITE_URL,
+        description: 'Instant, cited answers from your lease universe. AI-powered lease analysis for commercial property managers.',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+      }
+    ]
+  }}
+/>
+
+      {/* Skip to content for a11y */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2">
+        Skip to main content
+      </a>
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-neutral-950/70 backdrop-blur border-b border-neutral-800">
+      <header className="sticky top-0 z-40 bg-neutral-950/70 backdrop-blur border-b border-neutral-800" role="banner">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src={logo}
-              alt="Lease Link"
+              alt="Lease Link logo"
+              width={48}
+              height={48}
               className="h-10 w-10 md:h-12 md:w-12 rounded-lg object-contain"
             />
             <span className="hidden sm:block truncate text-sm text-neutral-300">
@@ -45,7 +197,7 @@ export default function HomePage() {
           </div>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm text-neutral-300">
+          <nav className="hidden md:flex items-center gap-6 text-sm text-neutral-300" aria-label="Primary">
             <a href="#story" className="hover:text-white">Our Story</a>
             <a href="#how" className="hover:text-white">How it Works</a>
             <a href="#proof" className="hover:text-white">Why Lease Link</a>
@@ -82,7 +234,7 @@ export default function HomePage() {
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {open ? <X className="h-6 w-6" aria-hidden /> : <Menu className="h-6 w-6" aria-hidden />}
           </button>
         </div>
 
@@ -97,7 +249,7 @@ export default function HomePage() {
               className="md:hidden border-t border-neutral-800 bg-neutral-950/95 backdrop-blur"
             >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-                <nav className="grid gap-2 text-sm">
+                <nav className="grid gap-2 text-sm" aria-label="Mobile">
                   <a href="#story" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-neutral-900">Our Story</a>
                   <a href="#how" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-neutral-900">How it Works</a>
                   <a href="#proof" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-neutral-900">Why Lease Link</a>
@@ -125,7 +277,7 @@ export default function HomePage() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden" id="story">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-24 grid lg:grid-cols-2 gap-8 lg:gap-10 items-center">
           <div>
             <motion.h1
@@ -144,13 +296,14 @@ export default function HomePage() {
               <button
                 className="px-6 py-3 border border-neutral-800 rounded-xl hover:bg-neutral-900 w-full sm:w-auto"
                 onClick={() => go("/request")}
+                aria-label="Talk to a Specialist"
               >
                 Talk to a Specialist
               </button>
             </div>
             <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-4 text-sm text-neutral-400">
-              <div className="flex items-center gap-2"><Shield className="h-4 w-4" /> SOC 2-ready practices</div>
-              <div className="flex items-center gap-2"><Zap className="h-4 w-4" /> Fast, cited answers</div>
+              <div className="flex items-center gap-2"><Shield className="h-4 w-4" aria-hidden /> SOC 2-ready practices</div>
+              <div className="flex items-center gap-2"><Zap className="h-4 w-4" aria-hidden /> Fast, cited answers</div>
             </div>
           </div>
 
@@ -162,12 +315,12 @@ export default function HomePage() {
             className="lg:justify-self-end w-full max-w-xl"
           >
             <div className="rounded-3xl shadow-xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
-              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4" role="list" aria-label="Product steps">
                 {["Upload", "Ask", "Citations"].map((label, idx) => (
-                  <div key={idx} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4 flex flex-col items-center gap-2">
-                    {idx === 0 && <FileUp className="h-6 w-6 text-neutral-200" />}
-                    {idx === 1 && <MessageSquare className="h-6 w-6 text-neutral-200" />}
-                    {idx === 2 && <BookOpenCheck className="h-6 w-6 text-neutral-200" />}
+                  <div key={idx} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4 flex flex-col items-center gap-2" role="listitem">
+                    {idx === 0 && <FileUp className="h-6 w-6 text-neutral-200" aria-hidden />}
+                    {idx === 1 && <MessageSquare className="h-6 w-6 text-neutral-200" aria-hidden />}
+                    {idx === 2 && <BookOpenCheck className="h-6 w-6 text-neutral-200" aria-hidden />}
                     <span className="text-xs sm:text-sm font-medium text-neutral-200">{label}</span>
                   </div>
                 ))}
@@ -198,7 +351,7 @@ export default function HomePage() {
             <div className="rounded-3xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl p-3 bg-neutral-800/70">
-                  <FileUp className="h-6 w-6 text-neutral-200" />
+                  <FileUp className="h-6 w-6 text-neutral-200" aria-hidden />
                 </div>
                 <div>
                   <h3 className="font-medium text-lg text-white">Upload Your Leases</h3>
@@ -213,7 +366,7 @@ export default function HomePage() {
             <div className="rounded-3xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl p-3 bg-neutral-800/70">
-                  <MessageSquare className="h-6 w-6 text-neutral-200" />
+                  <MessageSquare className="h-6 w-6 text-neutral-200" aria-hidden />
                 </div>
                 <div>
                   <h3 className="font-medium text-lg text-white">Ask Any Question</h3>
@@ -228,7 +381,7 @@ export default function HomePage() {
             <div className="rounded-3xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl p-3 bg-neutral-800/70">
-                  <BookOpenCheck className="h-6 w-6 text-neutral-200" />
+                  <BookOpenCheck className="h-6 w-6 text-neutral-200" aria-hidden />
                 </div>
                 <div>
                   <h3 className="font-medium text-lg text-white">See the Source</h3>
@@ -256,7 +409,7 @@ export default function HomePage() {
                   "Secure storage with enterprise-grade controls",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 mt-0.5 text-neutral-200" />
+                    <CheckCircle className="h-5 w-5 mt-0.5 text-neutral-200" aria-hidden />
                     <span className="text-neutral-300 text-sm sm:text-base">{item}</span>
                   </li>
                 ))}
@@ -267,13 +420,13 @@ export default function HomePage() {
                 <p className="italic">“We used to spend days combing through leases. Now answers are instant and defensible. It’s changed how our team works.”</p>
                 <p className="mt-3 font-medium text-neutral-200">— Regional Property Manager</p>
               </div>
-              <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4 text-center">
+              <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4 text-center" role="list" aria-label="Stats">
                 {[
                   { label: "Leases analyzed", value: "100M+ sq ft" },
                   { label: "Avg. response time", value: "< 2 sec" },
                   { label: "Data accuracy", value: "Cited" },
                 ].map((stat, i) => (
-                  <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4">
+                  <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4" role="listitem">
                     <div className="text-lg sm:text-2xl font-semibold text-white">{stat.value}</div>
                     <div className="text-[10px] sm:text-xs text-neutral-400">{stat.label}</div>
                   </div>
@@ -315,13 +468,15 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-neutral-950 text-neutral-300">
+      <footer className="bg-neutral-950 text-neutral-300" role="contentinfo">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 font-semibold text-white">
               <img
                 src={logo}
-                alt="Lease Link"
+                alt="Lease Link logo"
+                width={48}
+                height={48}
                 className="h-10 w-10 md:h-12 md:w-12 rounded-lg object-contain"
               />
             </div>
