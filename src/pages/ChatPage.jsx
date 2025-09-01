@@ -604,7 +604,7 @@ const ChatPage = () => {
                 <iframe
                   src={selectedSource.viewer_url}
                   title="Document Viewer"
-                  className="w-full h-[50vh] sm:h-[60vh]"
+                  className="w-full h-full sm:h-[60vh]"
                   loading="lazy"
                 />
               </div>
