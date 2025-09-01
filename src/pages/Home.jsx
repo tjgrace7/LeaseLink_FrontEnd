@@ -112,7 +112,7 @@ export default function HomePage() {
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
         "url": SITE_URL,
-        "description": "Instant, cited answers from your lease universe. AI-powered lease analysis for commercial property managers.",
+        "description": "Instant, cited answers from any lease. AI-powered lease analysis for commercial property managers.",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -423,7 +423,7 @@ export default function HomePage() {
               <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4 text-center" role="list" aria-label="Stats">
                 {[
                   { label: "Leases analyzed", value: "100M+ sq ft" },
-                  { label: "Avg. response time", value: "< 2 sec" },
+                  { label: "Fast Response Time", value: "Answers in minutes" },
                   { label: "Data accuracy", value: "Cited" },
                 ].map((stat, i) => (
                   <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4" role="listitem">
