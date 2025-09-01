@@ -39,7 +39,7 @@ export const ArchiveEntity = async (entity, entity_id) => {
     whereCol,
     selectCol,
     value
-  )=> {
+  ) => {
     const { data, error } = await supabase.from(table).select(selectCol).eq(whereCol, value);
     if (error) {
       errors.push(`select ${table}.eq(${whereCol}=${value}): ${error.message}`);
@@ -95,6 +95,10 @@ export const ArchiveEntity = async (entity, entity_id) => {
         // await updateIn("properties", "prop_id", propIds);
         break;
       }
+      case "User": {
+        await updateEq('User_Data', 'user_id', entity_id)
+        break;
+      }
 
       default:
         return { ok: false, errors: [`Unknown entity type: ${entity}`] };
@@ -107,7 +111,7 @@ export const ArchiveEntity = async (entity, entity_id) => {
 };
 
 export const UnarchiveEntity = async (entity, entity_id) => {
-  const errors= [];
+  const errors = [];
   const basePatch = { archived: false };
 
   const updateEq = async (table, whereCol, value) => {
@@ -152,6 +156,10 @@ export const UnarchiveEntity = async (entity, entity_id) => {
       }
       case "Owner": {
         await updateEq("building_owner", "owner_id", entity_id);
+        break;
+      }
+      case "User": {
+        await updateEq('User_Data', 'user_id', entity_id)
         break;
       }
       default:

@@ -1,12 +1,13 @@
 // src/pages/Settings.jsx (refactor)
 // Mobile-first, accessible, commented, and UI-polished
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import DisplayBox from '../components/DisplayBox';
 import { useNavigate } from 'react-router-dom';
-import { FiEdit, FiPlus } from 'react-icons/fi';
+import { FiEdit, FiPlus, FiTrash, FiRotateCcw } from 'react-icons/fi';
 import { getTable } from '../utilities/supabaseCalls';
+import { ArchiveEntity, UnarchiveEntity } from '../utilities/Generic';
 
 /**
  * Settings
@@ -144,6 +145,47 @@ const Settings = () => {
     </button>
   );
 
+  // ——— Archived helpers (string/boolean tolerant)
+  const isArchived = (row) => {
+    const v = row?.archived;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      return s === 'true' || s === 't' || s === '1' || s === 'yes';
+    }
+    return Boolean(v);
+  };
+
+  // ——— Users: show/hide archived toggle
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedCount = useMemo(
+    () => (Array.isArray(userRoles) ? userRoles.filter(isArchived).length : 0),
+    [userRoles]
+  );
+
+  const displayedUsers = useMemo(() => {
+    if (!Array.isArray(userRoles)) return [];
+    return showArchived ? userRoles : userRoles.filter((u) => !isArchived(u));
+  }, [userRoles, showArchived]);
+
+  // ——— Archive/Restore handlers (optimistic)
+  const toggleArchiveUser = async (user) => {
+    try {
+      if (isArchived(user)) {
+        await UnarchiveEntity('User', user.user_id);
+      } else {
+        await ArchiveEntity('User', user.user_id);
+      }
+      // Optimistically update local state (users -> triggers userRoles recompute)
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === user.user_id ? { ...u, archived: !isArchived(user) } : u
+        )
+      );
+    } catch (e) {
+      console.error('Toggle archive failed', e);
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 md:px-8 py-6">
       {/* Tabs header */}
@@ -194,28 +236,57 @@ const Settings = () => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl sm:text-2xl font-semibold">Users</h2>
+
+              {/* Show archived toggle */}
+              <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-rose-500"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  aria-label="Toggle showing archived users"
+                />
+                <span className="opacity-90">
+                  Show archived{archivedCount ? ` (${archivedCount})` : ''}
+                </span>
+              </label>
             </div>
+
             {loading.users ? (
               <div className="space-y-2">
                 <div className="h-12 rounded-xl bg-white/10 animate-pulse" />
                 <div className="h-12 rounded-xl bg-white/10 animate-pulse" />
                 <div className="h-12 rounded-xl bg-white/10 animate-pulse" />
               </div>
-            ) : userRoles.length === 0 ? (
+            ) : displayedUsers.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
                 <p>No users found.</p>
               </div>
             ) : (
               <ul className="divide-y divide-white/10 rounded-2xl overflow-hidden border border-white/10">
-                {userRoles.map((user) => {
+                {displayedUsers.map((user) => {
                   const profileType = 'User Profile';
+                  const archived = isArchived(user);
+                  const rowBg = archived ? 'bg-rose-900/10' : ''; // subtle highlight for archived
+
                   return (
-                    <li key={user.user_id}>
+                    <li key={user.user_id} className={rowBg}>
                       <div className="flex items-center justify-between px-4 py-3 space-x-2">
                         <div className="min-w-0">
-                          <p className="text-base font-medium truncate">{user.Name}</p>
-                          <p className="text-sm opacity-70 truncate">{user.role}</p>
+                          <p className="text-base font-medium truncate">
+                            {user.Name}
+                          </p>
+                          <p className="text-sm opacity-70 truncate">
+                            {user.role}
+                            {archived && (
+                              <span className="ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-rose-400/40 bg-rose-500/10 text-rose-200">
+                                Archived
+                              </span>
+                            )}
+                          </p>
                         </div>
+
+                        {/* Edit */}
                         <button
                           onClick={() => navigate(`/edit_person/edit?id=${user.user_id}&type=${profileType}`)}
                           className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
@@ -223,6 +294,18 @@ const Settings = () => {
                         >
                           <FiEdit size={18} />
                           <span className="hidden sm:inline">Edit</span>
+                        </button>
+
+                        {/* Archive / Restore */}
+                        <button
+                          onClick={() => toggleArchiveUser(user)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
+                          title={archived ? 'Restore user' : 'Archive user'}
+                        >
+                          {archived ? <FiRotateCcw size={18} /> : <FiTrash size={18} />}
+                          <span className="hidden sm:inline">
+                            {archived ? 'Restore' : 'Archive'}
+                          </span>
                         </button>
                       </div>
                     </li>

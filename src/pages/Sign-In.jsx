@@ -10,7 +10,7 @@ import { useAuth } from "../components/AuthProvider";
  * - Accessible labels, helper/error text, focus outlines
  * - Email format check, disabled/loading states, error banner
  * - Safe useEffects with proper dependency arrays & unmount guards
- * - Same data flow: Supabase password auth + random testimonial
+ * - Blocks sign-in if User_Data.archived is true
  */
 
 const inputBase =
@@ -22,13 +22,17 @@ const Label = ({ htmlFor, children }) => (
   </label>
 );
 
-const HelperText = ({ children }) => (
-  <p className="mt-1 text-xs text-white/50">{children}</p>
-);
+const HelperText = ({ children }) => <p className="mt-1 text-xs text-white/50">{children}</p>;
+const ErrorText = ({ children }) => <p role="alert" className="mt-1 text-xs text-red-400">{children}</p>;
 
-const ErrorText = ({ children }) => (
-  <p role="alert" className="mt-1 text-xs text-red-400">{children}</p>
-);
+// Interpret boolean-like values safely
+const isTrueish = (v) => {
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "true" || s === "t" || s === "1" || s === "yes";
+  }
+  return Boolean(v);
+};
 
 const SignIn = () => {
   // -------------------- auth state --------------------
@@ -44,10 +48,10 @@ const SignIn = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
 
-  // If already signed in, reroute
+  // If already signed in, reroute (but avoid racing while submitting)
   useEffect(() => {
-    if (session) navigate("/dashboard");
-  }, [session, navigate]);
+    if (session && !isSubmitting) navigate("/dashboard");
+  }, [session, isSubmitting, navigate]);
 
   // Load one random testimonial
   useEffect(() => {
@@ -67,7 +71,10 @@ const SignIn = () => {
 
   // Simple validators
   const isEmailValid = useMemo(() => /.+@.+\..+/.test(email.trim()), [email]);
-  const canSubmit = useMemo(() => email.trim() && isEmailValid && password && !isSubmitting, [email, isEmailValid, password, isSubmitting]);
+  const canSubmit = useMemo(
+    () => email.trim() && isEmailValid && password && !isSubmitting,
+    [email, isEmailValid, password, isSubmitting]
+  );
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -76,11 +83,32 @@ const SignIn = () => {
 
     try {
       setIsSubmitting(true);
-      const { error } = await supabase.auth.signInWithPassword({
+
+      // 1) Attempt auth
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (error) throw error;
+
+      // 2) Check archived flag in User_Data for this auth user
+      const authId = data?.user?.id;
+      if (authId) {
+        const { data: userRow, error: userErr } = await supabase
+          .from("User_Data")
+          .select("archived")
+          .eq("auth_id", authId)
+          .maybeSingle();
+
+        if (!userErr && isTrueish(userRow?.archived)) {
+          // Block sign-in: immediately sign out & show message
+          await supabase.auth.signOut();
+          setError("Your account is archived. Please contact your company admin.");
+          return; // do not navigate
+        }
+      }
+
+      // 3) Proceed normally
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
