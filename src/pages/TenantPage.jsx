@@ -276,6 +276,7 @@ const TenantPage = () => {
               Title="Tenant"
               getEntityId={(t) => t?.tenant_id}
               edit_Entity={roleData?.Edit_Tenants}
+              delete_Entity={roleData?.Can_Delete_Tenants}
               className="w-full max-w-2xl"
             />
           </div>

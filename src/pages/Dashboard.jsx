@@ -110,7 +110,7 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('prop_id, Property_Name, square_footage')
+        .select('*')
         .eq('pm_company', userData.company_id)
         .order('Property_Name', { ascending: true });
 

@@ -21,7 +21,6 @@ import SearchBar from "./SearchBar";
  * - getRelatedEntity: optional async (entity) => object (e.g., current tenant)
  * - renderRelatedLabel: optional (related) => string|ReactNode
  */
-
 const EntityListBox = ({
   type,
   selectEntity,
@@ -37,6 +36,19 @@ const EntityListBox = ({
   renderRelatedLabel,
 }) => {
   if (!Label) return null;
+
+  // Show/hide archived toggle
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Helper to normalize various truthy/falsey representations
+  const isArchived = (row) => {
+    const v = row?.archived;
+    if (typeof v === "string") {
+      const s = v.trim().toLowerCase();
+      return s === "true" || s === "t" || s === "1" || s === "yes";
+    }
+    return Boolean(v);
+  };
 
   /**
    * Related entity fetcher as a tiny sub-component
@@ -70,7 +82,7 @@ const EntityListBox = ({
   };
 
   /**
-   * Robust sorting:
+   * Sorting:
    * - If both items have suites, sort by suite (numeric-aware).
    * - If only one has suite, suite-first.
    * - Else sort by label.
@@ -98,18 +110,26 @@ const EntityListBox = ({
     });
   }, [entities, getEntityLabel, getSuite]);
 
+  // Apply archived filter after sorting (so order is stable whether shown or hidden)
+  const filteredEntities = useMemo(() => {
+    if (showArchived) return sortedEntities;
+    return sortedEntities.filter((e) => !isArchived(e));
+  }, [sortedEntities, showArchived]);
+
+  const archivedCount = useMemo(
+    () => (Array.isArray(entities) ? entities.filter((e) => isArchived(e)).length : 0),
+    [entities]
+  );
+
   const handleClick = async (entity) => {
     try {
       if (typeof getRelatedEntity === "function") {
         const related = await getRelatedEntity(entity);
-        // If related tenant exists, route to tenant
-        console.log(related)
         if (related?.tenant_id) {
           selectEntity?.(related.tenant_id, "tenant");
           return;
         }
       }
-      // Fallback: use this item’s id + boxType
       const id = typeof getEntityId === "function" ? getEntityId(entity) : undefined;
       if (id != null) selectEntity?.(id, boxType);
     } catch (err) {
@@ -119,37 +139,62 @@ const EntityListBox = ({
 
   return (
     <section className="bg-lease-gradient text-white p-4 sm:p-5 rounded-lg">
-      {/* Header: SearchBar (left) + centered title */}
+      {/* Header row: Search (left) • Centered Title • Actions (right) */}
       <div className="relative flex items-center pb-6">
         <div className="z-10">
           <SearchBar
             placeholder={`Search ${placeholder || Label}`}
             selectEntity={selectEntity}
             type={type}
+            // NOTE: SearchBar likely queries the API that already excludes archived;
+            // if you later wire it to include archived, pass a prop here and handle upstream.
           />
         </div>
+
         <h1
           className="text-xl sm:text-2xl font-bold absolute left-1/2 -translate-x-1/2"
           aria-label={`${Label} list`}
         >
           {Label}
         </h1>
+
+        {/* Right-aligned actions */}
+        <div className="ml-auto z-10">
+          <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-rose-500"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              aria-label="Toggle showing archived items"
+            />
+            <span className="opacity-90">
+              Show archived{archivedCount ? ` (${archivedCount})` : ""}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Entity List */}
       <ul className="max-h-80 overflow-y-auto space-y-2 pr-1">
-        {sortedEntities.map((entity) => {
+        {filteredEntities.map((entity) => {
           const id = getEntityId?.(entity);
           const entityLabel = getEntityLabel?.(entity);
           const sq = typeof getSQ === "function" ? getSQ(entity) : null;
           const suite = typeof getSuite === "function" ? getSuite(entity) : null;
+          const archived = isArchived(entity);
+
+          // Visual treatment for archived rows
+          const rowClasses = archived
+            ? "border-rose-500/50 bg-rose-900/20 hover:border-rose-400/60"
+            : "border-gray-600 hover:border-gray-400";
 
           return (
             <li key={String(id)}>
               <button
                 onClick={() => handleClick(entity)}
-                className="w-full text-left border border-gray-600 hover:border-gray-400 focus:border-gray-300 transition-colors px-3 sm:px-4 py-2 rounded-lg"
-                aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}`}
+                className={`w-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
+                aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}${archived ? " (archived)" : ""}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                   {/* Left cluster: Suite (if any) + Label */}
@@ -167,8 +212,8 @@ const EntityListBox = ({
                     </span>
                   </div>
 
-                  {/* Right cluster: SQFT + Related (e.g., current tenant) */}
-                  <div className="flex gap-6">
+                  {/* Right cluster: SQFT + Related (e.g., current tenant) + Archived pill */}
+                  <div className="flex items-start gap-6">
                     {sq != null && sq !== "" && (
                       <span className="text-sm sm:text-base text-white">
                         <span className="block opacity-80">Square Footage</span>
@@ -181,6 +226,12 @@ const EntityListBox = ({
                         {Label === "Units" && <span className="block opacity-80 text-sm">Current Tenant</span>}
                         <RelatedEntityInfo entity={entity} />
                       </div>
+                    )}
+
+                    {archived && (
+                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-rose-400/40 bg-rose-500/10 text-rose-200">
+                        Archived
+                      </span>
                     )}
                   </div>
                 </div>

@@ -200,6 +200,7 @@ const UnitPage = () => {
             Title="Unit"
             getEntityId={(u) => u?.unit_id}
             edit_Entity={roleData?.Edit_Units}
+            delete_Entity={roleData?.Can_Delete_Units}
           />
 
         {/* Tenants list */}

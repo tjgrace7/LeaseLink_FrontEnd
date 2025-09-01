@@ -35,7 +35,7 @@ const PropertyPage = () => {
       try {
         const { data, error } = await supabase
           .from("properties")
-          .select("prop_id, Property_Name, photo_file_path, owner_id")
+          .select("*")
           .eq("prop_id", property_id)
           .single();
 
@@ -67,7 +67,7 @@ const PropertyPage = () => {
       try {
         const { data, error } = await supabase
           .from("Units")
-          .select("unit_id, Suite, address, square_footage, tenant_id")
+          .select("*")
           .eq("property_id", property.prop_id)
           .order("Suite", { ascending: true });
 
@@ -101,7 +101,7 @@ const PropertyPage = () => {
     if (!tenant_id) return null;
     const { data, error } = await supabase
       .from("tenant")
-      .select("tenant_id, Tenant_Name")
+      .select("*")
       .eq("tenant_id", tenant_id)
       .single();
 
@@ -173,6 +173,7 @@ const PropertyPage = () => {
               Title="Property"
               getEntityId={(e) => e?.prop_id}
               edit_Entity={roleData?.Edit_Properties}
+              delete_Entity={roleData?.Can_Delete_Properties}
             />
           )}
         </div>

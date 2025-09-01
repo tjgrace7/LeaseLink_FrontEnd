@@ -1,9 +1,12 @@
 // src/components/Profile.jsx
 import { useEffect, useMemo, useState, memo } from 'react';
-import { FiEdit } from 'react-icons/fi';
+import { FiDelete, FiEdit, FiRotateCcw, FiTrash } from 'react-icons/fi';
 import { get_entity_image } from '../utilities/get_entity_image';
 import Spinner from './Spinner';
 import { useNavigate } from 'react-router-dom';
+import { ArchiveEntity, UnarchiveEntity } from '../utilities/Generic';
+import ConfirmPopUp from './Confirm';
+import { nav } from 'framer-motion/client';
 
 const Profile = ({
   entity,
@@ -19,12 +22,14 @@ const Profile = ({
   className = '',
   Title = '',
   edit_Entity = false,
+  delete_Entity = false
 }) => {
   const [image, setImage] = useState('');
+  const [entityId, setEntityId] = useState('');
   const [relatedEntities, setRelatedEntities] = useState([]);
   const [relatedImages, setRelatedImages] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
-
+  const [confirmData, setConfirmData] = useState(null);
   const navigate = useNavigate();
 
   const relatedRouteBase = useMemo(() => {
@@ -36,6 +41,12 @@ const Profile = ({
       default: return null;
     }
   }, [RelatedTitle]);
+
+  // keep behavior but add dependency to avoid extra re-renders
+  useEffect(() => {
+    if (!entity || !getEntityId) return;
+    setEntityId(getEntityId(entity));
+  }, [entity, getEntityId]);
 
   // -------- Main entity image
   useEffect(() => {
@@ -103,11 +114,50 @@ const Profile = ({
   };
 
   const handleEditClick = () => {
-    if (!entity || !getEntityId) return;
-    const entityId = getEntityId(entity);
     if (!entityId) return;
     const url = Title === 'Property' || Title === 'Unit' ? 'edit_building' : 'edit_person';
     navigate(`/${url}/edit?id=${entityId}&type=${Title}`);
+  };
+
+  // Determine archived state (allowing for stringy truthy values)
+  const isArchived = useMemo(() => {
+    const v = entity?.archived;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      return s === 'true' || s === 't' || s === '1' || s === 'yes';
+    }
+    return !!v;
+  }, [entity]);
+
+  const handleArchive = () => {
+    let message = '';
+    switch (Title) {
+      case 'Property':
+        message = 'Archiving Property will also archive all tenants and units in the property.';
+        break;
+      case 'Unit':
+        message = 'Archiving Unit will also archive all Tenants inside of the Unit.';
+        break;
+      case 'Tenant':
+        message = 'Are you sure you want to archive this tenant?';
+        break;
+      default:
+        message = 'Are you sure?';
+    }
+
+    setConfirmData({
+      title: `Archive ${Title}?`,
+      message,
+      mode: 'archive',
+    });
+  };
+
+  const handleRestore = () => {
+    setConfirmData({
+      title: `Restore ${Title}?`,
+      message: `This will unarchive the ${Title.toLowerCase()}.`,
+      mode: 'restore',
+    });
   };
 
   if (!entity) return <Spinner />;
@@ -116,7 +166,6 @@ const Profile = ({
 
   return (
     <div
-
       className={[
         'relative w-full self-stretch rounded-lg',
         'bg-lease-gradient text-white',
@@ -132,32 +181,63 @@ const Profile = ({
         className,
       ].join(' ')}
     >
-          {/* Edit button column (only when edit_Entity) */}
-      {edit_Entity && (
-        <>
-          {/* Mobile FAB */}
-          <button
-            onClick={handleEditClick}
-            aria-label={`Edit ${Title || 'entity'}`}
-            title="Edit"
-            className="md:hidden absolute top-3 right-3 inline-flex items-center justify-center rounded-full p-3 ring-1 ring-inset ring-white/15 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white backdrop-blur"
-          >
-            <FiEdit size={20} />
-          </button>
-
-          {/* Desktop icon column */}
-          <div className="hidden md:flex flex-col items-start place-self-start">
+      {/* Edit button column (only when edit_Entity) */}
+      <div className="flex flex-col space-y-2">
+        {edit_Entity && (
+          <>
+            {/* Mobile FAB */}
             <button
               onClick={handleEditClick}
               aria-label={`Edit ${Title || 'entity'}`}
               title="Edit"
-              className="inline-flex items-center justify-center rounded-xl p-2 ring-1 ring-inset ring-white/15 hover:bg-white/10"
+              className="md:hidden absolute top-3 right-3 inline-flex items-center justify-center rounded-full p-3 ring-1 ring-inset ring-white/15 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white backdrop-blur"
             >
-              <FiEdit size={22} />
+              <FiEdit size={20} />
             </button>
-          </div>
-        </>
-      )}
+
+            {/* Desktop icon column */}
+            <div className="hidden md:flex flex-col items-start place-self-start">
+              <button
+                onClick={handleEditClick}
+                aria-label={`Edit ${Title || 'entity'}`}
+                title="Edit"
+                className="inline-flex items-center justify-center rounded-xl p-2 ring-1 ring-inset ring-white/15 hover:bg-white/10"
+              >
+                <FiEdit size={22} />
+              </button>
+            </div>
+          </>
+        )}
+
+        {delete_Entity && (
+          <>
+            {/* Mobile FAB */}
+            <button
+              onClick={isArchived ? handleRestore : handleArchive}
+              aria-label={`${isArchived ? 'Restore' : 'Archive'} ${Title || 'entity'}`}
+              title={isArchived ? 'Restore' : 'Archive'}
+              className="md:hidden absolute top-3 right-3 inline-flex items-center justify-center rounded-full p-3 ring-1 ring-inset ring-white/15 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white backdrop-blur"
+            >
+              {!isArchived && (<FiTrash size={20} />)}
+              {isArchived && (<FiRotateCcw size={20}/>)}
+            </button>
+
+            {/* Desktop icon column */}
+            <div className="hidden md:flex flex-col items-start place-self-start">
+              <button
+                onClick={isArchived ? handleRestore : handleArchive}
+                aria-label={`${isArchived ? 'Restore' : 'Archive'} ${Title || 'entity'}`}
+                title={isArchived ? 'Restore' : 'Archive'}
+                className="inline-flex items-center justify-center rounded-xl p-2 ring-1 ring-inset ring-white/15 hover:bg-white/10"
+              >
+              {!isArchived && (<FiTrash size={22} />)}
+              {isArchived && (<FiRotateCcw size={22}/>)}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Main entity column */}
       <div className="flex flex-col items-center justify-center text-center md:col-start-2">
         {Title && (
@@ -252,6 +332,23 @@ const Profile = ({
             )}
           </div>
         </div>
+      )}
+
+      {confirmData && (
+        <ConfirmPopUp
+          title={confirmData.title}
+          message={confirmData.message}
+          onConfirm={async () => {
+            if (confirmData.mode === 'restore') {
+              await UnarchiveEntity(Title, entityId);
+            } else {
+              await ArchiveEntity(Title, entityId);
+            }
+            setConfirmData(null); // close popup
+            navigate('/dashboard');
+          }}
+          onCancel={() => setConfirmData(null)}
+        />
       )}
 
       {/* Small custom scrollbar */}
