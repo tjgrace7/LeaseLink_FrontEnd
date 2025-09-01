@@ -585,7 +585,7 @@ const ChatPage = () => {
       {/* Source modal */}
       {showModal && selectedSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4">
-          <div className="relative w-full max-w-8xl max-h-[95vh] overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
+          <div className="relative w-full max-w-8xl max-h-[110vh] overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 flex items-center justify-between">
               <h2 className="text-base sm:text-lg font-semibold truncate pr-4">Document Excerpt</h2>
               <button
