@@ -151,7 +151,7 @@ const EntityListBox = ({
                 className="w-full text-left border border-gray-600 hover:border-gray-400 focus:border-gray-300 transition-colors px-3 sm:px-4 py-2 rounded-lg"
                 aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                   {/* Left cluster: Suite (if any) + Label */}
                   <div className="flex items-start gap-4">
                     {suite != null && suite !== "" && (
@@ -168,11 +168,11 @@ const EntityListBox = ({
                   </div>
 
                   {/* Right cluster: SQFT + Related (e.g., current tenant) */}
-                  <div className="flex items-start gap-6">
+                  <div className="flex gap-6">
                     {sq != null && sq !== "" && (
                       <span className="text-sm sm:text-base text-white">
                         <span className="block opacity-80">Square Footage</span>
-                        <span className="font-medium">{String(sq)} sq ft</span>
+                        <span className="font-medium">{String(sq)}</span>
                       </span>
                     )}
 

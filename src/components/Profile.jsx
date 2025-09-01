@@ -37,7 +37,7 @@ const Profile = ({
     }
   }, [RelatedTitle]);
 
-  /** Load main entity image */
+  // -------- Main entity image
   useEffect(() => {
     let cancelled = false;
     const loadImage = async () => {
@@ -58,7 +58,7 @@ const Profile = ({
     return () => { cancelled = true; };
   }, [entity, getFilePath, session]);
 
-  /** Load related entities and their images */
+  // -------- Related entities + images
   useEffect(() => {
     let cancelled = false;
     const fetchRelated = async () => {
@@ -112,24 +112,30 @@ const Profile = ({
 
   if (!entity) return <Spinner />;
 
+  const hasRelated = (relatedEntities?.length || 0) > 0;
+
   return (
     <div
+
       className={[
-        // Container
-        'relative w-full !max-w-none self-stretch rounded-lg p-4 sm:p-6 pb-24 sm:pb-20',
-        'bg-lease-gradient min-h-[260px]',
-        // Layout: 1 col on mobile; add columns on >= md
+        'relative w-full self-stretch rounded-lg',
+        'bg-lease-gradient text-white',
+        'p-4 sm:p-6',
         edit_Entity
-          ? 'grid grid-cols-1 md:grid-cols-[auto_1.6fr_1fr]'
-          : 'grid grid-cols-1 md:grid-cols-[1.6fr_1fr]',
-        'gap-6 sm:gap-8 items-start',
+          ? (hasRelated
+            ? 'grid grid-cols-[auto_1.5fr_1fr] items-start'
+            : 'grid grid-cols-[auto_1fr] items-start')
+          : (hasRelated
+            ? 'grid grid-cols-[1.5fr_1fr] items-start'
+            : 'grid grid-cols-1'),
+        'gap-6 sm:gap-8',
         className,
       ].join(' ')}
     >
-      {/* Edit button — mobile: floating top-right; desktop: left column */}
+          {/* Edit button column (only when edit_Entity) */}
       {edit_Entity && (
         <>
-          {/* Mobile (md:hidden): floating FAB */}
+          {/* Mobile FAB */}
           <button
             onClick={handleEditClick}
             aria-label={`Edit ${Title || 'entity'}`}
@@ -139,8 +145,8 @@ const Profile = ({
             <FiEdit size={20} />
           </button>
 
-          {/* Desktop (md:flex): left column icon */}
-          <div className="hidden md:flex flex-col items-start text-white hover:text-gray-200 place-self-start">
+          {/* Desktop icon column */}
+          <div className="hidden md:flex flex-col items-start place-self-start">
             <button
               onClick={handleEditClick}
               aria-label={`Edit ${Title || 'entity'}`}
@@ -152,36 +158,32 @@ const Profile = ({
           </div>
         </>
       )}
-
-      {/* Main entity */}
-      <div className="flex flex-col items-center md:items-start justify-start text-center md:text-left gap-2">
-        {Title ? (
-          <h1 className="text-xl sm:text-2xl font-bold text-white underline underline-offset-4 decoration-white/30">
+      {/* Main entity column */}
+      <div className="flex flex-col items-center justify-center text-center md:col-start-2">
+        {Title && (
+          <h1 className="text-xl sm:text-2xl font-bold underline underline-offset-4 decoration-white/30">
             {Title}
           </h1>
-        ) : null}
+        )}
 
-        {/* Only show image container if image exists */}
         {image && (
-          <div className="mt-1 sm:mt-2 w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white/80 shadow-md overflow-hidden">
+          <div className="mt-3 w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white/80 shadow-md overflow-hidden">
             <img
               src={image}
               alt={`${Title || 'Profile'} image`}
               className="w-full h-full object-cover"
-              loading="lazy"
-              decoding="async"
             />
           </div>
         )}
 
-        <div className="mt-2 text-lg sm:text-xl font-semibold text-white max-w-full">
+        <div className="mt-2 text-lg sm:text-xl font-semibold max-w-full">
           <span className="block truncate">{getLabel?.(entity) || 'Unnamed Entity'}</span>
         </div>
       </div>
 
-      {/* Related entities */}
-      <div className="flex flex-col items-start text-white">
-        {(relatedEntities?.length || 0) > 0 && (
+      {/* Related entities column — render only if present to avoid empty space */}
+      {hasRelated && (
+        <div className="flex flex-col items-start">
           <div className="w-full">
             <div className="text-base sm:text-lg font-medium mb-2">
               <span className="underline underline-offset-4 decoration-white/30">
@@ -189,7 +191,6 @@ const Profile = ({
               </span>
             </div>
 
-            {/* Scroll area with comfortable touch targets */}
             <div className="space-y-3 sm:space-y-4 max-h-64 overflow-y-auto pr-1 sm:pr-2 custom-scroll">
               {loadingRelated ? (
                 <div className="text-white/80 text-sm">Loading…</div>
@@ -202,7 +203,6 @@ const Profile = ({
 
                   return (
                     <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3">
-                      {/* Only show image container if image exists */}
                       {imgUrl && (
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
                           <img
@@ -229,35 +229,32 @@ const Profile = ({
               )}
             </div>
 
-            {/* Quick actions */}
-            <div className="flex flex-col mt-4 gap-2">
-              {(Title === 'Unit' || Title === 'Property') && (
-                <div>
-                  <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
-                    Add Entities
-                  </h2>
-                  <button
-                    onClick={() => navigate('/create_person')}
-                    className="mt-1 cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
-                  >
-                    Create Tenant
-                  </button>
-                </div>
-              )}
-              {Title === 'Property' && (
+            {(Title === 'Unit' || Title === 'Property') && (
+              <div className="flex flex-col mt-4 gap-2">
+                <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
+                  Add Entities
+                </h2>
                 <button
-                  onClick={() => navigate('/create_building')}
-                  className="cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
+                  onClick={() => navigate('/create_person')}
+                  className="mt-1 cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
                 >
-                  Create Unit
+                  Create Tenant
                 </button>
-              )}
-            </div>
+                {Title === 'Property' && (
+                  <button
+                    onClick={() => navigate('/create_building')}
+                    className="cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
+                  >
+                    Create Unit
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Small custom scrollbar for WebKit (optional) */}
+      {/* Small custom scrollbar */}
       <style>{`
         .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 9999px; }

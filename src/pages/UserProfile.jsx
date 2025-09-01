@@ -1,5 +1,4 @@
 // src/pages/UserProfile.jsx
-
 import { useEffect, useState, useCallback } from "react";
 import Profile from "../components/Profile";
 import { useAuth } from "../components/AuthProvider";
@@ -7,30 +6,19 @@ import { supabase } from "../supabaseClient";
 import Spinner from "../components/Spinner";
 import DisplayBox from "../components/DisplayBox";
 
-/**
- * UserProfile
- * - Shows the signed-in user's profile card
- * - Displays company info and basic user/contact details
- *
- * Notes:
- * - Uses single() when fetching company to avoid [0] access patterns
- * - Defensive rendering for optional values (phone/email/etc.)
- * - Mobile-first responsive container + accessible headings
- */
 const UserProfile = () => {
   const { session, userData } = useAuth();
 
   const [company, setCompany] = useState(null);
   const [loadingCompany, setLoadingCompany] = useState(true);
 
-  // Fetch the user's company once userData is available
+  // ---------- Fetch company once userData is available ----------
   useEffect(() => {
     if (!userData?.company_id) {
       setCompany(null);
       setLoadingCompany(false);
       return;
     }
-
     let cancelled = false;
 
     const getCompany = async () => {
@@ -58,34 +46,75 @@ const UserProfile = () => {
     };
   }, [userData?.company_id]);
 
-  // Basic helpers for safe display
+  // ---------- Safe display helpers ----------
   const getPhone = useCallback(() => {
-    // Supabase phone may live in user.user_metadata for some setups
-    return session?.user?.phone || session?.user?.user_metadata?.phone || "No phone available";
+    return (
+      session?.user?.phone ||
+      session?.user?.user_metadata?.phone ||
+      "No phone available"
+    );
   }, [session]);
 
   const getEmail = useCallback(() => {
-    return session?.user?.email || session?.user?.user_metadata?.email || "No email available";
+    return (
+      session?.user?.email ||
+      session?.user?.user_metadata?.email ||
+      "No email available"
+    );
   }, [session]);
 
-  // Initial loading state until we know who the user is
+  // ---------- Initial loading (no user yet) ----------
   if (!userData) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
         <Spinner />
       </div>
     );
   }
+const formatPhone = (raw = "") => {
+  const digits = raw.replace(/\D/g, ""); // keep numbers only
+  if (digits.length === 10) {
+    // (XXX) XXX-XXXX
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    // +1 (XXX) XXX-XXXX
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw; // fallback if formatting not possible
+};
+
+  // ---------- Small skeleton block ----------
+  const SkeletonLine = ({ className = "" }) => (
+    <span className={`block h-4 w-40 animate-pulse rounded bg-white/10 ${className}`} />
+  );
+
+  // ---------- BADGE ----------
+  const RoleBadge = ({ label }) => (
+    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80">
+      {label || "—"}
+    </span>
+  );
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-4xl mx-auto">
-      {/* Title */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold">Your Profile</h1>
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 pb-6 pt-4 sm:pt-6">
+      {/* Decorative header band */}
+      <div className="mb-4 rounded-2xl bg-gradient-to-r from-[#2a2c36] to-[#1e2230] p-4 ring-1 ring-white/10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold sm:text-xl">Your Profile</h1>
+            <p className="mt-0.5 text-xs text-white/60">
+              Manage your personal details and company information
+            </p>
+          </div>
+          <div className="mt-1 sm:mt-0">
+            <RoleBadge label={userData?.permission_level} />
+          </div>
+        </div>
       </div>
 
       {/* Profile Card */}
-      <div className="mb-6">
+      <div className="mb-5">
         <Profile
           entity={userData}
           session={session}
@@ -98,34 +127,56 @@ const UserProfile = () => {
       </div>
 
       {/* Info Panel */}
-      <DisplayBox className="space-y-4">
-        <h2 className="underline text-xl sm:text-2xl">User Info</h2>
+      <DisplayBox className="space-y-4 p-4 sm:p-5 flex flex-col items-center p-4">
+        {/* Section header */}
 
-        {/* Company section */}
-        <div className="text-sm sm:text-base">
-          <p className="mb-1">
-            <span className="font-medium">Company Name:</span>{" "}
-            {loadingCompany ? "Loading…" : company?.company_name || "No company found"}
-          </p>
+
+          <h2 className="text-base font-semibold sm:text-lg">Account Info</h2>
+          {/* Optional: hook up to your edit page if desired */}
+          {/* <button
+            type="button"
+            onClick={() => {/* navigate("/settings") */ /*}}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-inset ring-white/10 hover:bg-white/10"
+          >
+            Edit
+          </button> */}
+
+        <div className="flex justify-between">
+          {/* Company */}
+          <div className="rounded-xl border border-white/10 bg-white/5 p-8 sm:p-4">
+            <h3 className="mb-2 text-sm font-medium text-white/80">
+              Company
+            </h3>
+            <p className="text-sm">
+              <span className="font-medium">Company Name: </span>
+              {loadingCompany ? (
+                <SkeletonLine className="inline-block align-middle h-3 w-28 ml-2" />
+              ) : (
+                <span className="break-words">
+                  {company?.company_name || "No company found"}
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Contact grid */}
+          <div className="grid grid-cols-1 gap-3 pl-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
+              <h3 className="mb-1 text-sm font-medium text-white/80">Phone</h3>
+              <p className="text-sm">{formatPhone(getPhone())}</p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
+              <h3 className="mb-1 text-sm font-medium text-white/80">Email</h3>
+              <p className="text-sm break-words">{getEmail()}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Permission / Role (kept your field; adjust if you move fully to Roles UI) */}
-        <div className="text-sm sm:text-base">
-          <p className="mb-1">
-            <span className="font-medium">Permission Level:</span>{" "}
-            {userData?.permission_level ?? "—"}
-          </p>
-        </div>
-
-        {/* Contact */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base">
-          <p>
-            <span className="font-medium">Phone:</span> {getPhone()}
-          </p>
-          <p className="break-words">
-            <span className="font-medium">Email:</span> {getEmail()}
-          </p>
-        </div>
+        {/* Footer note */}
+        <p className="pt-1 text-center text-xs text-white/50">
+          LeaseLink can make mistakes — please verify important details.
+        </p>
       </DisplayBox>
     </div>
   );

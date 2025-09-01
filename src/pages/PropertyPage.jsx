@@ -204,15 +204,6 @@ const PropertyPage = () => {
         )}
       </section>
 
-      {/* Previous chat history (full width, scroll-friendly) */}
-      <section className="mt-6">
-        <LoadPreviousMessages
-          entityId={property_id}
-          session={session}
-          entityType="property"
-          className="mt-6"
-        />
-      </section>
     </div>
   );
 };

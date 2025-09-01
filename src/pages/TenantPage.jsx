@@ -1,6 +1,5 @@
 // src/pages/TenantPage.jsx
-
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthProvider";
@@ -11,45 +10,38 @@ import Profile from "../components/Profile";
 import DisplayBox from "../components/DisplayBox";
 import LoadPreviousMessages from "../components/PreviousMessages";
 import { getTenantLeaseInfo } from "../utilities/GetMessages";
-import { getTableIdList } from "../utilities/supabaseCalls";
+import { getTableIdList, fileExistsInStorage } from "../utilities/supabaseCalls";
 
-/**
- * Helpers
- */
+/** ---------- Shared UI bits (match TenantTerms style) ---------- */
+const EntryRow = ({ item }) => {
+  if (!item || typeof item !== "object") return null;
+  const entries = Object.entries(item);
+  if (entries.length === 0) return null;
 
-// Render a single "Label: Value" row
-const InfoRow = ({ label, value }) => {
-  if (value == null || value === "" || (Array.isArray(value) && value.length === 0)) return null;
+  const [key, value] = entries[0];
+  const clean = String(value ?? "").trim();
+  if (!clean) return null;
+
   return (
-    <div className="mb-2 sm:mb-3">
-      <div className="flex flex-col sm:flex-row sm:items-center">
-        <h3 className="text-sm sm:text-base font-medium sm:mr-2">{label}:</h3>
-        <p className="text-sm sm:text-base break-words">{String(value)}</p>
-      </div>
+    <div className="space-y-1 border-b border-muted/30 py-2 last:border-b-0">
+      <dt className="text-lg font-medium text-muted-foreground">{key}:</dt>
+      <dd className="text-sm leading-relaxed break-words whitespace-pre-wrap">{clean}</dd>
     </div>
   );
 };
 
-// Render an array of one-key objects like [{ "Base Rent": "$1,234" }, ...]
-const TermsList = ({ title, items }) => {
-  if (!items || items.length === 0) return null;
-
-  return (
-    <DisplayBox className="w-full">
-      <div>
-        <h2 className="text-lg sm:text-xl underline mb-3">{title}</h2>
-        <div>
-          {items.map((item, idx) => {
-            const entries = Object.entries(item || {});
-            if (entries.length === 0) return null;
-            const [key, value] = entries[0];
-            return <InfoRow key={`${title}-${idx}-${key}`} label={key} value={value} />;
-          })}
-        </div>
+const SectionCard = ({ title, children }) => (
+  <DisplayBox className="h-full overflow-hidden">
+    <section aria-labelledby={title} className="flex h-full flex-col">
+      <header className="mb-3 border-b border-muted/30 pb-2">
+        <h2 id={title} className="text-xl font-semibold tracking-tight">{title}</h2>
+      </header>
+      <div className="min-h-[2rem] flex-1 overflow-hidden">
+        <dl className="divide-y divide-muted/20 text-md">{children}</dl>
       </div>
-    </DisplayBox>
-  );
-};
+    </section>
+  </DisplayBox>
+);
 
 const EmptyState = ({ title, hint }) => (
   <div className="text-sm text-gray-300">
@@ -58,10 +50,7 @@ const EmptyState = ({ title, hint }) => (
   </div>
 );
 
-/**
- * TenantPage
- * Displays a tenant profile, related units, lease details, and previous messages.
- */
+/** ---------- Page ---------- */
 const TenantPage = () => {
   const { session, roleData } = useAuth();
   const { tenant_id } = useParams();
@@ -81,9 +70,7 @@ const TenantPage = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---------- Data Fetching ----------
-
-  // Fetch tenant + units + contacts in parallel
+  /** ---------- Load core tenant + related ---------- */
   useEffect(() => {
     if (!session || !tenant_id) return;
 
@@ -123,18 +110,17 @@ const TenantPage = () => {
           setUnitsIds(Array.isArray(unitLinks) ? unitLinks.map((row) => row.unit_id) : []);
         }
 
-        // If there are contact links, fetch contact details
+        // Contacts
         const contactIds = Array.isArray(contactLinks) ? contactLinks.map((c) => c.contact_id) : [];
         if (contactIds.length > 0) {
           const { data: contactData, error: contactError } = await supabase
             .from("Contact")
             .select("*")
             .in("contact_id", contactIds);
-
           if (contactError) throw contactError;
           if (!isCancelled) setContacts(contactData || []);
-        } else {
-          if (!isCancelled) setContacts([]);
+        } else if (!isCancelled) {
+          setContacts([]);
         }
       } catch (err) {
         console.error("Error loading core tenant data", err);
@@ -149,7 +135,7 @@ const TenantPage = () => {
     };
   }, [session, tenant_id]);
 
-  // Fetch lease terms (summary, financial, etc.)
+  /** ---------- Load extracted terms ---------- */
   useEffect(() => {
     if (!tenant_id) return;
 
@@ -177,18 +163,14 @@ const TenantPage = () => {
     };
   }, [tenant_id]);
 
-  // Fetch processing job status for each lease doc
-  useEffect(() => {
-    if (!leaseDocs || leaseDocs.length === 0) return;
-
-    let isCancelled = false;
-
-    const loadJobStatuses = async () => {
+  /** ---------- Job status per lease ---------- */
+  const loadJobStatuses = useCallback(
+    async (isCancelled = false) => {
       try {
-        const leaseIds = leaseDocs.map((l) => l.lease_id).filter(Boolean);
+        const leaseIds = (leaseDocs || []).map((l) => l.lease_id).filter(Boolean);
         if (leaseIds.length === 0) return;
-        const response = await getTableIdList("Upload_Job_Status", "lease_id", leaseIds);
 
+        const response = await getTableIdList("Upload_Job_Status", "lease_id", leaseIds);
         const latestStatusByLease = (response || []).reduce((acc, status) => {
           const leaseId = status?.lease_id;
           if (!leaseId) return acc;
@@ -206,15 +188,20 @@ const TenantPage = () => {
       } catch (err) {
         console.error("Error fetching job statuses", err);
       }
-    };
+    },
+    [leaseDocs]
+  );
 
-    loadJobStatuses();
+  useEffect(() => {
+    if (!leaseDocs || leaseDocs.length === 0) return;
+    let isCancelled = false;
+    loadJobStatuses(isCancelled);
     return () => {
       isCancelled = true;
     };
-  }, [leaseDocs]);
+  }, [leaseDocs, loadJobStatuses]);
 
-  // Signed URL for viewing a lease doc
+  /** ---------- Signed URL ---------- */
   const getSignedUrl = useCallback(async (filePath) => {
     if (!filePath) return null;
     const { data, error } = await supabase.storage.from("lease-docs").createSignedUrl(filePath, 600);
@@ -225,8 +212,7 @@ const TenantPage = () => {
     return data?.signedUrl ?? null;
   }, []);
 
-  // ---------- Derived ----------
-
+  /** ---------- Derived ---------- */
   const hasAnyTerms =
     (leaseSummary?.length ?? 0) +
       (financial?.length ?? 0) +
@@ -235,8 +221,7 @@ const TenantPage = () => {
       (rights?.length ?? 0) >
     0;
 
-  // ---------- Render ----------
-
+  /** ---------- Loading / guard ---------- */
   if (isLoading || !tenant) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
@@ -245,13 +230,14 @@ const TenantPage = () => {
     );
   }
 
+  /** ---------- Render ---------- */
   return (
-    <div className="px-3 sm:px-5 lg:px-10 py-5 lg:py-10 max-w-7xl mx-auto">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-7xl mx-auto">
       {/* Header / Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-[0.99] transition"
+          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600"
           aria-label="Go back"
         >
           ← Back
@@ -259,14 +245,14 @@ const TenantPage = () => {
 
         <button
           onClick={() => navigate(`/terms/${tenant_id}`)}
-          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline active:scale-[0.99] transition"
+          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
         >
           View All Terms
         </button>
       </div>
 
       {/* Top: Profile & Messages (stack on mobile, side-by-side on lg) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {roleData && (
           <div className="flex justify-center">
             <Profile
@@ -295,165 +281,147 @@ const TenantPage = () => {
           </div>
         )}
 
-        <div className="min-h-[200px]">
-          <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
-        </div>
+        <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
       </div>
 
-      {/* Middle: Lease Summary + Contacts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        {leaseSummary?.length ? (
-          <TermsList title="Lease Summary" items={leaseSummary} />
-        ) : (
-          <DisplayBox className="w-full">
-            <h2 className="text-lg sm:text-xl underline mb-3">Lease Summary</h2>
-            <EmptyState title="No summary found." hint="Upload or re-process a lease to populate this section." />
-          </DisplayBox>
-        )}
+      {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <SectionCard title="Lease Summary">
+          {leaseSummary?.length ? (
+            leaseSummary.map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
+          )}
+        </SectionCard>
 
-        <DisplayBox className="w-full">
-          <div>
-            <h2 className="text-lg sm:text-xl underline mb-3">Contact Info</h2>
-            {contacts?.length ? (
-              <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl bg-gray-800/40">
-                {contacts.map((contact) => (
-                  <button
-                    key={contact?.contact_id}
-                    className="text-left text-white p-3 sm:p-4 hover:bg-gray-700/60 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                    onClick={() => navigate(`/contact/${contact?.contact_id}`)}
-                    aria-label={`Open contact ${contact?.Contact_Name || ""}`}
-                  >
-                    <InfoRow label="Name" value={contact?.Contact_Name} />
-                    <InfoRow label="Type" value={contact?.Contact_Type} />
-                    <InfoRow label="Phone" value={contact?.Phone} />
-                    <InfoRow label="Email" value={contact?.Email} />
-                    <InfoRow label="Address" value={contact?.Address} />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="No contacts found." />
-            )}
-          </div>
-        </DisplayBox>
+        <SectionCard title="Contact Info">
+          {contacts?.length ? (
+            <div className="flex flex-col gap-3">
+              {contacts.map((contact) => (
+                <button
+                  key={contact?.contact_id}
+                  className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  onClick={() => navigate(`/contact/${contact?.contact_id}`)}
+                >
+                  <EntryRow item={{ Name: contact?.Contact_Name }} />
+                  <EntryRow item={{ Type: contact?.Contact_Type }} />
+                  <EntryRow item={{ Phone: contact?.Phone }} />
+                  <EntryRow item={{ Email: contact?.Email }} />
+                  <EntryRow item={{ Address: contact?.Address }} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No contacts found." />
+          )}
+        </SectionCard>
       </div>
 
-      {/* Bottom: Financial + Responsibility/Dates/Rights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        {financial?.length ? (
-          <TermsList title="Financial Snapshot" items={financial} />
-        ) : (
-          <DisplayBox className="w-full">
-            <h2 className="text-lg sm:text-xl underline mb-3">Financial Snapshot</h2>
-            <EmptyState title="No financial terms found." />
-          </DisplayBox>
-        )}
+      {/* ---------- Row 2: Financial Snapshot | Responsibility ---------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <SectionCard title="Financial Snapshot">
+          {financial?.length ? (
+            financial.map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
+          )}
+        </SectionCard>
 
-        <DisplayBox className="w-full">
-          <div>
-            <h2 className="text-lg sm:text-xl underline mb-3">Responsibility</h2>
-            {responsibility?.length ? (
-              <div className="mb-3 sm:mb-4">
-                {responsibility.map((item, idx) => {
-                  const entries = Object.entries(item || {});
-                  if (entries.length === 0) return null;
-                  const [key, value] = entries[0];
-                  return <InfoRow key={`resp-${idx}-${key}`} label={key} value={value} />;
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No responsibilities found." />
-            )}
-
-            <h2 className="text-lg sm:text-xl underline mt-3 sm:mt-4 mb-3">Key Dates</h2>
-            {keyDates?.length ? (
-              <div className="mb-3 sm:mb-4">
-                {keyDates.map((item, idx) => {
-                  const entries = Object.entries(item || {});
-                  if (entries.length === 0) return null;
-                  const [key, value] = entries[0];
-                  return <InfoRow key={`dates-${idx}-${key}`} label={key} value={value} />;
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No key dates found." />
-            )}
-
-            <h2 className="text-lg sm:text-xl underline mt-3 sm:mt-4 mb-3">Critical Rights and Options</h2>
-            {rights?.length ? (
-              <div>
-                {rights.map((item, idx) => {
-                  const entries = Object.entries(item || {});
-                  if (entries.length === 0) return null;
-                  const [key, value] = entries[0];
-                  return <InfoRow key={`rights-${idx}-${key}`} label={key} value={value} />;
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No rights or options found." />
-            )}
-          </div>
-        </DisplayBox>
+        <SectionCard title="Responsibility">
+          {responsibility?.length ? (
+            responsibility.map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
+          )}
+        </SectionCard>
       </div>
 
-      {/* Lease Documents */}
+      {/* ---------- Row 3: Key Dates | Critical Rights & Options ---------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <SectionCard title="Key Dates">
+          {keyDates?.length ? (
+            keyDates.map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Critical Rights and Options">
+          {rights?.length ? (
+            rights.map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* ---------- Row 4: Lease Documents (full width) ---------- */}
       <div className="mb-6">
-        <DisplayBox className="w-full">
-          <div>
-            <h2 className="text-lg sm:text-xl underline mb-3">Lease Documents</h2>
+        <SectionCard title="Lease Documents">
+          {leaseDocs?.length ? (
+            <div className="flex flex-col gap-3">
+              {leaseDocs.map((lease) => {
+                const title = (lease?.lease_file_path || "").split("/").pop();
+                const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
 
-            {leaseDocs?.length ? (
-              <div className="flex flex-col gap-2 sm:gap-3">
-                {leaseDocs.map((lease) => {
-                  const title = (lease?.lease_file_path || "").split("/").pop();
-                  const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
-
-                  return (
-                    <div
-                      key={lease?.lease_id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 sm:p-4 rounded-xl bg-gray-800/60"
+                return (
+                  <div
+                    key={lease?.lease_id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
+                  >
+                    <button
+                      className="text-left underline hover:text-gray-200"
+                      onClick={async () => {
+                        const signedUrl = await getSignedUrl(lease?.lease_file_path);
+                        if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
+                      }}
                     >
-                      <button
-                        className="text-left underline hover:text-gray-200 break-words"
-                        onClick={async () => {
-                          const signedUrl = await getSignedUrl(lease?.lease_file_path);
-                          if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
-                        }}
-                        aria-label={`Open ${title || "lease document"}`}
-                      >
-                        {title || "Lease Document"}
-                      </button>
+                      {title || "Lease Document"}
+                    </button>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                        <span className="opacity-75">Status:</span>
-                        <span className="font-medium">
-                          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
-                        </span>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="opacity-75">Status:</span>
+                      <span className="font-medium">
+                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
+                      </span>
 
-                        {status === "error" && (
-                          <>
-                            <span className="opacity-50">•</span>
-                            <button
-                              className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
-                              onClick={() => navigate("/upload_docs")}
-                            >
-                              Reupload
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {status === "error" && (
+                        <>
+                          <span className="opacity-50">•</span>
+                          <button
+                            className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
+                            onClick={async () => {
+                              // 1) Check if file still exists in Storage
+                              const exists = await fileExistsInStorage("lease-docs", lease?.lease_file_path);
+                              if (!exists) {
+                                // If missing, send them to upload flow for this tenant
+                                navigate(`/upload_docs?tenant_id=${tenant_id}`);
+                                return;
+                              }
+                              // 2) If it exists, requeue the job
+                              await supabase.from("Upload_Job_Status").insert({
+                                lease_id: lease?.lease_id,
+                                job_info: { error: null, status: "queued", results: null },
+                              });
+                              loadJobStatuses();
+                            }}
+                          >
+                            Reupload
+                          </button>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
-            )}
-          </div>
-        </DisplayBox>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
+          )}
+        </SectionCard>
       </div>
 
-      {/* If absolutely nothing is available */}
+      {/* Absolute nothing state */}
       {!hasAnyTerms && leaseDocs?.length === 0 && (
         <div className="text-center text-sm text-gray-300">
           Nothing to show yet. Try uploading a lease or syncing terms.

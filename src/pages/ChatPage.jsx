@@ -1,4 +1,5 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+// src/pages/ChatPage.jsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import SearchBar from "../components/SearchBar";
 import ChatSidebar from "../components/ChatSidebar";
 import Spinner from "../components/Spinner";
@@ -7,140 +8,6 @@ import { supabase } from "../supabaseClient";
 import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
 import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
-
-// --- Memo wrappers to avoid needless re-renders on each keystroke ---
-const MemoSearchBar = memo(SearchBar);
-const MemoSidebar = memo(ChatSidebar);
-
-const ChatBubble = ({ role, text, loading }) => (
-  <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
-    <div
-      className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${
-        role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
-      }`}
-    >
-      {loading ? (
-        <div className="text-white">
-          <Spinner />
-        </div>
-      ) : (
-        <p className="break-words">{text}</p>
-      )}
-    </div>
-  </div>
-);
-
-const Header = memo(function Header({
-  entitySelected,
-  entity_name,
-  entity_type,
-  access_token,
-  onSelectEntity,
-  onOpenSidebar,
-}) {
-  return (
-    <div className="sticky top-0 z-20 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
-        {/* Entity label */}
-        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-          {entitySelected && entity_name && (
-            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-              {/* image handled by parent */}
-              {/* Name + type */}
-              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
-                <span className="hidden sm:inline">
-                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)} -
-                </span>{" "}
-                <span className="text-white/60">
-                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Search (kept memoized and stable) */}
-        <div className="w-full max-w-xs sm:max-w-lg flex-1">
-          <MemoSearchBar
-            placeholder="Search Entities"
-            access_token={access_token}
-            selectEntity={onSelectEntity}
-            type="units_properties_tenants"
-            entityDisplay={true}
-          />
-        </div>
-
-        {/* Sidebar toggle on mobile */}
-        <button
-          type="button"
-          onClick={onOpenSidebar}
-          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
-          aria-label="Open chat sidebar"
-        >
-          <span className="hidden sm:inline">Sources</span>
-          <span className="sm:hidden">•••</span>
-        </button>
-      </div>
-    </div>
-  );
-});
-
-const Composer = memo(function Composer({
-  entitySelected,
-  input,
-  setInput,
-  onSend,
-  inputRef,
-}) {
-  return (
-    <div className="sticky bottom-3 z-10 px-2 sm:px-4 md:px-6 pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto w-full max-w-4xl">
-        {entitySelected ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSend();
-            }}
-            className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
-          >
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              // IMPORTANT: stop bubbling input/keyboard events so global handlers in
-              // other components (like certain search/autocomplete libs) don't crash.
-              onInputCapture={(e) => e.stopPropagation()}
-              onKeyDownCapture={(e) => e.stopPropagation()}
-              onKeyUpCapture={(e) => e.stopPropagation()}
-              placeholder="Ask a question…"
-              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
-              inputMode="text"
-              enterKeyHint="send"
-              autoComplete="off"
-              autoCapitalize="sentences"
-              autoCorrect="on"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
-            >
-              Send
-            </button>
-          </form>
-        ) : (
-          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
-            Select a property, unit, or tenant to start chatting.
-          </p>
-        )}
-        <p className="mt-2 text-xs text-gray-400 text-center">
-          LeaseLink can make mistakes — be sure to check original sources.
-        </p>
-      </div>
-    </div>
-  );
-});
 
 const ChatPage = () => {
   // ------------------------- entity context -------------------------
@@ -189,6 +56,7 @@ const ChatPage = () => {
   // ------------------------- initial hydrate -----------------------
   useEffect(() => {
     let cancelled = false;
+
     const init = async () => {
       const storedSessionId = localStorage.getItem("chat_session_id");
       const storedEntityId = localStorage.getItem("entity_id");
@@ -276,23 +144,37 @@ const ChatPage = () => {
 
   // ------------------------- autoscroll (skip if typing) -----------
   useEffect(() => {
-    // don’t fight the keyboard; also guard all refs
-    const inputEl = composerInputRef.current;
-    if (inputEl && document.activeElement === inputEl) return;
+    if (!messagesEndRef.current) return;
+    if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
+    messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [messages]);
 
-    const endEl = messagesEndRef.current;
-    if (!endEl) return;
-
-    // schedule into next frame to avoid layout thrash during re-render
-    const id = requestAnimationFrame(() => {
-      try {
-        endEl.scrollIntoView({ block: "end", behavior: "smooth" });
-      } catch (e) {
-        // ignore
+  // ------------------------- keep composer focused while typing ----
+  // If something else steals focus during a re-render (e.g., SearchBar),
+  // immediately restore focus to the chat composer while the user is typing.
+  useEffect(() => {
+    if (!composerInputRef.current) return;
+    if (showModal || sidebarOpen) return; // don't steal focus from overlays
+    // Only run this effect in response to *chat input* changes
+    requestAnimationFrame(() => {
+      if (document.activeElement !== composerInputRef.current) {
+        try {
+          composerInputRef.current.focus({ preventScroll: true });
+        } catch {}
       }
     });
-    return () => cancelAnimationFrame(id);
-  }, [messages]);
+  }, [input, showModal, sidebarOpen]);
+
+  // Focus the composer when an entity is selected for the first time
+  useEffect(() => {
+    if (entitySelected && composerInputRef.current && !showModal && !sidebarOpen) {
+      requestAnimationFrame(() => {
+        try {
+          composerInputRef.current.focus({ preventScroll: true });
+        } catch {}
+      });
+    }
+  }, [entitySelected, showModal, sidebarOpen]);
 
   // ------------------------- fetch tenant terms --------------------
   useEffect(() => {
@@ -381,7 +263,7 @@ const ChatPage = () => {
     }
   };
 
-  const selectEntity = useCallback(async (entityId, entityType) => {
+  const selectEntity = async (entityId, entityType) => {
     setMessages([]);
     setSources([]);
     setSelectedSource(null);
@@ -403,11 +285,10 @@ const ChatPage = () => {
 
     getPreviousChats(entityId, session, setPreviousChats);
 
-    // Only auto-focus on touch devices so desktop doesn't keep refocusing
     if (isTouch) setTimeout(() => composerInputRef.current?.focus(), 0);
-  }, [isTouch, session, session_id]);
+  };
 
-  const pollForNextAssistantResponse = useCallback(async (
+  const pollForNextAssistantResponse = async (
     existingAssistantCount,
     retries = 20,
     delay = 1500
@@ -429,9 +310,9 @@ const ChatPage = () => {
       ...prev.slice(0, -1),
       { role: "assistant", text: "⚠️ No response received. Please try again later." },
     ]);
-  }, [session_id]);
+  };
 
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
@@ -483,82 +364,182 @@ const ChatPage = () => {
     } finally {
       if (isTouch) setTimeout(() => composerInputRef.current?.focus(), 0);
     }
-  }, [
-    input,
-    entity_id,
-    company_id,
-    session_id,
-    auth_id,
-    entity_type,
-    server_url,
-    access_token,
-    pollForNextAssistantResponse,
-    isTouch,
-  ]);
+  };
+
+  // ------------------------- render helpers ------------------------
+  const Header = () => (
+    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+        {/* Entity label */}
+        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+          {entitySelected && entity_name && (
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              {entity_image && (
+                <img
+                  src={entity_image}
+                  alt="Entity"
+                  className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                />
+              )}
+              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
+                <span className="hidden sm:inline">
+                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}-{" "}
+                </span>
+                <span className="text-white/60">
+                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Search (shrinks on mobile) */}
+        <div className="w-full max-w-xs sm:max-w-lg flex-1">
+          <SearchBar
+            placeholder="Search Entities"
+            access_token={access_token}
+            selectEntity={(id, type) => selectEntity(id, type)}
+            type="tenants"
+            entityDisplay={true}
+            // Prevent any internal auto-focus behavior from stealing focus
+            noAutoFocus
+            data-no-autofocus
+          />
+        </div>
+
+        {/* Sidebar toggle on mobile */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+          aria-label="Open chat sidebar"
+        >
+          <span className="hidden sm:inline">Sources</span>
+          <span className="sm:hidden">•••</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const Composer = () => (
+    <div className="sticky bottom-3 z-10 px-2 sm:px-4 md:px-6 pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto w-full max-w-4xl">
+        {entitySelected ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+          >
+            <input
+              ref={composerInputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question…"
+              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
+              inputMode="text"
+              enterKeyHint="send"
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send
+            </button>
+          </form>
+        ) : (
+          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
+            Select a property, unit, or tenant to start chatting.
+          </p>
+        )}
+        <p className="mt-2 text-xs text-gray-400 text-center">
+          LeaseLink can make mistakes — be sure to check original sources.
+        </p>
+      </div>
+    </div>
+  );
+
+  const ChatBubble = ({ role, text, loading }) => (
+    <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${
+          role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
+        }`}
+      >
+        {loading ? (
+          <div className="text-white">
+            <Spinner />
+          </div>
+        ) : (
+          <p className="break-words">{text}</p>
+        )}
+      </div>
+    </div>
+  );
 
   // ------------------------- main render ---------------------------
   if (loading || loadingUserData) return <div className="p-6 text-white">Loading…</div>;
   if (!userData) return <div className="p-6 text-white">User record not found</div>;
 
   return (
-    <div className="flex h-full min-h-0 bg-[#1b1b1b] text-white">
-      {/* LEFT: main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header
-          entitySelected={entitySelected}
-          entity_name={entity_name}
-          entity_type={entity_type}
-          access_token={access_token}
-          onSelectEntity={selectEntity}
-          onOpenSidebar={() => setSidebarOpen(true)}
-        />
+    // Column: sticky header on top; content row underneath
+    // Lock page height; children manage scroll. dvh helps iOS Safari.
+    <div className="flex h-[100dvh] md:h-screen min-h-0 flex-col bg-[#1b1b1b] text-white overflow-hidden">
+      {/* GLOBAL HEADER: spans both columns and stays visible while scrolling */}
+      <Header />
 
-        {/* Messages: add big bottom padding so last bubbles don't hide under the floating composer */}
-        <div className="min-h-0 px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-32">
-          <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
-            {messages.map((m, i) => (
-              <ChatBubble
-                key={i}
-                role={m.role}
-                text={m.message || m.text}
-                loading={m.loading}
-              />
-            ))}
-            <div ref={messagesEndRef} />
+      {/* CONTENT ROW under header: left = messages, right = desktop sidebar */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* LEFT: main column (its own scroll area) */}
+        <div className="flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
+          {/* Scrollable area for messages */}
+          {/* Add bottom padding so last message never hides under the sticky composer */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32">
+            <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
+              {messages.map((m, i) => (
+                <ChatBubble
+                  key={i}
+                  role={m.role}
+                  text={m.message || m.text}
+                  loading={m.loading}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Sticky composer at bottom of the LEFT scroll container */}
+          <Composer />
+        </div>
+
+        {/* RIGHT: desktop sidebar (independent scroll) */}
+        <div className="hidden w-[370px] flex-none border-l border-white/10 lg:flex">
+          {/* Make the sidebar its own scroll area */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ChatSidebar
+              previousChats={previousChats}
+              sources={currentSources}
+              onSelectChat={async (sid) => {
+                setSessionId(sid);
+                localStorage.setItem("chat_session_id", sid);
+                const oldmessages = await getMessages(sid);
+                setMessages(oldmessages);
+              }}
+              onSourceClick={(source) => {
+                setSelectedSource(source);
+                setShowModal(true);
+              }}
+              termsRent={terms}
+            />
           </div>
         </div>
-
-        <Composer
-          entitySelected={entitySelected}
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
-          inputRef={composerInputRef}
-        />
       </div>
 
-      {/* RIGHT: sidebar (desktop) */}
-      <div className="hidden w-[370px] flex-none border-l border-white/10 lg:flex">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <MemoSidebar
-            previousChats={previousChats}
-            sources={currentSources}
-            onSelectChat={async (sid) => {
-              setSessionId(sid);
-              localStorage.setItem("chat_session_id", sid);
-              const oldmessages = await getMessages(sid);
-              setMessages(oldmessages);
-            }}
-            onSourceClick={(source) => {
-              setSelectedSource(source);
-              setShowModal(true);
-            }}
-            termsRent={terms}
-          />
-        </div>
-      </div>
-
-      {/* Sidebar Drawer (mobile) */}
+      {/* Sidebar Drawer (mobile) - overlays content, not under header */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div
@@ -579,7 +560,7 @@ const ChatPage = () => {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <MemoSidebar
+              <ChatSidebar
                 previousChats={previousChats}
                 sources={currentSources}
                 onSelectChat={async (sid) => {
@@ -606,9 +587,7 @@ const ChatPage = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4">
           <div className="relative w-full max-w-4xl max-h-[95vh] overflow-hidden rounded-2xl bg-white text-black shadow-2xl">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 flex items-center justify-between">
-              <h2 className="text-base sm:text-lg font-semibold truncate pr-4">
-                Document Excerpt
-              </h2>
+              <h2 className="text-base sm:text-lg font-semibold truncate pr-4">Document Excerpt</h2>
               <button
                 className="flex-none rounded-md p-1 text-2xl leading-none text-gray-500 hover:text-black hover:bg-gray-100"
                 onClick={() => setShowModal(false)}
@@ -617,10 +596,7 @@ const ChatPage = () => {
                 ✕
               </button>
             </div>
-            <div
-              className="overflow-y-auto px-4 py-3 sm:px-6 sm:py-4"
-              style={{ maxHeight: "calc(95vh - 80px)" }}
-            >
+            <div className="overflow-y-auto px-4 py-3 sm:px-6 sm:py-4" style={{ maxHeight: "calc(95vh - 80px)" }}>
               <p className="mb-4 whitespace-pre-wrap text-sm sm:text-base text-gray-800 break-words">
                 {selectedSource.highlight_text}
               </p>
@@ -637,7 +613,6 @@ const ChatPage = () => {
         </div>
       )}
 
-      {/* entity readiness popup */}
       {popUp && (
         <PopUp
           title={`${entity_name} Not Updated`}

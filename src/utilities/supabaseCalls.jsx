@@ -17,3 +17,16 @@ export const getTableIdList = async (tableName, column_name, IdList) => {
     }
     return data
 }
+
+
+export const fileExistsInStorage = async (filePath) => {
+  if (!filePath) return false;
+  
+  const path = filePath.trim().toLowerCase();
+  
+  const { error } = await supabase.storage
+    .from("lease-docs")
+    .createSignedUrl(path, 60);
+    
+  return !error;
+};

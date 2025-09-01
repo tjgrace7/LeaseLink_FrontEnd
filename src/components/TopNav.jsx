@@ -42,7 +42,7 @@ const TopNav = ({ toggleSidebar }) => {
           <img
             src={logo}
             alt="Lease Link Logo"
-            className="h-8 md:h-10 lg:h-12 w-auto object-contain block"
+            className="h-12 md:h-10 lg:h-16 w-auto object-contain block"
           />
         </button>
 
@@ -57,7 +57,10 @@ const TopNav = ({ toggleSidebar }) => {
               `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
             }
           >
+            <div className='flex flex-col items-center'>
             <FiMessageCircle className={iconSize} />
+            <p className='md:0'>chat</p>
+            </div>
           </NavLink>
 
           {/* Upload Docs (always visible) */}
@@ -69,7 +72,10 @@ const TopNav = ({ toggleSidebar }) => {
               `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
             }
           >
+            <div className='flex flex-col items-center'>
             <FiUpload className={iconSize} />
+            <p className='md:0'>upload</p>
+            </div>
           </NavLink>
 
           {/* Create Person (hide on xs to reduce clutter) */}
@@ -82,7 +88,10 @@ const TopNav = ({ toggleSidebar }) => {
                 `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
               }
             >
+              <div className='flex flex-col items-center'>
               <FaUserPlus className={iconSize} />
+              <p className='md:0'>create person</p>
+              </div>
             </NavLink>
           )}
 
@@ -96,10 +105,13 @@ const TopNav = ({ toggleSidebar }) => {
                 `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
               }
             >
+              <div className='flex flex-col items-center'>
               <span className="relative inline-flex items-center">
                 <HiOfficeBuilding className={iconSize} />
                 <HiPlus className="w-4 h-4 md:w-5 md:h-5 -ml-1" />
               </span>
+              <p className='md:0'>create property/unit</p>
+              </div>
             </NavLink>
           )}
 

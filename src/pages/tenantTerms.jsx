@@ -116,7 +116,10 @@ const TenantTerms = () => {
     return (
       <div className="space-y-1 border-b border-muted/30 py-2 last:border-b-0">
         <dt className="text-lg font-medium text-muted-foreground">{key}:</dt>
-        <dd className=" text-sm leading-relaxed break-words whitespace-pre-wrap">{clean}</dd>
+        <dd className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {clean}
+        </dd>
+
       </div>
     );
   };
