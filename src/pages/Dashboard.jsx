@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [messageCount, setMessageCount] = useState(0);
   const [docsCount, setDocsCount] = useState(0);
   const [tenantCount, setTenantCount] = useState(0);
+  const [activeCompanyId, setActiveCompanyId] = useState('')
 
   // Properties list for EntityListBox
   const [properties, setProperties] = useState([]);
@@ -47,7 +48,7 @@ const Dashboard = () => {
   const [error, setError] = useState({ kpis: '', properties: '' });
 
   // ——— Derived guard
-  const isReady = !!session && !!userData?.company_id;
+  const isReady = !!session && !!activeCompanyId
 
   // ——— Centralized navigation handler (stable reference)
   const navigateEntity = useCallback((id, type) => {
@@ -62,7 +63,7 @@ const Dashboard = () => {
     setError((e) => ({ ...e, kpis: '' }));
 
     try {
-      const company_id = userData.company_id; // local cache
+
 
       // 1) Answered questions (assistant role) this month
       const qMessages = supabase
@@ -76,7 +77,7 @@ const Dashboard = () => {
       const qTenants = supabase
         .from('tenant')
         .select('tenant_id', { count: 'exact', head: true })
-        .eq('property_management_id', company_id);
+        .eq('property_management_id', activeCompanyId);
 
       // 3) Lease documents (⚠️ If you store company on this table, filter by it)
       //    TODO: For multi-tenant safety, add `.eq('company_id', company_id)` if available.
@@ -99,7 +100,7 @@ const Dashboard = () => {
     } finally {
       setLoading((s) => ({ ...s, kpis: false }));
     }
-  }, [isReady, startISO, nowISO, userData?.company_id]);
+  }, [isReady, startISO, nowISO, activeCompanyId]);
 
   // ——— Fetch Properties list (minimal columns)
   const fetchProperties = useCallback(async () => {
@@ -111,7 +112,7 @@ const Dashboard = () => {
       const { data, error } = await supabase
         .from('properties')
         .select('*')
-        .eq('pm_company', userData.company_id)
+        .eq('pm_company', activeCompanyId)
         .order('Property_Name', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -121,12 +122,12 @@ const Dashboard = () => {
     } finally {
       setLoading((s) => ({ ...s, properties: false }));
     }
-  }, [isReady, userData?.company_id]);
+  }, [isReady, activeCompanyId]);
 
   // ——— Prime company id & kick off loads
   useEffect(() => {
-    if (!session || !userData) return;
-    if (userData.company_id) setCompanyId(userData.company_id);
+    if (!session || !userData || !activeCompanyId) return;
+    if (activeCompanyId) setCompanyId(activeCompanyId);
   }, [session, userData]);
 
   useEffect(() => {
@@ -134,6 +135,11 @@ const Dashboard = () => {
     fetchKpis();
     fetchProperties();
   }, [isReady, fetchKpis, fetchProperties]);
+
+  useEffect(() => {
+    console.log(localStorage.getItem('activeCompanyId'))
+    setActiveCompanyId(localStorage.getItem('activeCompanyId'))
+  }, [localStorage.getItem('activeCompanyId')])
 
   // ——— Reusable tiny KPI card (keeps JSX clean)
 const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
@@ -225,7 +231,7 @@ const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
           <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-10 pb-8">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
               <LoadPreviousMessages
-                entityId={companyId}
+                entityId={activeCompanyId}
                 session={session}
                 entityType="company"
               />

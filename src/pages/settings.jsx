@@ -48,9 +48,12 @@ const Settings = () => {
   // ——— Loading/Error
   const [loading, setLoading] = useState({ company: false, users: false, roles: false });
   const [error, setError] = useState({ company: '', users: '', roles: '' });
-
+  
+  const company_id = localStorage.getItem('activeCompanyId')
   // ——— Guards
-  const isReady = Boolean(session && userData?.company_id);
+  const isReady = Boolean(session && company_id);
+
+  
 
   // ——— Load company
   useEffect(() => {
@@ -59,7 +62,7 @@ const Settings = () => {
       setLoading((s) => ({ ...s, company: true }));
       setError((e) => ({ ...e, company: '' }));
       try {
-        const res = await getTable('Property_Management_Companies', 'company_id', userData.company_id);
+        const res = await getTable('Property_Management_Companies', 'company_id', company_id);
         if (!res || !res[0]) throw new Error('Company not found');
         setCompanyName(res[0].company_name || '');
         setNumTenants(res[0].numTenants ?? '');
@@ -71,7 +74,7 @@ const Settings = () => {
       }
     };
     loadCompany();
-  }, [isReady, roleData?.Edit_Company, userData?.company_id]);
+  }, [isReady, roleData?.Edit_Company, company_id]);
 
   // ——— Load users
   useEffect(() => {
@@ -80,7 +83,7 @@ const Settings = () => {
       setLoading((s) => ({ ...s, users: true }));
       setError((e) => ({ ...e, users: '' }));
       try {
-        const res = await getTable('User_Data', 'company_id', userData.company_id);
+        const res = await getTable('User_Data', 'company_id', company_id);
         setUsers(res || []);
       } catch (err) {
         console.error('Users load error', err);
@@ -90,7 +93,7 @@ const Settings = () => {
       }
     };
     loadUsers();
-  }, [isReady, roleData?.View_Other_Users, userData?.company_id]);
+  }, [isReady, roleData?.View_Other_Users, company_id]);
 
   // ——— Resolve user role names
   useEffect(() => {
@@ -121,7 +124,7 @@ const Settings = () => {
       setLoading((s) => ({ ...s, roles: true }));
       setError((e) => ({ ...e, roles: '' }));
       try {
-        const res = await getTable('Roles', 'company_id', userData.company_id);
+        const res = await getTable('Roles', 'company_id', company_id);
         setRoles(res || []);
       } catch (err) {
         console.error('Roles load error', err);
@@ -131,7 +134,7 @@ const Settings = () => {
       }
     };
     loadRoles();
-  }, [isReady, roleData?.Edit_Roles, userData?.company_id]);
+  }, [isReady, roleData?.Edit_Roles, company_id]);
 
   // ——— Tab button atom
   const TabButton = ({ isActive, onClick, children }) => (

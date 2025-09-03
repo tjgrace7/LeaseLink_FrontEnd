@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 
 // Create the authentication context
 const AuthContext = createContext();
-
+const log = (...args) => console.log('[Auth]', ...args);
 /**
  * AuthProvider wraps your app and provides session and user data context
  */
@@ -14,8 +14,14 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);         // Custom user data from 'User_Data' table
   const [roleData, setRoleData] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(true); // Loading state for user data
+  const [effectiveCompanyId, setEffectiveCompanyId] = useState('')
 
   // Fetch session and listen for changes on component mount
+  useEffect(() => {
+    if (!userData) return
+    log(effectiveCompanyId)
+
+  }, [effectiveCompanyId, userData])
   useEffect(() => {
     const getInitialSession = async () => {
       const {
@@ -66,9 +72,11 @@ export const AuthProvider = ({ children }) => {
         console.error('Error loading extended user data:', error);
         return;
       }
-      const {data: roleData, error: roleError} = await supabase.from('Roles').select('*').eq('id', data.role_id).single()
-      if(roleError)
-      {
+      if (localStorage.getItem('activeCompanyId') === null) {
+        localStorage.setItem('activeCompanyId', data.company_id)
+      }
+      const { data: roleData, error: roleError } = await supabase.from('Roles').select('*').eq('id', data.role_id).single()
+      if (roleError) {
         console.error("Error Fetching User Role", roleError)
         return;
       }
@@ -80,9 +88,18 @@ export const AuthProvider = ({ children }) => {
       setLoadingUserData(false);
     }
   };
+  const setFrontEndCompany = async (companyId) => {
+    if (roleData.Role_Name != "Admin") return
+    setEffectiveCompanyId(companyId)
+    localStorage.setItem('activeCompanyId', companyId)
 
+  }
+  const clearFrontEndCompany = () => {
+    setEffectiveCompanyId(null)
+    localStorage.setItem('activeCompanyId', userData.company_id)
+  }
   return (
-    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData }}>
+    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData, setFrontEndCompany, clearFrontEndCompany }}>
       {children}
     </AuthContext.Provider>
   );

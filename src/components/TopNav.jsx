@@ -7,11 +7,17 @@ import SearchBar from './SearchBar';
 import UserDropdown from './UserDropdown';
 import { useAuth } from './AuthProvider';
 import logo from '../assets/Lease_Link_Logo.png';
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
 
-const TopNav = ({ toggleSidebar }) => {
-  const { roleData } = useAuth();
+const TopNav = () => {
+  const { roleData, userData, clearFrontEndCompany } = useAuth();
   const navigate = useNavigate();
-
+  const [imposter, setImposter] = useState(false)
+  useEffect(() => {
+    if (!userData) return
+    if (userData.Imposter) setImposter(true)
+  }, [userData])
   const canCreatePerson =
     !!roleData &&
     (roleData.CreateUsers ||
@@ -58,8 +64,8 @@ const TopNav = ({ toggleSidebar }) => {
             }
           >
             <div className='flex flex-col items-center'>
-            <FiMessageCircle className={iconSize} />
-            <p className='md:0'>chat</p>
+              <FiMessageCircle className={iconSize} />
+              <p className='md:0'>Chat</p>
             </div>
           </NavLink>
 
@@ -73,8 +79,8 @@ const TopNav = ({ toggleSidebar }) => {
             }
           >
             <div className='flex flex-col items-center'>
-            <FiUpload className={iconSize} />
-            <p className='md:0'>upload</p>
+              <FiUpload className={iconSize} />
+              <p className='md:0'>Upload</p>
             </div>
           </NavLink>
 
@@ -89,8 +95,8 @@ const TopNav = ({ toggleSidebar }) => {
               }
             >
               <div className='flex flex-col items-center'>
-              <FaUserPlus className={iconSize} />
-              <p className='md:0'>create person</p>
+                <FaUserPlus className={iconSize} />
+                <p className='md:0'>Create Person</p>
               </div>
             </NavLink>
           )}
@@ -106,11 +112,11 @@ const TopNav = ({ toggleSidebar }) => {
               }
             >
               <div className='flex flex-col items-center'>
-              <span className="relative inline-flex items-center">
-                <HiOfficeBuilding className={iconSize} />
-                <HiPlus className="w-4 h-4 md:w-5 md:h-5 -ml-1" />
-              </span>
-              <p className='md:0'>create property/unit</p>
+                <span className="relative inline-flex items-center">
+                  <HiOfficeBuilding className={iconSize} />
+                  <HiPlus className="w-4 h-4 md:w-5 md:h-5 -ml-1" />
+                </span>
+                <p className='md:0'>Create Property/Unit</p>
               </div>
             </NavLink>
           )}
@@ -131,6 +137,20 @@ const TopNav = ({ toggleSidebar }) => {
           </div>
         </div>
       </div>
+      {imposter && (
+        <button
+          type="button"
+          onClick={async () => {
+            setImposter(false)
+            await supabase.from('User_Data').update({"Imposter": false}).eq('company_id', userData.company_id)
+            clearFrontEndCompany()
+          }}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
+          title="Cancel Imposter"
+        >
+          Cancel Imposter Mode
+        </button>
+      )}
     </div>
   );
 };

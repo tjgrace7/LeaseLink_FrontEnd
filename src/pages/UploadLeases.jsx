@@ -48,7 +48,8 @@ const UploadLeases = () => {
   const fileInputRef = useRef(null);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
+  const company_id = localStorage.getItem('activeCompanyId')
+  console.log(company_id)
   // A stable ID per file (good enough for the session)
   const fileId = (f) => `${f.name}-${f.size}-${f.lastModified}`;
 
@@ -80,7 +81,7 @@ const UploadLeases = () => {
 
   // ----------------- Fetch Tenants on Load -----------------
   useEffect(() => {
-    if (!session || !userData?.company_id) return;
+    if (!session || !company_id) return;
     let cancelled = false;
 
     const getTenants = async () => {
@@ -89,7 +90,7 @@ const UploadLeases = () => {
         const { data, error } = await supabase
           .from("tenant")
           .select("*")
-          .eq("property_management_id", userData.company_id);
+          .eq("property_management_id", company_id);
 
         if (error) throw error;
         if (!cancelled) setTenants(data || []);
@@ -105,7 +106,7 @@ const UploadLeases = () => {
     return () => {
       cancelled = true;
     };
-  }, [session, userData?.company_id]);
+  }, [session, company_id]);
 
   // ----------------- When a tenant is selected, fetch linked units + properties -----------------
   const tenantSelected = useCallback(
@@ -223,7 +224,7 @@ const UploadLeases = () => {
               Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              company_id: userData.company_id,
+              company_id: company_id,
               tenant_id: selectedTenant.tenant_id,
               property_id: selectedProperty.prop_id,
               unit_id: selectedUnit.unit_id,
@@ -307,7 +308,7 @@ const UploadLeases = () => {
     selectedUnit,
     session,
     supabaseUrl,
-    userData?.company_id,
+    company_id,
     submittingFiles,
     completed,
   ]);

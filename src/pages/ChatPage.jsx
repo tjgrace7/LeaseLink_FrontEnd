@@ -45,7 +45,7 @@ const ChatPage = () => {
   const { session, loading, userData, loadingUserData } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user.id;
-  const company_id = userData?.company_id;
+  const company_id = localStorage.getItem('activeCompanyId');
 
   // ------------------------- detect touch (mobile/tablet) ----------
   const isTouch = useMemo(() => {

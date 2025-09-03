@@ -143,6 +143,7 @@ const CreateEditPerson = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const supabase_url = import.meta.env.VITE_SUPABASE_URL;
+  const company_id = localStorage.getItem('activeCompanyId')
 
   // --------------------------------------
   // Allowed person types by role
@@ -185,14 +186,14 @@ const CreateEditPerson = () => {
         const propertyData = await getTable(
           "properties",
           "pm_company",
-          userData.company_id
+          company_id
         );
         if (!propertyData) return;
         setProperties(propertyData);
 
         // Units (only for Tenant & after properties are selected)
         if (selectedPerson === "Tenant" && selectedProperties.length > 0) {
-          const unitData = await getTable("Units", "pmcompany_id", userData.company_id);
+          const unitData = await getTable("Units", "pmcompany_id", company_id);
           if (!unitData) return;
 
           // Units already linked to tenants
@@ -222,7 +223,7 @@ const CreateEditPerson = () => {
           const tenantData = await getTable(
             "tenant",
             "property_management_id",
-            userData.company_id
+            company_id
           );
           if (!tenantData) return;
           setTenants(tenantData);
@@ -433,7 +434,7 @@ const CreateEditPerson = () => {
       const company = await getTable(
         "Property_Management_Companies",
         "company_id",
-        userData.company_id
+        company_id
       );
       const company_name = company?.[0]?.company_name ?? "company";
 
@@ -460,7 +461,7 @@ const CreateEditPerson = () => {
           email: genericFormData.email,
           phone: genericFormData.phone,
           user_id: session.user.id,
-          company_id: userData.company_id,
+          company_id: company_id,
           image: imageBase64,
           properties: selectedProperties,
           units: selectedUnits,

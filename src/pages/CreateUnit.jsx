@@ -118,6 +118,7 @@ const CreateUnitProperty = () => {
   const [errors, setErrors] = useState({});
   const [editImage, setEditImage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const company_id = localStorage.getItem('activeCompanyId');
 
   // Show available entity types based on role
   useEffect(() => {
@@ -137,7 +138,7 @@ const CreateUnitProperty = () => {
       try {
         // Configure per-entity labels/placeholders
         if (selectedEntity === "Unit") {
-          const props = await getTable("properties", "pm_company", userData.company_id);
+          const props = await getTable("properties", "pm_company", company_id);
           if (!props) return;
           setParent(props);
           setNameLabel("Unit Address");
@@ -146,7 +147,7 @@ const CreateUnitProperty = () => {
         }
 
         if (selectedEntity === "Property") {
-          const owners = await getTable("building_owner", "company_id", userData.company_id);
+          const owners = await getTable("building_owner", "company_id", company_id);
           if (!owners) return;
           setParent(owners);
           setNameLabel("Property Name");
@@ -181,7 +182,7 @@ const CreateUnitProperty = () => {
           // Select correct parent
           const parentKey = selectedEntity === "Unit" ? "property_id" : "owner_id";
           const pKey2 = selectedEntity === "Unit" ? "prop_id" : "owner_id";
-          const selected = (selectedEntity === "Unit" ? await getTable("properties", "pm_company", userData.company_id) : await getTable("building_owner", "company_id", userData.company_id)) || [];
+          const selected = (selectedEntity === "Unit" ? await getTable("properties", "pm_company", company_id) : await getTable("building_owner", "company_id", company_id)) || [];
           setParent(selected);
           const parentMatch = selected.find((p) => p[pKey2] === item[parentKey]);
           setSelectedParent(parentMatch || null);
@@ -268,7 +269,7 @@ const hasChanged = useCallback(() => {
           image: imageBase64,
           imageType: Entity.imageType,
           user_id: session.user.id,
-          company_id: userData.company_id,
+          company_id: company_id,
         };
         endpoint = "CreateUnit";
       }
@@ -282,7 +283,7 @@ const hasChanged = useCallback(() => {
           image: imageBase64,
           imageType: Entity.imageType,
           user_id: session.user.id,
-          company_id: userData.company_id,
+          company_id: company_id,
           city: Entity.city,
           state: Entity.state,
           zip: Entity.zip,

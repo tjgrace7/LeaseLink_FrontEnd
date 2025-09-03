@@ -1,243 +1,281 @@
 import { useAuth } from '../components/AuthProvider';
 import DisplayBox from '../components/DisplayBox';
-import EntityListBox from '../components/EntityListBox';
-import LoadPreviousMessages from '../components/PreviousMessages';
+import SearchBar from '../components/SearchBar';
 import { supabase } from '../supabaseClient';
-import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
-/**
- * Dashboard
- * ------------------------------------------------------------
- * Goals of this refactor:
- * 1) Mobile-first, responsive layout with accessible semantics.
- * 2) Server-side counts (lighter queries) and proper loading/empty states.
- * 3) Clear comments + small utilities to keep JSX tidy.
- * 4) Fewer re-renders (stable callbacks/memos) and safe effects with guards.
- * 5) Consistent styling via Tailwind.
- */
+const LEASELINK_COMPANY = '74326e0e-58c6-4ba4-9d50-caf5670402f0';
 
 const LeaseLinkDashboard = () => {
-    const navigate = useNavigate();
-    const { session, userData } = useAuth();
+  const { session, userData, roleData, setFrontEndCompany } = useAuth();
+  const navigate = useNavigate();
 
-    // ——— Date window: first day of this month → now (ISO)
-    const { startISO, nowISO } = useMemo(() => {
-        const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        return {
-            startISO: currentMonthStart.toISOString(),
-            nowISO: now.toISOString(),
-        };
-    }, []);
+  const isLLAdmin =
+    !!roleData?.Is_LeaseLink_Admin || userData?.company_id === LEASELINK_COMPANY;
 
-    // ——— Local state
-    const [companyId, setCompanyId] = useState('');
+  const { startISO, nowISO } = useMemo(() => {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { startISO: currentMonthStart.toISOString(), nowISO: now.toISOString() };
+  }, []);
 
-    // KPI values
-    const [numberofCustomers, setCustomers] = useState(0);
-    const [customerCosts, setCustomerCost] = useState(0);
-    const [lifetimeValue, setLifetimeValue] = useState(0);
-    const [lifetimeGP, setLifetimeGP] = useState(0)
-    const [chatCosts, setChatCosts] = useState(0);
-    const [tenantChatCosts, setTenantChatCost] = useState(0);
-    const [unitChatCost, setUnitChatCost] = useState(0);
-    const [propertyChatCost, setPropertyChatCost] = useState(0)
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState({ kpis: false, companies: false });
+  const [error, setError] = useState({ kpis: '', companies: '' });
 
-    // Properties list for EntityListBox
-    const [tenantUploadCost, setTenantUploadCost] = useState(0);
+  const [numberOfCustomers, setCustomers] = useState(0);
+  const [customerCosts, setCustomerCost] = useState(0);
+  const [tenantUploadCost, setTenantUploadCost] = useState(0);
+  const [chatCosts, setChatCosts] = useState(0);
+  const [tenantChatCosts, setTenantChatCost] = useState(0);
+  const [unitChatCost, setUnitChatCost] = useState(0);
+  const [propertyChatCost, setPropertyChatCost] = useState(0);
 
-    // Loading & error UX
-    const [loading, setLoading] = useState({ kpis: false, properties: false });
-    const [error, setError] = useState({ kpis: '', properties: '' });
-    const leaseLinkCompany = '74326e0e-58c6-4ba4-9d50-caf5670402f0'
+  const isReady = !!session && !!userData?.company_id;
 
-    useEffect(() => {
-        if (!userData) return
-        if (userData.company_id != leaseLinkCompany) navigate('/dashboard')
-    }, [userData])
-    // ——— Derived guard
-    const isReady = !!session && !!userData?.company_id;
+  const avgBy = (arr, key) => {
+    const a = Array.isArray(arr) ? arr : [];
+    if (a.length === 0) return 0;
+    const sum = a.reduce((acc, x) => acc + (Number(x?.[key]) || 0), 0);
+    return sum / a.length;
+  };
+  const exclLL = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => x?.company_id !== LEASELINK_COMPANY);
+  const nonzero = (arr, key = 'total_cost') =>
+    (Array.isArray(arr) ? arr : []).filter((x) => Number(x?.[key]) > 0);
 
-    // ——— Centralized navigation handler (stable reference)
-    const navigateEntity = useCallback((id, type) => {
-        // Future: PermissionGate can go here.
-        navigate(`/${type}/${id}`);
-    }, [navigate]);
+  useEffect(() => {
+    if (!isReady || !isLLAdmin) return;
+    (async () => {
+      setLoading((s) => ({ ...s, companies: true }));
+      setError((e) => ({ ...e, companies: '' }));
+      const { data, error } = await supabase
+        .from('Property_Management_Companies')
+        .select('company_id, company_name, member_status, customer_engagement_elavator')
+        .neq('company_name', 'Leaselink')
+        .order('company_name');
+      if (error) {
+        console.error('Error Fetching Companies', error);
+        setError((e) => ({ ...e, companies: error.message || 'Failed to load companies.' }));
+        setCompanies([]);
+      } else {
+        setCompanies(Array.isArray(data) ? data : []);
+      }
+      setLoading((s) => ({ ...s, companies: false }));
+    })();
+  }, [isReady, isLLAdmin]);
 
-    // ——— Fetch KPIs (messages, tenants, docs)
-    const fetchKpis = useCallback(async () => {
-        if (!isReady) return;
-        setLoading((s) => ({ ...s, kpis: true }));
-        setError((e) => ({ ...e, kpis: '' }));
+  const fetchKpis = useCallback(async () => {
+    if (!isReady || !isLLAdmin) return;
+    setLoading((s) => ({ ...s, kpis: true }));
+    setError((e) => ({ ...e, kpis: '' }));
 
-        try {
-            const company_id = userData.company_id; // local cache
+    try {
+      const qCustomers = supabase
+        .from('Property_Management_Companies')
+        .select('company_id', { count: 'exact', head: true })
+        .gte('created_at', startISO)
+        .lte('created_at', nowISO)
+        .eq('member_status', 'Active');
 
-            // 1) Answered questions (assistant role) this month
-            const qCustomers = supabase
-                .from('Property_Management_Companies')
-                .select('company_id', { count: 'exact', head: true })
-                .gte('created_at', startISO)
-                .lte('created_at', nowISO)
-                .eq('member_status', 'Active')
+      const qCosts = supabase.functions.invoke('cost-report', { method: 'GET' });
 
-            // 2) Tenants for this company
-            const qLifetimeValue = 0; //TODO Add Lifetimne Value Call when subscriptions set up
+      const [cRes, costRes] = await Promise.all([qCustomers, qCosts]);
 
-            // 3) Lease documents (⚠️ If you store company on this table, filter by it)
-            //    TODO: For multi-tenant safety, add `.eq('company_id', company_id)` if available.
-            const qcosts = supabase.functions.invoke('cost-report', {
-                method: 'GET',
-            })
+      if (cRes.error) throw new Error(`Customers: ${cRes.error.message}`);
+      if (costRes.error) throw new Error(`Costs: ${costRes.error.message}`);
 
+      const uploadsByCompany = exclLL(costRes.data?.uploads?.by_company);
+      const uploadsByTenant = exclLL(costRes.data?.uploads?.by_tenant);
+      const chatsByCompany = exclLL(costRes.data?.chats?.by_company);
+      const chatsByEntity = exclLL(costRes.data?.chats?.by_entity);
 
-            const [cRes, tRes, costRes] = await Promise.all([qCustomers, qLifetimeValue, qcosts]);
+      const avgCompanyUpload = avgBy(nonzero(uploadsByCompany), 'total_cost');
+      const avgTenantUpload = avgBy(nonzero(uploadsByTenant), 'total_cost');
+      const avgCompanyChat = avgBy(chatsByCompany, 'total_cost');
 
+      const tenantChats = chatsByEntity.filter((c) => c?.entity_type === 'Tenant');
+      const unitChats = chatsByEntity.filter((c) => c?.entity_type === 'Unit');
+      const propertyChats = chatsByEntity.filter((c) => c?.entity_type === 'Property');
 
-            if (cRes.error) throw new Error(`Customers: ${cRes.error.message}`);
-            if (tRes.error) throw new Error(`Tenants: ${tRes.error.message}`);
-            if (costRes.error) throw new Error(`Docs: ${costRes.error.message}`);
-            console.log(costRes)
-            const companyData = costRes.data.uploads.by_company.filter((company) => company.company_id != leaseLinkCompany).filter((company) => company.total_cost != 0)
+      const avgTenantChat = avgBy(tenantChats, 'total_cost');
+      const avgUnitChat = avgBy(unitChats, 'total_cost');
+      const avgPropertyChat = avgBy(propertyChats, 'total_cost');
 
-            const companyCost = parseFloat((companyData.reduce((acc, company) => acc + company.total_cost, 0) / companyData.length).toFixed(2))
-            const tenantData = costRes.data.uploads.by_tenant.filter((tenant) => tenant.company_id != leaseLinkCompany).filter((tenant => tenant.total_cost != 0))
-            const tenantCost = parseFloat(
-                (tenantData.reduce((acc, tenant) => acc + tenant.total_cost, 0) / tenantData.length).toFixed(2)
-            );
+      setCustomers(Number(cRes.count ?? 0));
+      setCustomerCost(avgCompanyUpload);
+      setTenantUploadCost(avgTenantUpload);
+      setChatCosts(avgCompanyChat);
+      setTenantChatCost(avgTenantChat);
+      setUnitChatCost(avgUnitChat);
+      setPropertyChatCost(avgPropertyChat);
+    } catch (err) {
+      setError((e) => ({ ...e, kpis: err?.message || 'Failed to load metrics.' }));
+    } finally {
+      setLoading((s) => ({ ...s, kpis: false }));
+    }
+  }, [isReady, isLLAdmin, startISO, nowISO]);
 
-            const companyChatData = costRes.data.chats.by_company.filter((company) => company.company_id != leaseLinkCompany)
-            const companyChatCost = parseFloat(
-                (companyChatData.reduce((acc, companyChats) => acc + companyChats.total_cost, 0) / companyChatData.length).toFixed(2)
-            )
-            const tenantChatData = costRes.data.chats.by_entity.filter((chat) => chat.entity_type === 'Tenant').filter((chat) => chat.company_id != leaseLinkCompany)
-            let tenantChatCost = 0.0
-            console.log(tenantChatData)
-            if(tenantChatData.length > 0) tenantChatCost = parseFloat(tenantChatData.reduce((acc, chat) => acc + chat.total_cost, 0)/tenantChatData.length).toFixed(2)
-            const unitChatData = costRes.data.chats.by_entity.filter((chat) => chat.entity_type === 'Unit').filter((chat) => chat.company_id != leaseLinkCompany) || []
+  useEffect(() => {
+    fetchKpis();
+  }, [fetchKpis]);
 
-            let unitChatCost = 0.0
-            if (unitChatData.length > 0) {
-                unitChatCost = parseFloat(unitChatData.reduce((acc, chat) => acc + chat.total_cost, 0) / unitChatData.length).toFixed(2)
-            }
-            const propertyChatData = costRes.data.chats.by_entity.filter((chat) => chat.entity_type === 'Property').filter((chat) => chat.company_id != leaseLinkCompany)
-            let propertyChatCost = 0.0
-            if(propertyChatData.length > 0) propertyChatCost = parseFloat(propertyChatData.reduce((acc, chat) => acc + chat.total_cost, 0) / propertyChatData.length).toFixed(2)
-            setCustomers(Number(cRes.count ?? 0));
-            setLifetimeValue(Number(tRes.count ?? 0));
-            setTenantUploadCost(tenantCost)
-            setCustomerCost(companyCost);
-            setChatCosts(companyChatCost)
-            setTenantChatCost(tenantChatCost)
-            setUnitChatCost(unitChatCost)
-            setPropertyChatCost(propertyChatCost)
-        } catch (err) {
-            setError((e) => ({ ...e, kpis: err.message || 'Failed to load metrics.' }));
-        } finally {
-            setLoading((s) => ({ ...s, kpis: false }));
-        }
-    }, [isReady, startISO, nowISO, userData?.company_id]);
+  const setImposter = async (company_id) => {
+    const { error } = await supabase
+      .from('User_Data')
+      .update({ Imposter: true })
+      .eq('auth_id', session?.user?.id);
+    if (error) {
+      console.error('Failed to set Imposter:', error);
+      return;
+    }
+    await setFrontEndCompany(company_id);
+    navigate('/dashboard');
+  };
 
-    // ——— Fetch Properties list (minimal columns)
+  const onCardKeyDown = (e, activate) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      activate();
+    }
+  };
 
-    // ——— Prime company id & kick off loads
-    useEffect(() => {
-        if (!session || !userData) return;
-        if (userData.company_id) setCompanyId(userData.company_id);
-    }, [session, userData]);
-
-    useEffect(() => {
-        if (!isReady) return;
-        fetchKpis();
-
-    }, [isReady, fetchKpis]);
-
-    // ——— Reusable tiny KPI card (keeps JSX clean)
-    const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
-        <DisplayBox className="w-full sm:w-auto flex-1 min-w-[140px] p-4 md:p-5
-                         min-h-[120px] grid place-items-center">
-            <div className="text-center">
-                <h2 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h2>
-                {sublabel ? <p className="text-xs opacity-60 mt-0.5">{sublabel}</p> : null}
-                <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
-                    {isLoading ? '—' : value}
-                </p>
-            </div>
-        </DisplayBox>
-    );
-
-    // ——— Empty state for lists
-    const Empty = ({ title = 'No data', hint }) => (
-        <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-            <p className="text-base font-medium">{title}</p>
-            {hint && <p className="text-sm opacity-70 mt-1">{hint}</p>}
-        </div>
-    );
-
+  if (isReady && !isLLAdmin) {
     return (
-        // Mobile: full viewport minus nav | Desktop: normal flow
-        <div className="
-      w-full 
-      md:mt-6
-      md:static
-      md:min-h-0
-      px-0 md:px-0
-    ">
-            <div
-                className="
-          fixed inset-x-0 top-14 bottom-0 overflow-y-auto
-          md:static md:inset-auto md:overflow-visible
-        "
-            >
-                {/* Page header */}
-                <header className="px-4 sm:px-6 md:px-8 pt-4 md:pt-0">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-sans font-bold">Dashboard</h1>
-                    </div>
-                </header>
-
-                {/* KPI grid */}
-                <section className="px-4 sm:px-6 md:px-8 mt-4 sm:mt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        <KpiCard label="Number of Active Clients" value={numberofCustomers} loading={loading.kpis} />
-                        <KpiCard label="Average Customer Upload Cost" value={`$${customerCosts}`} loading={loading.kpis} />
-                        <KpiCard label="Average Tenant Upload Cost" value={`$${tenantUploadCost}`} loading={loading.kpis} />
-                        <KpiCard label="Average Monthly Chat Cost" value={`$${chatCosts}`} loading={loading.kpis} />
-                        <KpiCard label="Average Monthly Tenant Chat Cost" value={`$${tenantChatCosts}`} loading={loading.kpis} />
-                        <KpiCard label="Average Monthly Unit Chat Cost" value={`$${unitChatCost}`} loading={loading.kpis} />
-                        <KpiCard label="Average Monthly Property Chat Cost" value={`$${propertyChatCost}`} loading={loading.kpis} />
-                        <KpiCard label="Lifetime Value" value={lifetimeValue} loading={loading.kpis} />
-                        <KpiCard label="Lifetime Gross Profit" value={lifetimeGP} loading={loading.kpis} />
-
-
-                    </div>
-                    {error.kpis && (
-                        <p className="text-red-300 text-sm mt-3" role="alert">{error.kpis}</p>
-                    )}
-                </section>
-
-                {/* Properties list */}
-                <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
-                    {loading.properties ? (
-                        <div className="animate-pulse">
-                            <div className="h-24 rounded-2xl bg-white/10" />
-                        </div>
-                    ) : tenantUploadCost.length === 0 ? (
-                        <Empty title="No Companies Yet" hint="Create a property to see it here." />
-                    ) : (
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-
-                        </div>
-                    )}
-                    {error.properties && (
-                        <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
-                    )}
-                </section>
-            </div>
+      <div className="px-4 py-6 sm:px-6 md:px-8">
+        <h1 className="text-2xl font-bold mb-2">LeaseLink Admin Dashboard</h1>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <p className="opacity-80">
+            You don’t have access to this page. If you think this is a mistake, contact an administrator.
+          </p>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="w-full">
+      {/* Sticky header */}
+      <div className="sticky z-10 bg-[#222222]/80 backdrop-blur supports-[backdrop-filter]:bg-[#222222]/60 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3">
+          <h1 className="text-2xl sm:text-3xl font-bold">LeaseLink Admin Dashboard</h1>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-10">
+        {/* KPI grid */}
+        <section className="pt-4 sm:pt-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <KpiCard label="Active Clients" value={numberOfCustomers} loading={loading.kpis} />
+            <KpiCard label="Avg Upload / Customer" value={`$${customerCosts.toFixed(2)}`} loading={loading.kpis} />
+            <KpiCard label="Avg Upload / Tenant" value={`$${tenantUploadCost.toFixed(2)}`} loading={loading.kpis} />
+            <KpiCard label="Avg Monthly Chat / Customer" value={`$${chatCosts.toFixed(2)}`} loading={loading.kpis} />
+            <KpiCard label="Avg Monthly Chat / Tenant" value={`$${tenantChatCosts.toFixed(2)}`} loading={loading.kpis} />
+            <KpiCard label="Avg Monthly Chat / Unit" value={`$${unitChatCost.toFixed(2)}`} loading={loading.kpis} />
+            <KpiCard label="Avg Monthly Chat / Property" value={`$${propertyChatCost.toFixed(2)}`} loading={loading.kpis} />
+          </div>
+          {error.kpis && (
+            <p className="text-red-300 text-sm mt-3" role="alert">
+              {error.kpis}
+            </p>
+          )}
+        </section>
+
+        {/* Companies */}
+        <section className="mt-8">
+          <div className="rounded-2xl border border-white/10 bg-lease-gradient p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg sm:text-xl font-semibold">Companies</h2>
+              <div className="w-full sm:w-80">
+                <SearchBar placeholder="Search companies..." selectEntity={() => {}} type="companies" />
+              </div>
+            </div>
+
+            {loading.companies ? (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-28 rounded-xl border border-white/10 bg-white/5 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : error.companies ? (
+              <p className="text-red-300 text-sm mt-4" role="alert">{error.companies}</p>
+            ) : (
+              <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(companies || []).map((company) => {
+                  const id = company.company_id;
+                  const name = company.company_name;
+
+                  const goToCompany = () => {
+                    // Hook up if you have a company details page
+                    console.log('Go to Company Page', id);
+                  };
+
+                  return (
+                    <li key={String(id)}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={goToCompany}
+                        onKeyDown={(e) => onCardKeyDown(e, goToCompany)}
+                        className="group w-full rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors px-4 py-3 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                      >
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs uppercase tracking-wide opacity-70">Company</p>
+                              <p className="font-semibold truncate">{name}</p>
+                            </div>
+                            <div className="text-right min-w-[7.5rem]">
+                              <p className="text-xs uppercase tracking-wide opacity-70">Status</p>
+                              <p className="font-medium">{company.member_status}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs uppercase tracking-wide opacity-70">Engagement</p>
+                              <p className="font-medium truncate">{company.customer_engagement_elavator}</p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImposter(id);
+                              }}
+                              className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-medium shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-[#222222]"
+                              title="Edit Company"
+                            >
+                              Edit Company
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 };
 
+const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
+  <DisplayBox className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:p-5 min-h-[112px]">
+    <div className="flex flex-col items-center text-center">
+      <h3 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h3>
+      {sublabel ? <p className="text-xs opacity-60 mt-0.5">{sublabel}</p> : null}
+      <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
+        {isLoading ? <span className="inline-block w-20 h-7 rounded bg-white/10 animate-pulse" /> : value}
+      </p>
+    </div>
+  </DisplayBox>
+);
 
 export default LeaseLinkDashboard;
