@@ -512,11 +512,11 @@ export default function HomePage() {
           </div>
         </div>
         <div className="border-t border-neutral-800">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-xs text-neutral-500 flex flex-col sm:flex-row gap-3 sm:gap-0 items-center justify-between">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-xs text-white flex flex-col sm:flex-row gap-3 sm:gap-0 items-center justify-between">
             <span>© {new Date().getFullYear()} Lease Link</span>
             <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-neutral-300">Privacy</a>
-              <a href="#" className="hover:text-neutral-300">Terms</a>
+              <a href="/privacy_policy" className="hover:text-white">Privacy</a>
+              <a href="/terms" className="hover:text-white">Terms</a>
             </div>
           </div>
         </div>

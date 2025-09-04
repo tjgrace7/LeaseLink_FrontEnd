@@ -32,6 +32,8 @@ import TenantTerms from './pages/tenantTerms';
 import LeaseLinkDashboard from './pages/LeaseLinkDashboard';
 import CreateCompanies from './pages/createCompany';
 import Home from './pages/Home';
+import Privacy from './pages/Privacy';
+import TermsAndConditions from './pages/Terms';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -48,6 +50,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>
+          <Route path='/privacy_policy' element={<Privacy/>}/>
+          <Route path='/terms' element={<TermsAndConditions/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

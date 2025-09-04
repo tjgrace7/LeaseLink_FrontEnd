@@ -31,9 +31,6 @@ const Dashboard = () => {
     };
   }, []);
 
-  // ——— Local state
-  const [companyId, setCompanyId] = useState('');
-
   // KPI values
   const [messageCount, setMessageCount] = useState(0);
   const [docsCount, setDocsCount] = useState(0);
@@ -124,12 +121,6 @@ const Dashboard = () => {
     }
   }, [isReady, activeCompanyId]);
 
-  // ——— Prime company id & kick off loads
-  useEffect(() => {
-    if (!session || !userData || !activeCompanyId) return;
-    if (activeCompanyId) setCompanyId(activeCompanyId);
-  }, [session, userData]);
-
   useEffect(() => {
     if (!isReady) return;
     fetchKpis();
@@ -142,18 +133,18 @@ const Dashboard = () => {
   }, [localStorage.getItem('activeCompanyId')])
 
   // ——— Reusable tiny KPI card (keeps JSX clean)
-const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
-  <DisplayBox className="w-full sm:w-auto flex-1 min-w-[140px] p-4 md:p-5
+  const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
+    <DisplayBox className="w-full sm:w-auto flex-1 min-w-[140px] p-4 md:p-5
                          min-h-[120px] grid place-items-center">
-    <div className="text-center">
-      <h2 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h2>
-      {sublabel ? <p className="text-xs opacity-60 mt-0.5">{sublabel}</p> : null}
-      <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
-        {isLoading ? '—' : value}
-      </p>
-    </div>
-  </DisplayBox>
-);
+      <div className="text-center">
+        <h2 className="text-sm md:text-base font-semibold tracking-wide opacity-80">{label}</h2>
+        {sublabel ? <p className="text-xs opacity-60 mt-0.5">{sublabel}</p> : null}
+        <p className="text-3xl md:text-4xl font-bold mt-3 tabular-nums">
+          {isLoading ? '—' : value}
+        </p>
+      </div>
+    </DisplayBox>
+  );
 
   // ——— Empty state for lists
   const Empty = ({ title = 'No data', hint }) => (
@@ -198,48 +189,62 @@ const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (
           )}
         </section>
 
-        {/* Properties list */}
+        {/* Properties + Previous Messages */}
         <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
-          {loading.properties ? (
-            <div className="animate-pulse">
-              <div className="h-24 rounded-2xl bg-white/10" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 min-h-0">
+            {/* Left: Properties */}
+            <div className="min-h-0">
+              {loading.properties ? (
+                <div className="animate-pulse">
+                  <div className="h-24 rounded-2xl bg-white/10" />
+                </div>
+              ) : properties.length === 0 ? (
+                <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                  <p className="text-base font-medium">No properties yet</p>
+                  <p className="text-sm opacity-70 mt-1">Create a property to see it here.</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
+                  <EntityListBox
+                    type="units_properties_tenants"
+                    entities={properties}
+                    selectEntity={navigateEntity}
+                    getEntityLabel={(p) => p.Property_Name || 'Unnamed Property'}
+                    getEntityId={(p) => p.prop_id}
+                    getSQ={(p) => p.square_footage}
+                    Label="Properties"
+                    placeholder="Properties"
+                    boxType="property"
+                  />
+                </div>
+              )}
+              {error.properties && (
+                <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
+              )}
             </div>
-          ) : properties.length === 0 ? (
-            <Empty title="No properties yet" hint="Create a property to see it here." />
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-              <EntityListBox
-                type="units_properties_tenants"
-                entities={properties}
-                selectEntity={navigateEntity}
-                getEntityLabel={(p) => p.Property_Name || 'Unnamed Property'}
-                getEntityId={(p) => p.prop_id}
-                getSQ={(p) => p.square_footage}
-                Label="Properties"
-                placeholder="Properties"
-                boxType="property"
-              />
-            </div>
-          )}
-          {error.properties && (
-            <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
-          )}
-        </section>
 
-        {/* Previous messages */}
-        {companyId && (
-          <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-10 pb-8">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-              <LoadPreviousMessages
-                entityId={activeCompanyId}
-                session={session}
-                entityType="company"
-              />
+            {/* Right: Previous Messages (fluid + scroll) */}
+            <div className="min-h-0">
+              {activeCompanyId && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
+                  <LoadPreviousMessages
+                    className="w-full"
+                    entityId={activeCompanyId}
+                    session={session}
+                    entityType="company"
+                    autoSize={true}             // default; can omit
+                    maxRowsBeforeScroll={8}     // tweak if you want earlier/later scroll
+                  // listHeight not passed → auto-size kicks in
+                  />
+                </div>
+              )}
+
             </div>
-          </section>
-        )}
+          </div>
+        </section>
       </div>
     </div>
+
   );
 };
 
