@@ -188,10 +188,29 @@ const ChatPage = () => {
     messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
-  // ------------------------- simplified input handling --------------
+  // ------------------------- focus preservation for all devices -----
+  const preserveFocusRef = useRef(false);
+  
   const handleInputChange = useCallback((e) => {
+    // Preserve focus during state updates on all devices
+    if (composerInputRef.current) {
+      preserveFocusRef.current = document.activeElement === composerInputRef.current;
+    }
     setInput(e.target.value);
   }, []);
+
+  // Restore focus after state updates on all devices
+  useEffect(() => {
+    if (preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen) {
+      preserveFocusRef.current = false;
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (composerInputRef.current && document.activeElement !== composerInputRef.current) {
+          composerInputRef.current.focus();
+        }
+      });
+    }
+  }, [input, entitySelected, showModal, sidebarOpen]);
 
   // Focus composer when entity is selected
   useEffect(() => {
