@@ -30,6 +30,7 @@ import Settings from './pages/settings';
 import Roles from './pages/Roles';
 import TenantTerms from './pages/tenantTerms';
 import LeaseLinkDashboard from './pages/LeaseLinkDashboard';
+import CreateCompanies from './pages/createCompany';
 import Home from './pages/Home';
 
 const ProtectedRoute = ({ children}) => {
@@ -43,8 +44,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path='/home' element={<Home/>}/>
+          <Route path='/' element={<Home/>}/>
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>
@@ -68,6 +68,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/roles/edit/:roleId' element={<ProtectedRoute><Roles/></ProtectedRoute>}/>
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
+            <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>
