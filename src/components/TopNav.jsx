@@ -7,6 +7,10 @@ import SearchBar from './SearchBar';
 import UserDropdown from './UserDropdown';
 import { useAuth } from './AuthProvider';
 import logo from '../assets/Lease_Link_Logo.png';
+import chatIcon from '../assets/ChatIcon.png'
+import uploadIcon from '../assets/Upload_Icon.png'
+import createPerson from '../assets/CreatePerson.png'
+import propertyIcon from '../assets/Property_Icon.png'
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -64,7 +68,11 @@ const TopNav = () => {
             }
           >
             <div className='flex flex-col items-center'>
-              <FiMessageCircle className={iconSize} />
+              <img
+                src={chatIcon}
+                alt="Chat Icon"
+                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+              />
               <p className='md:0'>Chat</p>
             </div>
           </NavLink>
@@ -79,7 +87,11 @@ const TopNav = () => {
             }
           >
             <div className='flex flex-col items-center'>
-              <FiUpload className={iconSize} />
+              <img
+                src={uploadIcon}
+                alt="Upload con"
+                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+              />
               <p className='md:0'>Upload</p>
             </div>
           </NavLink>
@@ -95,7 +107,11 @@ const TopNav = () => {
               }
             >
               <div className='flex flex-col items-center'>
-                <FaUserPlus className={iconSize} />
+                <img
+                src={createPerson}
+                alt="Create Person Icon"
+                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+              />
                 <p className='md:0'>Create Person</p>
               </div>
             </NavLink>
@@ -112,10 +128,11 @@ const TopNav = () => {
               }
             >
               <div className='flex flex-col items-center'>
-                <span className="relative inline-flex items-center">
-                  <HiOfficeBuilding className={iconSize} />
-                  <HiPlus className="w-4 h-4 md:w-5 md:h-5 -ml-1" />
-                </span>
+                <img
+                src={propertyIcon}
+                alt="Create Property Icon"
+                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+              />
                 <p className='md:0'>Create Property/Unit</p>
               </div>
             </NavLink>
@@ -142,7 +159,7 @@ const TopNav = () => {
           type="button"
           onClick={async () => {
             setImposter(false)
-            await supabase.from('User_Data').update({"Imposter": false}).eq('company_id', userData.company_id)
+            await supabase.from('User_Data').update({ "Imposter": false }).eq('company_id', userData.company_id)
             clearFrontEndCompany()
           }}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
