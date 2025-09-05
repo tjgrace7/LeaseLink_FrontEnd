@@ -2,72 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Responsive + safe for mobile zoom -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>LeaseLink — AI Lease Extraction & Search</title>
 
-  <!-- Canonical + robots -->
+  <!-- Critical CSS - Inline for immediate render -->
+  <style>
+    html,body{margin:0;padding:0;box-sizing:border-box}
+    *,*::before,*::after{box-sizing:inherit}
+    body{
+      background:#1b1b1b;
+      color:#fff;
+      font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+      line-height:1.5
+    }
+    #root{min-height:100vh}
+    
+    /* Critical layout styles for above-the-fold content */
+    .header{background:#222;padding:1rem;position:sticky;top:0;z-index:50}
+    .hero{padding:2rem 1rem;text-align:center;background:linear-gradient(135deg,#2a2c36,#1e2230)}
+    .hero h1{font-size:2rem;margin:0 0 1rem 0;font-weight:700}
+    .hero p{font-size:1.125rem;margin:0 auto;max-width:42rem;opacity:0.9}
+    
+    /* Loading state */
+    .loading{display:flex;justify-content:center;align-items:center;min-height:50vh}
+    .spinner{width:40px;height:40px;border:4px solid #333;border-top-color:#4ea5a8;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+
+  <!-- SEO Meta Tags -->
   <link rel="canonical" href="https://www.leaselink.ai/">
   <meta name="robots" content="index,follow,max-image-preview:large">
-
-  <!-- Basic SEO -->
   <meta name="description" content="LeaseLink helps commercial property managers extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
   <meta name="author" content="LeaseLink">
   <meta name="theme-color" content="#111215">
   <meta name="color-scheme" content="dark light">
 
-  <!-- Icons / Manifest (add the sizes you actually ship) -->
+  <!-- Icons -->
   <link rel="icon" type="image/png" href="/LeaseLink.png" />
-  <!-- <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"> -->
-  <!-- <link rel="manifest" href="/site.webmanifest"> -->
 
-  <!-- Resource Hints: DNS + Preconnect (keep this list short) -->
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <!-- Resource Hints (only for essential resources) -->
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
-  <link rel="dns-prefetch" href="https://your-supabase-project.supabase.co">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-  <link rel="preconnect" href="https://your-supabase-project.supabase.co" crossorigin>
 
-  <!-- Google Fonts: non-blocking load + swap -->
-  <link rel="preload" as="style"
-        href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap"
-        media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Orbitron:wght@400;700&display=swap">
-  </noscript>
-
-  <!-- If you self-host any WOFF2 fonts, preload them (otherwise remove this) -->
-  <!--
-  <link rel="preload" href="/assets/orbitron-latin.woff2" as="font" type="font/woff2" crossorigin>
-  -->
-
-  <!-- App CSS: non-blocking (update the filename to your current build hash) -->
-  <link rel="preload" href="/assets/index-BQwak9Xg.css" as="style">
-  <link rel="stylesheet" href="/assets/index-BQwak9Xg.css" media="print" onload="this.media='all'">
+  <!-- Async CSS Loading (NON-BLOCKING) -->
+  <link rel="preload" href="/assets/index-BQwak9Xg.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="/assets/index-BQwak9Xg.css"></noscript>
 
-  <!-- (Optional) Inline *minimal* critical CSS for above-the-fold shell
-  <style>
-    html,body{margin:0}
-    body{background:#1b1b1b;color:#fff}
-    .sticky{position:sticky;top:0}
-  </style>
-  -->
-
-  <!-- (Optional) Preload your LCP/hero image -->
+  <!-- Font Loading Strategy - Choose ONE approach -->
+  
+  <!-- Option 1: Self-hosted fonts (RECOMMENDED for best performance) -->
+  <link rel="preload" href="/assets/source-serif-pro-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  
+  <!-- Option 2: Google Fonts (if you prefer external hosting) -->
   <!--
-  <link rel="preload" as="image" href="/hero.webp" fetchpriority="high" imagesrcset="/hero@2x.webp 2x">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap"></noscript>
   -->
 
-  <!-- Open Graph / Twitter -->
+  <!-- Open Graph / Social Media -->
   <meta property="og:title" content="LeaseLink — AI Lease Extraction & Search">
   <meta property="og:description" content="Extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
   <meta property="og:url" content="https://www.leaselink.ai/">
@@ -79,7 +73,7 @@
   <meta name="twitter:description" content="Extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
   <meta name="twitter:image" content="https://www.leaselink.ai/LeaseLink.png">
 
-  <!-- Structured Data: Organization + WebSite with SearchAction -->
+  <!-- Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -101,7 +95,7 @@
   }
   </script>
 
-  <!-- Google Analytics (async, after preconnect) -->
+  <!-- Analytics (loaded after critical resources) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-X3H684JXMV"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -111,12 +105,15 @@
   </script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Fallback content while React loads -->
+    <div class="loading">
+      <div class="spinner"></div>
+    </div>
+  </div>
 
-  <!-- In dev, Vite serves /src/main.jsx; in prod, Vite injects hashed assets automatically -->
   <script type="module" src="/src/main.jsx"></script>
 
-  <!-- Noscript fallback -->
   <noscript>
     <p style="color:#fff; background:#111; padding:1rem; text-align:center;">
       LeaseLink requires JavaScript to run properly. Please enable JavaScript in your browser.
