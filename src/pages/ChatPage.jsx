@@ -340,7 +340,7 @@ const ChatPage = () => {
   const pollForNextAssistantResponse = async (
     existingAssistantCount,
     retries = 20,
-    delay = 1500
+    delay = 3000
   ) => {
     for (let i = 0; i < retries; i++) {
       const msgs = await getMessages(session_id);
