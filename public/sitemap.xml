@@ -9,13 +9,6 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Public Marketing Pages -->
-  <url>
-    <loc>https://www.leaselink.ai/home</loc>
-    <lastmod>2025-08-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
 
   <url>
     <loc>https://www.leaselink.ai/request</loc>
@@ -24,7 +17,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.leaselink.ai/request</loc>
+    <loc>https://www.leaselink.ai/terms</loc>
+    <lastmod>2025-08-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.leaselink.ai/privacy_policy</loc>
     <lastmod>2025-08-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
