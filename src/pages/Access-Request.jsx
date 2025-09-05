@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 /**
@@ -9,21 +9,26 @@ import { supabase } from "../supabaseClient";
  * - Consistent Tailwind tokens, accessible labels, and helper text
  * - Basic client-side validation + disabled/loading states
  * - Error banner and subtle success transition (navigate on success)
- * - Testimonial block with graceful loading fallback
  *
  * Notes:
  * - Keeps your existing Supabase tables: `access_requests`, `Testimonials`.
  * - Sanitizes numberOfTenants before submit; trims whitespace for strings.
- * - If you prefer shadcn/ui, we can swap inputs later with minimal diff.
  */
 
 const inputBase =
   "block w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 disabled:opacity-60";
 
 const Label = ({ htmlFor, children, required }) => (
-  <label htmlFor={htmlFor} className="mb-1 inline-flex items-baseline gap-1 text-sm font-medium text-white/90">
+  <label
+    htmlFor={htmlFor}
+    className="mb-1 inline-flex items-baseline gap-1 text-sm font-medium text-white/90"
+  >
     {children}
-    {required && <span className="text-emerald-400" aria-hidden>*</span>}
+    {required && (
+      <span className="text-emerald-400" aria-hidden>
+        *
+      </span>
+    )}
   </label>
 );
 
@@ -32,7 +37,9 @@ const HelperText = ({ children }) => (
 );
 
 const ErrorText = ({ children }) => (
-  <p role="alert" className="mt-1 text-xs text-red-400">{children}</p>
+  <p role="alert" className="mt-1 text-xs text-red-400">
+    {children}
+  </p>
 );
 
 const RequestAccess = () => {
@@ -41,8 +48,9 @@ const RequestAccess = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [numberOfTenants, setNumberOfTenants] = useState("");
+  const [numberOfUnits, setNumberOfUnits] = useState("");
   const [message, setMessage] = useState("");
+  const [agree, setAgree] = useState(false); // NEW: must agree to policies
 
   // -------------------- ui state ----------------------
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,10 +78,10 @@ const RequestAccess = () => {
   // Basic derived validation states (extend as needed)
   const isEmailValid = useMemo(() => /.+@.+\..+/.test(email.trim()), [email]);
   const isTenantsValid = useMemo(() => {
-    if (numberOfTenants === "") return false;
-    const n = Number(numberOfTenants);
+    if (numberOfUnits === "") return false;
+    const n = Number(numberOfUnits);
     return Number.isFinite(n) && n >= 0;
-  }, [numberOfTenants]);
+  }, [numberOfUnits]);
 
   const canSubmit = useMemo(() => {
     return (
@@ -81,9 +89,10 @@ const RequestAccess = () => {
       isEmailValid &&
       companyName.trim() &&
       isTenantsValid &&
+      agree && // NEW: must agree
       !isSubmitting
     );
-  }, [fullName, isEmailValid, companyName, isTenantsValid, isSubmitting]);
+  }, [fullName, isEmailValid, companyName, isTenantsValid, agree, isSubmitting]);
 
   // -------------------- submit handler ----------------
   const handleSubmit = async (e) => {
@@ -99,7 +108,7 @@ const RequestAccess = () => {
         email: email.trim(),
         phone: phone.trim() || null,
         company_name: companyName.trim(),
-        number_of_tenants: Number(numberOfTenants),
+        number_of_units: Number(numberOfUnits),
         message: message.trim() || null,
       };
 
@@ -168,7 +177,9 @@ const RequestAccess = () => {
 
               {/* Phone */}
               <div>
-                <Label htmlFor="phone">Phone <span className="text-white/40">(Optional)</span></Label>
+                <Label htmlFor="phone">
+                  Phone <span className="text-white/40">(Optional)</span>
+                </Label>
                 <input
                   id="phone"
                   type="tel"
@@ -178,7 +189,6 @@ const RequestAccess = () => {
                   className={inputBase}
                   placeholder="(555) 555-5555"
                 />
-                <HelperText>We’ll only use this if email bounces.</HelperText>
               </div>
 
               {/* Company Name */}
@@ -196,25 +206,27 @@ const RequestAccess = () => {
 
               {/* Number of Tenants */}
               <div>
-                <Label htmlFor="numberOfTenants" required>Estimated Number of Tenants</Label>
+                <Label htmlFor="numberOfUnits" required>Estimated Number of Units</Label>
                 <input
-                  id="numberOfTenants"
+                  id="numberOfUnits"
                   type="number"
                   inputMode="numeric"
                   min={0}
-                  value={numberOfTenants}
-                  onChange={(e) => setNumberOfTenants(e.target.value)}
+                  value={numberOfUnits}
+                  onChange={(e) => setNumberOfUnits(e.target.value)}
                   className={inputBase}
                   required
                 />
-                {!isTenantsValid && numberOfTenants !== "" && (
+                {!isTenantsValid && numberOfUnits !== "" && (
                   <ErrorText>Enter a non-negative number.</ErrorText>
                 )}
               </div>
 
               {/* Message */}
               <div>
-                <Label htmlFor="message">Tell us more <span className="text-white/40">(Optional)</span></Label>
+                <Label htmlFor="message">
+                  Tell us more <span className="text-white/40">(Optional)</span>
+                </Label>
                 <textarea
                   id="message"
                   rows={4}
@@ -223,6 +235,40 @@ const RequestAccess = () => {
                   className={`${inputBase} resize-y`}
                   placeholder="What problems are you hoping LeaseLink will solve?"
                 />
+              </div>
+
+              {/* Agree to policies */}
+              <div className="pt-1">
+                <div className="flex items-start gap-3">
+                  <input
+                    id="agree"
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-2 focus:ring-emerald-400/60"
+                    aria-invalid={!agree}
+                    required
+                  />
+                  <Label htmlFor="agree" required>
+                    <span>
+                      I agree to the{" "}
+                      <Link
+                        to="/privacy_policy"
+                        className="underline decoration-emerald-400/60 underline-offset-2 hover:text-emerald-300"
+                      >
+                        Privacy Policy
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        to="/terms"
+                        className="underline decoration-emerald-400/60 underline-offset-2 hover:text-emerald-300"
+                      >
+                        Terms &amp; Conditions
+                      </Link>
+                      .
+                    </span>
+                  </Label>
+                </div>
               </div>
 
               {/* Submit */}
@@ -243,7 +289,10 @@ const RequestAccess = () => {
         <aside className="order-1 flex items-stretch lg:order-2">
           <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-6 sm:p-8">
             {/* Accent gradient */}
-            <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"
+            />
 
             {testimonial ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
