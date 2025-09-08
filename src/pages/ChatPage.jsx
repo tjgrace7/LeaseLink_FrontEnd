@@ -41,6 +41,11 @@ const ComposerInput = memo(function ComposerInput({
     />
   );
 });
+function textToBool(str) {
+
+  if (typeof str !== "string") return Boolean(str);
+  return str.trim().toLowerCase() === "true";
+}
 
 const ChatPage = () => {
   // ------------------------- entity context -------------------------
@@ -86,82 +91,98 @@ const ChatPage = () => {
 
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
+  const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
 
-  useEffect(() => {
-    // Check if this is a page refresh vs navigation
-    const isRefresh = performance.getEntriesByType?.("navigation")?.[0]?.type === "reload" ||
-                     performance.navigation?.type === 1;
-    setIsPageRefresh(isRefresh);
-  }, []);
+
+// Resolve refresh state once after mount
+useEffect(() => {
+  const nav = performance.getEntriesByType?.("navigation")?.[0];
+  const isReload =
+    nav?.type === "reload" ||
+    performance.navigation?.type === 1; // legacy
+  setIsPageRefresh(Boolean(isReload));
+}, []);
+
 
   // ------------------------- initialize chat session ------------------
-  useEffect(() => {
-    if (isInitializedRef.current) return;
-    isInitializedRef.current = true;
+// 2) Initialize only after we KNOW the refresh state
+useEffect(() => {
+  // wait until:
+  // - we know whether this is a reload (isPageRefresh !== null)
+  // - auth session is ready (so downstream calls have tokens)
+  if (isPageRefresh === null || !session) return;
+  if (isInitializedRef.current) return;
 
-    const init = async () => {
-      if (isPageRefresh) {
-        // On refresh - restore previous session
-        const storedSessionId = localStorage.getItem("chat_session_id");
-        const storedEntityId = localStorage.getItem("entity_id");
-        const storedEntityType = localStorage.getItem("entity_type");
-        const storedEntitySelected = localStorage.getItem("entity_selected");
+  const init = async () => {
+    const shouldRestore = isPageRefresh || isOldMessage;
 
-        if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
-          setEntityId(storedEntityId);
-          setEntityType(storedEntityType);
-          setSelectedEntity(true);
-          await getPreviousChats(storedEntityId, session, setPreviousChats);
-          await getEntityNameImage(storedEntityType, storedEntityId);
-          setSessionId(storedSessionId);
-          
-          // Load cached messages
-          const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              const normalized = parsed.map((msg) => ({
-                ...msg,
-                message: msg.message || msg.text,
-                role: msg.role,
-              }));
-              setMessages(normalized);
-            } catch (err) {
-              console.warn("Failed to parse cached messages:", err);
-            }
+    if (shouldRestore) {
+      const storedSessionId     = localStorage.getItem("chat_session_id");
+      const storedEntityId      = localStorage.getItem("entity_id");
+      const storedEntityType    = localStorage.getItem("entity_type");
+      const storedEntitySelected= localStorage.getItem("entity_selected");
+
+      if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
+        setEntityId(storedEntityId);
+        setEntityType(storedEntityType);
+        setSelectedEntity(true);
+
+        await getPreviousChats(storedEntityId, session, setPreviousChats);
+        await getEntityNameImage(storedEntityType, storedEntityId);
+        setSessionId(storedSessionId);
+
+        // hydrate from cache (if present)
+        const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            const normalized = parsed.map((msg) => ({
+              ...msg,
+              message: msg.message || msg.text,
+              role: msg.role,
+            }));
+            setMessages(normalized);
+          } catch (err) {
+            console.warn("Failed to parse cached messages:", err);
           }
-          
-          setSessionReady(true);
-          return;
         }
+
+        setSessionReady(true);
+        return; // <-- done restoring
       }
+      // falls through to "new session" if any prerequisite is missing
+    }
 
-      // On navigation or fresh load - create new session
-      const newId = crypto.randomUUID();
-      setSessionId(newId);
-      localStorage.setItem("chat_session_id", newId);
+    // fresh navigation → create new session
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    localStorage.setItem("chat_session_id", newId);
 
-      // Clear everything for new session
-      setMessages([]);
-      setSources([]);
-      setSelectedSource(null);
-      setSelectedEntity(false);
-      setEntityId("");
-      setEntityType("");
+    // clear thread + entity context
+    setMessages([]);
+    setSources([]);
+    setSelectedSource(null);
+    setSelectedEntity(false);
+    setEntityId("");
+    setEntityType("");
 
-      // Don't remove on refresh, only on navigation
-      if (!isPageRefresh) {
-        localStorage.removeItem("entity_id");
-        localStorage.removeItem("entity_type");
-        localStorage.removeItem("entity_selected");
-        localStorage.removeItem("image_file_path");
-      }
+    // Only clear persisted entity when not a page refresh
+    if (!isPageRefresh) {
+      localStorage.removeItem("entity_id");
+      localStorage.removeItem("entity_type");
+      localStorage.removeItem("entity_selected");
+      localStorage.removeItem("image_file_path");
+    }
 
-      setSessionReady(true);
-    };
+    setSessionReady(true);
+  };
 
-    init();
-  }, [isPageRefresh, session]);
+  // IMPORTANT: mark initialized *after* init finishes
+  init().finally(() => {
+    isInitializedRef.current = true;
+  });
+}, [isPageRefresh, session]); // note: no guard-set before init runs
+
 
   // ------------------------- persist messages ----------------------
   useEffect(() => {
@@ -238,6 +259,7 @@ const ChatPage = () => {
 
   // ------------------------- data helpers --------------------------
   const getMessages = async (sessionId) => {
+    console.log(sessionId)
     const { data, error } = await supabase
       .from("entity_questions")
       .select("*")
@@ -473,43 +495,44 @@ const ChatPage = () => {
     </div>
   );
 
-  const Composer = () => (
-    <div className="sticky bottom-3 z-10 px-2 sm:px-4 md:px-6 pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto w-full max-w-4xl">
-        {entitySelected ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+const Composer = () => (
+  <div className="z-10 px-2 sm:px-4 md:px-6">
+    <div className="mx-auto w-full max-w-4xl">
+      {entitySelected ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+        >
+          <ComposerInput
+            inputRef={composerInputRef}
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Ask a question…"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+            onMouseDown={(e) => e.preventDefault()}
           >
-            <ComposerInput
-              inputRef={composerInputRef}
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Ask a question…"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              Send
-            </button>
-          </form>
-        ) : (
-          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
-            Select a property, unit, or tenant to start chatting.
-          </p>
-        )}
-        <p className="mt-2 text-xs text-gray-400 text-center">
-          LeaseLink can make mistakes — be sure to check original sources.
+            Send
+          </button>
+        </form>
+      ) : (
+        <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
+          Select a property, unit, or tenant to start chatting.
         </p>
-      </div>
+      )}
+      <p className="mt-2 text-xs text-gray-400 text-center">
+        LeaseLink can make mistakes — be sure to check original sources.
+      </p>
     </div>
-  );
+  </div>
+);
+
 
   const ChatBubble = ({ role, text, loading }) => (
     <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
@@ -552,11 +575,13 @@ const ChatPage = () => {
                 />
               ))}
               <div ref={messagesEndRef} />
+              <div className="h-2 sm:h-3"/>
+               <Composer />
             </div>
           </div>
 
           {/* Composer */}
-          <Composer />
+         
         </div>
 
         {/* RIGHT: desktop sidebar */}

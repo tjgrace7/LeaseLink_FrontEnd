@@ -59,23 +59,25 @@ const TopNav = () => {
         {/* Right actions */}
         <div className="flex items-center space-x-2 md:space-x-4">
           {/* Chat Page (always visible) */}
-          <NavLink
-            to="/chat"
+          <button
+            onClick={() => {
+              localStorage.setItem("isOldMessage", "false");
+            }}
             aria-label="Chat Page"
             title="Chat Page"
             className={({ isActive }) =>
-              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : "text-white"}`
             }
           >
-            <div className='flex flex-col items-center'>
+            <NavLink to="/chat" className="flex flex-col items-center">
               <img
                 src={chatIcon}
                 alt="Chat Icon"
                 className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
               />
-              <p className='md:0'>Chat</p>
-            </div>
-          </NavLink>
+              <p className="md:0">Chat</p>
+            </NavLink>
+          </button>
 
           {/* Upload Docs (always visible) */}
           <NavLink
@@ -108,10 +110,10 @@ const TopNav = () => {
             >
               <div className='flex flex-col items-center'>
                 <img
-                src={createPerson}
-                alt="Create Person Icon"
-                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-              />
+                  src={createPerson}
+                  alt="Create Person Icon"
+                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                />
                 <p className='md:0'>Create Person</p>
               </div>
             </NavLink>
@@ -129,10 +131,10 @@ const TopNav = () => {
             >
               <div className='flex flex-col items-center'>
                 <img
-                src={propertyIcon}
-                alt="Create Property Icon"
-                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-              />
+                  src={propertyIcon}
+                  alt="Create Property Icon"
+                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                />
                 <p className='md:0'>Create Property/Unit</p>
               </div>
             </NavLink>

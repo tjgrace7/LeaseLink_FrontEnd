@@ -42,6 +42,7 @@ const LoadPreviousMessages = ({
     localStorage.setItem("entity_id", entityId);
     localStorage.setItem("entity_type", entityType);
     localStorage.setItem("entity_selected", "true");
+    localStorage.setItem('isOldMessage', "true")
     if (chat.entity_name) localStorage.setItem("entity_name", chat.entity_name);
     localStorage.removeItem(`chat_thread_${chat.session_id}`);
     navigate("/chat");
