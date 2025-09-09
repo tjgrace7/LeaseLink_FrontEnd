@@ -59,25 +59,26 @@ const TopNav = () => {
         {/* Right actions */}
         <div className="flex items-center space-x-2 md:space-x-4">
           {/* Chat Page (always visible) */}
-          <button
-            onClick={() => {
-              localStorage.setItem("isOldMessage", "false");
-            }}
+          <NavLink
+            to="/chat"
+            onClick={() => localStorage.setItem("isOldMessage", "false")}
             aria-label="Chat Page"
             title="Chat Page"
             className={({ isActive }) =>
-              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : "text-white"}`
+              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : "text-white"
+              }`
             }
           >
-            <NavLink to="/chat" className="flex flex-col items-center">
+            <div className="flex flex-col items-center">
               <img
                 src={chatIcon}
                 alt="Chat Icon"
                 className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
               />
               <p className="md:0">Chat</p>
-            </NavLink>
-          </button>
+            </div>
+          </NavLink>
+
 
           {/* Upload Docs (always visible) */}
           <NavLink
@@ -91,7 +92,7 @@ const TopNav = () => {
             <div className='flex flex-col items-center'>
               <img
                 src={uploadIcon}
-                alt="Upload con"
+                alt="Upload icon"
                 className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
               />
               <p className='md:0'>Upload</p>

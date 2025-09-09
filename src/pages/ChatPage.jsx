@@ -92,7 +92,7 @@ const ChatPage = () => {
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
   const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
-
+   
 
 // Resolve refresh state once after mount
 useEffect(() => {
@@ -122,6 +122,7 @@ useEffect(() => {
       const storedEntityType    = localStorage.getItem("entity_type");
       const storedEntitySelected= localStorage.getItem("entity_selected");
 
+      console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
       if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
         setEntityId(storedEntityId);
         setEntityType(storedEntityType);
@@ -141,12 +142,31 @@ useEffect(() => {
               message: msg.message || msg.text,
               role: msg.role,
             }));
+    
             setMessages(normalized);
           } catch (err) {
             console.warn("Failed to parse cached messages:", err);
           }
         }
+        else {
 
+        const {data:stored, error: msgErr} = await supabase.from('entity_questions').select('*').eq('session_id', storedSessionId)
+        if(msgErr)
+        {
+          console.error("Error Fetching Messages", msgErr)
+        }
+        else if(stored)
+        {
+          
+          const messages = stored.map((msg) => ({
+            ...msg,
+            message: msg.message,
+            role: msg.role
+          }))
+          setMessages(messages)
+        }
+
+        }
         setSessionReady(true);
         return; // <-- done restoring
       }
@@ -206,6 +226,7 @@ useEffect(() => {
   useEffect(() => {
     if (!messagesEndRef.current) return;
     if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
+    console.log("Input Reference")
     messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
