@@ -1,9 +1,15 @@
-// src/components/SearchBar.jsx
+// Updated SearchBar.jsx with mobile-friendly focus management
+
 import { FiSearch } from 'react-icons/fi';
 import { useState, useEffect, useRef, memo } from 'react';
 import { useAuth } from '../components/AuthProvider';
 
-const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_properties_tenants' }) => {
+const SearchBar = ({ 
+  placeholder = 'Search…', 
+  selectEntity, 
+  type = 'units_properties_tenants',
+  noAutoFocus = false  // Add this prop to prevent auto-focus on mobile
+}) => {
   const supabase_url = import.meta.env.VITE_SUPABASE_URL;
   const { session } = useAuth();
 
@@ -17,16 +23,23 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
   });
 
   const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window);
 
-  // Close on outside click (use pointerdown for mobile stability)
+  // Close on outside click - use more mobile-friendly event
   useEffect(() => {
     const onClickAway = (e) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target)) setOpen(false);
+      if (!wrapperRef.current?.contains(e.target)) {
+        setOpen(false);
+      }
     };
-    document.addEventListener('pointerdown', onClickAway, { passive: true });
-    return () => document.removeEventListener('pointerdown', onClickAway);
-  }, []);
+    
+    // Use touchend on mobile, click on desktop
+    const eventType = isMobile ? 'touchend' : 'click';
+    document.addEventListener(eventType, onClickAway, { passive: true });
+    return () => document.removeEventListener(eventType, onClickAway);
+  }, [isMobile]);
 
   // Debounced search
   useEffect(() => {
@@ -40,7 +53,6 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
       }
     }, 300);
     return () => clearTimeout(delay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput, session, type]);
 
   const clearResults = () => {
@@ -56,6 +68,11 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
     localStorage.setItem('entity_type', entityType);
     localStorage.setItem('entity_id', entityId);
     setSearchInput('');
+    
+    // Blur the search input on mobile to prevent keyboard conflicts
+    if (isMobile && inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
   const onSearch = async (input) => {
@@ -96,6 +113,7 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
         <div className="flex items-center gap-2 p-2 rounded-lg">
           <FiSearch className="text-white/80 w-5 h-5 flex-none" />
           <input
+            ref={inputRef}
             type="text"
             placeholder={placeholder}
             value={searchInput}
@@ -104,8 +122,15 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
             className="bg-transparent outline-none text-white placeholder-white/50 w-full text-sm leading-tight py-1"
             autoComplete="off"
             spellCheck="false"
+            autoCorrect="off"
+            autoCapitalize="none"
+            // Prevent auto-focus on mobile if requested
+            autoFocus={!isMobile && !noAutoFocus}
             aria-autocomplete="list"
             aria-expanded={open}
+            // Mobile optimizations
+            inputMode="search"
+            enterKeyHint="search"
           />
           {searchInput && (
             <button
@@ -113,6 +138,10 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
               onClick={() => {
                 setSearchInput('');
                 clearResults();
+                // Don't refocus on mobile to avoid keyboard issues
+                if (!isMobile && inputRef.current) {
+                  inputRef.current.focus();
+                }
               }}
               className="text-white/60 hover:text-white rounded px-1 text-sm"
               aria-label="Clear search"
@@ -123,18 +152,20 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
         </div>
       </div>
 
-      {/* Results */}
+      {/* Results - Make sure this doesn't interfere with other inputs */}
       {open && (
         <div
-          className="absolute top-full mt-2 w-full rounded-lg border border-white/10 bg-[#1f1f1f] shadow-2xl max-h-80 overflow-y-auto p-3 space-y-3"
+          className="absolute top-full mt-2 w-full rounded-lg border border-white/10 bg-[#1f1f1f] shadow-2xl max-h-80 overflow-y-auto p-3 space-y-3 z-50"
           role="listbox"
           aria-label="Search results"
+          // Prevent this from interfering with touch events
+          style={{ touchAction: 'auto' }}
         >
           {!hasAny && (
             <div className="text-xs text-white/60 px-1 py-1.5">No results</div>
           )}
 
-          {/* Owners */}
+          {/* Rest of your sections remain the same */}
           {searchResults.owners.length > 0 && (
             <Section
               title="Owners"
@@ -145,7 +176,6 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
             />
           )}
 
-          {/* Tenants */}
           {searchResults.tenants.length > 0 && (
             <Section
               title="Tenants"
@@ -161,7 +191,6 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
             />
           )}
 
-          {/* Properties */}
           {searchResults.properties.length > 0 && (
             <Section
               title="Properties"
@@ -172,7 +201,6 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
             />
           )}
 
-          {/* Units */}
           {searchResults.units.length > 0 && (
             <Section
               title="Units"
@@ -188,7 +216,7 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
   );
 };
 
-// Small internal section component to keep markup consistent
+// Section component remains the same
 const Section = ({ title, items, getKey, render, onClick }) => {
   return (
     <div>
@@ -200,9 +228,11 @@ const Section = ({ title, items, getKey, render, onClick }) => {
           <li key={getKey(item, i)}>
             <button
               type="button"
-              className="w-full text-left px-2 py-2 rounded-md hover:bg-[#2b2e3a] text-white/90"
+              className="w-full text-left px-2 py-2 rounded-md hover:bg-[#2b2e3a] text-white/90 active:bg-[#2b2e3a]"
               onClick={() => onClick(item)}
               role="option"
+              // Prevent double-tap zoom on mobile
+              style={{ touchAction: 'manipulation' }}
             >
               {render(item)}
             </button>
@@ -213,5 +243,4 @@ const Section = ({ title, items, getKey, render, onClick }) => {
   );
 };
 
-// Export memoized so ChatPage typing doesn't re-render this
 export default memo(SearchBar);

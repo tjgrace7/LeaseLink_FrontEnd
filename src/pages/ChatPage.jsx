@@ -17,8 +17,13 @@ const ComposerInput = memo(function ComposerInput({
   inputRef,
   placeholder = "Ask a question…",
   disabled = false,
-  ...rest // <-- allow extra props (onBlur/onFocus) to pass through
+  onBlur,
+  onFocus,
+  ...rest
 }) {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window);
+
   return (
     <input
       id="ll-composer"
@@ -36,6 +41,16 @@ const ComposerInput = memo(function ComposerInput({
       autoCorrect="off"
       autoCapitalize="none"
       spellCheck={false}
+      // More careful blur/focus handling for mobile
+      onBlur={(e) => {
+        // Only trigger blur handler if it's an actual user action, not programmatic
+        if (e.relatedTarget || !isMobile) {
+          onBlur?.(e);
+        }
+      }}
+      onFocus={(e) => {
+        onFocus?.(e);
+      }}
       // keep DOM stable
       aria-label="Message"
       disabled={disabled}
@@ -80,6 +95,7 @@ const ChatPage = () => {
   const messagesEndRef = useRef(null);
   const composerInputRef = useRef(null);
   const isInitializedRef = useRef(false);
+  const isMobileRef = useRef(false);
 
   // env + auth
   const server_url = import.meta.env.VITE_SERVER_URL;
@@ -90,6 +106,13 @@ const ChatPage = () => {
 
   // router
   const location = useLocation();
+
+  // ------------------------- mobile detection -------------------------
+  useEffect(() => {
+    isMobileRef.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                         ('ontouchstart' in window) || 
+                         (window.innerWidth <= 768);
+  }, []);
 
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
@@ -225,20 +248,24 @@ const ChatPage = () => {
     });
   }, [messages]);
 
-  // ------------------------- focus preservation / armor -------------
+  // ------------------------- focus preservation / armor (desktop only) -------------
   const preserveFocusRef = useRef(false);
   const [userIntentBlur, setUserIntentBlur] = useState(false);
 
   const handleInputChange = useCallback((e) => {
-    if (composerInputRef.current) {
+    // Don't mess with focus preservation on mobile during typing
+    if (!isMobileRef.current && composerInputRef.current) {
       preserveFocusRef.current =
         document.activeElement === composerInputRef.current;
     }
     setInput(e.target.value);
   }, []);
 
-  // Restore focus after state updates when blur was not intentional
+  // Restore focus after state updates when blur was not intentional (desktop only)
   useEffect(() => {
+    // Skip focus restoration on mobile to prevent keyboard issues
+    if (isMobileRef.current) return;
+    
     if (
       !userIntentBlur &&
       preserveFocusRef.current &&
@@ -248,23 +275,26 @@ const ChatPage = () => {
       !sidebarOpen
     ) {
       preserveFocusRef.current = false;
-      requestAnimationFrame(() => {
+      // Use longer timeout and check if element still exists
+      const timer = setTimeout(() => {
         if (
           composerInputRef.current &&
-          document.activeElement !== composerInputRef.current
+          document.activeElement !== composerInputRef.current &&
+          document.contains(composerInputRef.current)
         ) {
           composerInputRef.current.focus({ preventScroll: true });
         }
-      });
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [input, entitySelected, showModal, sidebarOpen, userIntentBlur]);
 
-  // Focus composer when entity is selected
+  // Focus composer when entity is selected (less aggressive on mobile)
   useEffect(() => {
-    if (entitySelected && !showModal && !sidebarOpen) {
+    if (entitySelected && !showModal && !sidebarOpen && !isMobileRef.current) {
       const timer = setTimeout(() => {
         composerInputRef.current?.focus({ preventScroll: true });
-      }, 100);
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [entitySelected, showModal, sidebarOpen]);
@@ -381,10 +411,12 @@ const ChatPage = () => {
 
       getPreviousChats(entityId, session, setPreviousChats);
 
-      // Focus after entity selection
-      setTimeout(() => {
-        composerInputRef.current?.focus({ preventScroll: true });
-      }, 200);
+      // Focus after entity selection (only on desktop)
+      if (!isMobileRef.current) {
+        setTimeout(() => {
+          composerInputRef.current?.focus({ preventScroll: true });
+        }, 200);
+      }
     },
     [session, session_id] // minimal deps; other setters are stable
   );
@@ -463,10 +495,12 @@ const ChatPage = () => {
         { role: "assistant", text: "⚠️ Network error. Please try again." },
       ]);
     } finally {
-      // Re-focus after sending
-      setTimeout(() => {
-        composerInputRef.current?.focus({ preventScroll: true });
-      }, 100);
+      // Don't re-focus after sending on mobile - let user decide
+      if (!isMobileRef.current) {
+        setTimeout(() => {
+          composerInputRef.current?.focus({ preventScroll: true });
+        }, 100);
+      }
     }
   };
 
@@ -504,10 +538,10 @@ const ChatPage = () => {
             <SearchBar
               placeholder="Search Entities"
               access_token={access_token}
-              selectEntity={selectEntity} // <-- stable via useCallback
+              selectEntity={selectEntity}
               type="tenants"
               entityDisplay={true}
-              noAutoFocus
+              noAutoFocus={true}
               data-no-autofocus
             />
           </div>
@@ -544,8 +578,8 @@ const ChatPage = () => {
               value={input}
               onChange={handleInputChange}
               placeholder="Ask a question…"
-              onBlur={() => setUserIntentBlur(true)}   // <-- focus armor
-              onFocus={() => setUserIntentBlur(false)} // <--
+              onBlur={() => setUserIntentBlur(true)}
+              onFocus={() => setUserIntentBlur(false)}
             />
             <button
               type="submit"
