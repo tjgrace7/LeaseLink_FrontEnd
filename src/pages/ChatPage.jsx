@@ -1,5 +1,5 @@
 // src/pages/ChatPage.jsx
-import { useEffect, useRef, useState, memo, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import ChatSidebar from "../components/ChatSidebar";
@@ -17,19 +17,11 @@ const ComposerInput = memo(function ComposerInput({
   inputRef,
   placeholder = "Ask a question…",
   disabled = false,
-  onBlur,
-  onFocus,
-  id = "ll-composer",
-  ...rest
 }) {
-  const isMobile =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    "ontouchstart" in window;
-
   return (
     <input
-      id={id}
-      name={id}
+      id="ll-composer"
+      name="ll-composer"
       ref={inputRef}
       type="text"
       value={value}
@@ -43,19 +35,14 @@ const ComposerInput = memo(function ComposerInput({
       autoCorrect="off"
       autoCapitalize="none"
       spellCheck={false}
-      // More careful blur/focus handling for mobile
-      onBlur={(e) => {
-        if (e.relatedTarget || !isMobile) onBlur?.(e);
-      }}
-      onFocus={(e) => onFocus?.(e)}
+      // keep DOM stable
       aria-label="Message"
       disabled={disabled}
-      {...rest}
     />
   );
 });
-
 function textToBool(str) {
+
   if (typeof str !== "string") return Boolean(str);
   return str.trim().toLowerCase() === "true";
 }
@@ -91,7 +78,6 @@ const ChatPage = () => {
   const messagesEndRef = useRef(null);
   const composerInputRef = useRef(null);
   const isInitializedRef = useRef(false);
-  const isMobileRef = useRef(false);
 
   // env + auth
   const server_url = import.meta.env.VITE_SERVER_URL;
@@ -103,136 +89,120 @@ const ChatPage = () => {
   // router
   const location = useLocation();
 
-  // ------------------------- mobile detection -------------------------
-  useEffect(() => {
-    isMobileRef.current =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-      "ontouchstart" in window ||
-      window.innerWidth <= 768;
-  }, []);
-
-  // **NEW**: responsive signal for md breakpoint (>=768px)
-  const [isMdUp, setIsMdUp] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.matchMedia("(min-width: 768px)").matches;
-  });
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 768px)");
-    const handler = (e) => setIsMdUp(e.matches);
-    try {
-      mql.addEventListener("change", handler);
-    } catch {
-      mql.addListener(handler); // Safari fallback
-    }
-    return () => {
-      try {
-        mql.removeEventListener("change", handler);
-      } catch {
-        mql.removeListener(handler);
-      }
-    };
-  }, []);
-
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
-  const isOldMessage = textToBool(localStorage.getItem("isOldMessage"));
+  const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
+   
 
-  useEffect(() => {
-    const nav = performance.getEntriesByType?.("navigation")?.[0];
-    const isReload = nav?.type === "reload" || performance.navigation?.type === 1;
-    setIsPageRefresh(Boolean(isReload));
-  }, []);
+// Resolve refresh state once after mount
+useEffect(() => {
+  const nav = performance.getEntriesByType?.("navigation")?.[0];
+  const isReload =
+    nav?.type === "reload" ||
+    performance.navigation?.type === 1; // legacy
+  setIsPageRefresh(Boolean(isReload));
+}, []);
+
 
   // ------------------------- initialize chat session ------------------
-  useEffect(() => {
-    if (isPageRefresh === null || !session) return;
-    if (isInitializedRef.current) return;
+// 2) Initialize only after we KNOW the refresh state
+useEffect(() => {
+  // wait until:
+  // - we know whether this is a reload (isPageRefresh !== null)
+  // - auth session is ready (so downstream calls have tokens)
+  if (isPageRefresh === null || !session) return;
+  if (isInitializedRef.current) return;
 
-    const init = async () => {
-      const shouldRestore = isPageRefresh || isOldMessage;
+  const init = async () => {
+    const shouldRestore = isPageRefresh || isOldMessage;
 
-      if (shouldRestore) {
-        const storedSessionId = localStorage.getItem("chat_session_id");
-        const storedEntityId = localStorage.getItem("entity_id");
-        const storedEntityType = localStorage.getItem("entity_type");
-        const storedEntitySelected = localStorage.getItem("entity_selected");
+    if (shouldRestore) {
+      const storedSessionId     = localStorage.getItem("chat_session_id");
+      const storedEntityId      = localStorage.getItem("entity_id");
+      const storedEntityType    = localStorage.getItem("entity_type");
+      const storedEntitySelected= localStorage.getItem("entity_selected");
 
-        if (
-          storedSessionId &&
-          storedEntityId &&
-          storedEntityType &&
-          storedEntitySelected === "true"
-        ) {
-          setEntityId(storedEntityId);
-          setEntityType(storedEntityType);
-          setSelectedEntity(true);
+      console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
+      if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
+        setEntityId(storedEntityId);
+        setEntityType(storedEntityType);
+        setSelectedEntity(true);
 
-          await getPreviousChats(storedEntityId, session, setPreviousChats);
-          await getEntityNameImage(storedEntityType, storedEntityId);
-          setSessionId(storedSessionId);
+        await getPreviousChats(storedEntityId, session, setPreviousChats);
+        await getEntityNameImage(storedEntityType, storedEntityId);
+        setSessionId(storedSessionId);
 
-          const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              const normalized = parsed.map((msg) => ({
-                ...msg,
-                message: msg.message || msg.text,
-                role: msg.role,
-              }));
-              setMessages(normalized);
-            } catch (err) {
-              console.warn("Failed to parse cached messages:", err);
-            }
-          } else {
-            const { data: stored, error: msgErr } = await supabase
-              .from("entity_questions")
-              .select("*")
-              .eq("session_id", storedSessionId);
-            if (msgErr) {
-              console.error("Error Fetching Messages", msgErr);
-            } else if (stored) {
-              const messages = stored.map((msg) => ({
-                ...msg,
-                message: msg.message,
-                role: msg.role,
-              }));
-              setMessages(messages);
-            }
+        // hydrate from cache (if present)
+        const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            const normalized = parsed.map((msg) => ({
+              ...msg,
+              message: msg.message || msg.text,
+              role: msg.role,
+            }));
+    
+            setMessages(normalized);
+          } catch (err) {
+            console.warn("Failed to parse cached messages:", err);
           }
-          setSessionReady(true);
-          return;
         }
+        else {
+
+        const {data:stored, error: msgErr} = await supabase.from('entity_questions').select('*').eq('session_id', storedSessionId)
+        if(msgErr)
+        {
+          console.error("Error Fetching Messages", msgErr)
+        }
+        else if(stored)
+        {
+          
+          const messages = stored.map((msg) => ({
+            ...msg,
+            message: msg.message,
+            role: msg.role
+          }))
+          setMessages(messages)
+        }
+
+        }
+        setSessionReady(true);
+        return; // <-- done restoring
       }
+      // falls through to "new session" if any prerequisite is missing
+    }
 
-      // fresh navigation → create new session
-      const newId = crypto.randomUUID();
-      setSessionId(newId);
-      localStorage.setItem("chat_session_id", newId);
+    // fresh navigation → create new session
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    localStorage.setItem("chat_session_id", newId);
 
-      // clear thread + entity context
-      setMessages([]);
-      setSources([]);
-      setSelectedSource(null);
-      setSelectedEntity(false);
-      setEntityId("");
-      setEntityType("");
+    // clear thread + entity context
+    setMessages([]);
+    setSources([]);
+    setSelectedSource(null);
+    setSelectedEntity(false);
+    setEntityId("");
+    setEntityType("");
 
-      if (!isPageRefresh) {
-        localStorage.removeItem("entity_id");
-        localStorage.removeItem("entity_type");
-        localStorage.removeItem("entity_selected");
-        localStorage.removeItem("image_file_path");
-      }
+    // Only clear persisted entity when not a page refresh
+    if (!isPageRefresh) {
+      localStorage.removeItem("entity_id");
+      localStorage.removeItem("entity_type");
+      localStorage.removeItem("entity_selected");
+      localStorage.removeItem("image_file_path");
+    }
 
-      setSessionReady(true);
-    };
+    setSessionReady(true);
+  };
 
-    init().finally(() => {
-      isInitializedRef.current = true;
-    });
-  }, [isPageRefresh, session]);
+  // IMPORTANT: mark initialized *after* init finishes
+  init().finally(() => {
+    isInitializedRef.current = true;
+  });
+}, [isPageRefresh, session]); // note: no guard-set before init runs
+
 
   // ------------------------- persist messages ----------------------
   useEffect(() => {
@@ -256,49 +226,41 @@ const ChatPage = () => {
   useEffect(() => {
     if (!messagesEndRef.current) return;
     if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
+    console.log("Input Reference")
     messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
-  // ------------------------- focus preservation / armor (desktop only) -------------
+  // ------------------------- focus preservation for all devices -----
   const preserveFocusRef = useRef(false);
-  const [userIntentBlur, setUserIntentBlur] = useState(false);
-
+  
   const handleInputChange = useCallback((e) => {
-    if (!isMobileRef.current && composerInputRef.current) {
+    // Preserve focus during state updates on all devices
+    if (composerInputRef.current) {
       preserveFocusRef.current = document.activeElement === composerInputRef.current;
     }
     setInput(e.target.value);
   }, []);
 
+  // Restore focus after state updates on all devices
   useEffect(() => {
-    if (isMobileRef.current) return;
-    if (
-      !userIntentBlur &&
-      preserveFocusRef.current &&
-      composerInputRef.current &&
-      entitySelected &&
-      !showModal &&
-      !sidebarOpen
-    ) {
+    if (preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen) {
       preserveFocusRef.current = false;
-      const timer = setTimeout(() => {
-        if (
-          composerInputRef.current &&
-          document.activeElement !== composerInputRef.current &&
-          document.contains(composerInputRef.current)
-        ) {
-          composerInputRef.current.focus({ preventScroll: true });
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (composerInputRef.current && document.activeElement !== composerInputRef.current) {
+          composerInputRef.current.focus();
         }
-      }, 150);
-      return () => clearTimeout(timer);
+      });
     }
-  }, [input, entitySelected, showModal, sidebarOpen, userIntentBlur]);
+  }, [input, entitySelected, showModal, sidebarOpen]);
 
+  // Focus composer when entity is selected
   useEffect(() => {
-    if (entitySelected && !showModal && !sidebarOpen && !isMobileRef.current) {
+    if (entitySelected && !showModal && !sidebarOpen) {
+      // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
-        composerInputRef.current?.focus({ preventScroll: true });
-      }, 200);
+        composerInputRef.current?.focus();
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [entitySelected, showModal, sidebarOpen]);
@@ -311,15 +273,14 @@ const ChatPage = () => {
       try {
         const leases = await getLeaseDocs(entity_id);
         if (!cancelled) setTerms(leases?.basic_lease ?? []);
-      } catch {}
+      } catch (_e) {}
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [entity_type, entity_id]);
 
   // ------------------------- data helpers --------------------------
   const getMessages = async (sessionId) => {
+    console.log(sessionId)
     const { data, error } = await supabase
       .from("entity_questions")
       .select("*")
@@ -378,7 +339,7 @@ const ChatPage = () => {
     try {
       const imageurl = await get_entity_image(data[file_path], session);
       setEntityImage(imageurl);
-    } catch {
+    } catch (_e) {
       setEntityImage("");
     }
 
@@ -388,40 +349,36 @@ const ChatPage = () => {
     }
   };
 
-  // Make selectEntity STABLE
-  const selectEntity = useCallback(
-    async (entityId, entityType) => {
-      setMessages([]);
-      setSources([]);
-      setSelectedSource(null);
-      setShowModal(false);
+  const selectEntity = async (entityId, entityType) => {
+    // fully reset thread state
+    setMessages([]);
+    setSources([]);
+    setSelectedSource(null);
+    setShowModal(false);
 
-      if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
-      localStorage.removeItem("chat_session_id");
-      localStorage.removeItem("entity_id");
-      localStorage.removeItem("entity_type");
+    if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
+    localStorage.removeItem("chat_session_id");
+    localStorage.removeItem("entity_id");
+    localStorage.removeItem("entity_type");
 
-      setPopUp(false);
+    setPopUp(false);
 
-      const newId = crypto.randomUUID();
-      setSessionId(newId);
-      localStorage.setItem("chat_session_id", newId);
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    localStorage.setItem("chat_session_id", newId);
 
-      setEntityId(entityId);
-      setEntityType(entityType);
-      setSelectedEntity(true);
-      await getEntityNameImage(entityType, entityId);
+    setEntityId(entityId);
+    setEntityType(entityType);
+    setSelectedEntity(true);
+    await getEntityNameImage(entityType, entityId);
 
-      getPreviousChats(entityId, session, setPreviousChats);
+    getPreviousChats(entityId, session, setPreviousChats);
 
-      if (!isMobileRef.current) {
-        setTimeout(() => {
-          composerInputRef.current?.focus({ preventScroll: true });
-        }, 200);
-      }
-    },
-    [session, session_id]
-  );
+    // Focus after entity selection
+    setTimeout(() => {
+      composerInputRef.current?.focus();
+    }, 200);
+  };
 
   const pollForNextAssistantResponse = async (
     existingAssistantCount,
@@ -497,113 +454,106 @@ const ChatPage = () => {
         { role: "assistant", text: "⚠️ Network error. Please try again." },
       ]);
     } finally {
-      if (!isMobileRef.current) {
-        setTimeout(() => {
-          composerInputRef.current?.focus({ preventScroll: true });
-        }, 100);
-      }
+      // Re-focus after sending
+      setTimeout(() => {
+        composerInputRef.current?.focus();
+      }, 100);
     }
   };
 
   // ------------------------- render helpers ------------------------
-  const Header = memo(function Header() {
-    return (
-      <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70 min-h-14">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
-          {/* Entity label */}
-          <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-            {entitySelected && entity_name && (
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                {entity_image && (
-                  <img
-                    src={entity_image}
-                    alt="Entity"
-                    className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
-                  />
-                )}
-                <p className="truncate text-xs sm:text-sm font-medium text-white/90">
-                  <span className="hidden sm:inline">
-                    {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}
-                    -{" "}
-                  </span>
-                  <span className="text-white/60">
-                    {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
-                  </span>
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Search (shrinks on mobile) */}
-          <div className="w-full max-w-xs sm:max-w-lg flex-1">
-            <SearchBar
-              placeholder="Search Entities"
-              access_token={access_token}
-              selectEntity={selectEntity}
-              type="tenants"
-              entityDisplay={true}
-              noAutoFocus={true}
-              data-no-autofocus
-            />
-          </div>
-
-          {/* Sidebar toggle on mobile */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
-            aria-label="Open chat sidebar"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <span className="hidden sm:inline">Sources</span>
-            <span className="sm:hidden">•••</span>
-          </button>
+  const Header = () => (
+    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+        {/* Entity label */}
+        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+          {entitySelected && entity_name && (
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              {entity_image && (
+                <img
+                  src={entity_image}
+                  alt="Entity"
+                  className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                />
+              )}
+              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
+                <span className="hidden sm:inline">
+                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}-{" "}
+                </span>
+                <span className="text-white/60">
+                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
-      </div>
-    );
-  });
 
-  // Accept an override for which input gets the shared ref
-  const Composer = ({ inputRefOverride, idSuffix = "" }) => (
-    <div className="z-10 px-2 sm:px-4 md:px-6">
-      <div className="mx-auto w-full max-w-4xl">
-        {entitySelected ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
-          >
-            <ComposerInput
-              inputRef={inputRefOverride}
-              id={`ll-composer${idSuffix}`}
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Ask a question…"
-              onBlur={() => setUserIntentBlur(true)}
-              onFocus={() => setUserIntentBlur(false)}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              Send
-            </button>
-          </form>
-        ) : (
-          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
-            Select a property, unit, or tenant to start chatting.
-          </p>
-        )}
-        <p className="mt-2 text-xs text-gray-400 text-center">
-          LeaseLink can make mistakes — be sure to check original sources.
-        </p>
+        {/* Search (shrinks on mobile) */}
+        <div className="w-full max-w-xs sm:max-w-lg flex-1">
+          <SearchBar
+            placeholder="Search Entities"
+            access_token={access_token}
+            selectEntity={(id, type) => selectEntity(id, type)}
+            type="tenants"
+            entityDisplay={true}
+            noAutoFocus
+            data-no-autofocus
+          />
+        </div>
+
+        {/* Sidebar toggle on mobile */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+          aria-label="Open chat sidebar"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <span className="hidden sm:inline">Sources</span>
+          <span className="sm:hidden">•••</span>
+        </button>
       </div>
     </div>
   );
+
+const Composer = () => (
+  <div className="z-10 px-2 sm:px-4 md:px-6">
+    <div className="mx-auto w-full max-w-4xl">
+      {entitySelected ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+        >
+          <ComposerInput
+            inputRef={composerInputRef}
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Ask a question…"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            Send
+          </button>
+        </form>
+      ) : (
+        <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
+          Select a property, unit, or tenant to start chatting.
+        </p>
+      )}
+      <p className="mt-2 text-xs text-gray-400 text-center">
+        LeaseLink can make mistakes — be sure to check original sources.
+      </p>
+    </div>
+  </div>
+);
+
 
   const ChatBubble = ({ role, text, loading }) => (
     <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
@@ -635,7 +585,6 @@ const ChatPage = () => {
         {/* LEFT: main column */}
         <div className="flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
           {/* Messages */}
-          {/* Note: generous bottom padding on mobile so messages don't hide behind fixed composer */}
           <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32">
             <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
               {messages.map((m, i) => (
@@ -647,17 +596,13 @@ const ChatPage = () => {
                 />
               ))}
               <div ref={messagesEndRef} />
-              <div className="h-2 sm:h-3" />
-
-              {/* Desktop composer (inside scroll). Only visible on md+ */}
-              <div className="hidden md:block">
-                <Composer
-                  inputRefOverride={isMdUp ? composerInputRef : undefined}
-                  idSuffix="-desktop"
-                />
-              </div>
+              <div className="h-2 sm:h-3"/>
+               <Composer />
             </div>
           </div>
+
+          {/* Composer */}
+         
         </div>
 
         {/* RIGHT: desktop sidebar */}
@@ -691,7 +636,7 @@ const ChatPage = () => {
             aria-hidden
           />
           <div className="absolute inset-y-0 right-0 flex w-[90%] max-w-sm flex-col bg-[#111215] ring-1 ring-white/10">
-            <div className="lex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
               <h2 className="text-sm font-semibold">History & Sources</h2>
               <button
                 type="button"
@@ -775,14 +720,6 @@ const ChatPage = () => {
           onClose={() => setPopUp(false)}
         />
       )}
-
-      {/* **Mobile composer fixed at bottom (outside scroll)** */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#111215] border-t border-white/10 px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
-        <Composer
-          inputRefOverride={!isMdUp ? composerInputRef : undefined}
-          idSuffix="-mobile"
-        />
-      </div>
     </div>
   );
 };
