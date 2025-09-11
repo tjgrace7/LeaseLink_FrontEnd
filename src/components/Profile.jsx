@@ -219,7 +219,7 @@ const Profile = ({
               className="md:hidden absolute top-3 right-3 inline-flex items-center justify-center rounded-full p-3 ring-1 ring-inset ring-white/15 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white backdrop-blur"
             >
               {!isArchived && (<FiTrash size={20} />)}
-              {isArchived && (<FiRotateCcw size={20}/>)}
+              {isArchived && (<FiRotateCcw size={20} />)}
             </button>
 
             {/* Desktop icon column */}
@@ -230,8 +230,8 @@ const Profile = ({
                 title={isArchived ? 'Restore' : 'Archive'}
                 className="inline-flex items-center justify-center rounded-xl p-2 ring-1 ring-inset ring-white/15 hover:bg-white/10"
               >
-              {!isArchived && (<FiTrash size={22} />)}
-              {isArchived && (<FiRotateCcw size={22}/>)}
+                {!isArchived && (<FiTrash size={22} />)}
+                {isArchived && (<FiRotateCcw size={22} />)}
               </button>
             </div>
           </>
@@ -282,7 +282,7 @@ const Profile = ({
                   const imgUrl = relatedImages[i];
 
                   return (
-                    <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3">
+                    <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {imgUrl && (
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
                           <img
@@ -296,10 +296,11 @@ const Profile = ({
                       )}
 
                       <button
-                        className="flex-1 cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition"
+                        className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
                         onClick={() => handleRelatedClick(rel)}
+                        title={getRelatedLabel?.(rel) || 'Unnamed'} // nice tooltip for full text
                       >
-                        <span className="block text-sm sm:text-base truncate">
+                        <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
                           {getRelatedLabel?.(rel) || 'Unnamed'}
                         </span>
                       </button>

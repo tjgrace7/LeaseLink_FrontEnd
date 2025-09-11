@@ -1,6 +1,6 @@
 // src/components/SearchBar.jsx
 import { FiSearch } from 'react-icons/fi';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { useAuth } from '../components/AuthProvider';
 
 const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_properties_tenants' }) => {
@@ -18,14 +18,14 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
 
   const wrapperRef = useRef(null);
 
-  // Close on outside click
+  // Close on outside click (use pointerdown for mobile stability)
   useEffect(() => {
     const onClickAway = (e) => {
       if (!wrapperRef.current) return;
       if (!wrapperRef.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', onClickAway);
-    return () => document.removeEventListener('mousedown', onClickAway);
+    document.addEventListener('pointerdown', onClickAway, { passive: true });
+    return () => document.removeEventListener('pointerdown', onClickAway);
   }, []);
 
   // Debounced search
@@ -55,7 +55,7 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
     localStorage.setItem('entity_name', entityName);
     localStorage.setItem('entity_type', entityType);
     localStorage.setItem('entity_id', entityId);
-    setSearchInput(''); // clear input after choose
+    setSearchInput('');
   };
 
   const onSearch = async (input) => {
@@ -72,9 +72,7 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
       );
       const data = await res.json();
       if (data?.results) {
-        setSearchResults(
-          data.results || { tenants: [], properties: [], units: [], owners: [] }
-        );
+        setSearchResults(data.results || { tenants: [], properties: [], units: [], owners: [] });
       } else {
         clearResults();
       }
@@ -170,9 +168,7 @@ const SearchBar = ({ placeholder = 'Search…', selectEntity, type = 'units_prop
               items={searchResults.properties}
               getKey={(p, i) => p.prop_id || `property-${i}`}
               render={(p) => p.Property_Name}
-              onClick={(p) =>
-                EntitySelected(p.prop_id, p.Property_Name, 'property')
-              }
+              onClick={(p) => EntitySelected(p.prop_id, p.Property_Name, 'property')}
             />
           )}
 
@@ -217,4 +213,5 @@ const Section = ({ title, items, getKey, render, onClick }) => {
   );
 };
 
-export default SearchBar;
+// Export memoized so ChatPage typing doesn't re-render this
+export default memo(SearchBar);
