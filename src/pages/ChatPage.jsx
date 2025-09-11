@@ -19,15 +19,17 @@ const ComposerInput = memo(function ComposerInput({
   disabled = false,
   onBlur,
   onFocus,
+  id = "ll-composer",
   ...rest
 }) {
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                   ('ontouchstart' in window);
+  const isMobile =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    "ontouchstart" in window;
 
   return (
     <input
-      id="ll-composer"
-      name="ll-composer"
+      id={id}
+      name={id}
       ref={inputRef}
       type="text"
       value={value}
@@ -43,15 +45,9 @@ const ComposerInput = memo(function ComposerInput({
       spellCheck={false}
       // More careful blur/focus handling for mobile
       onBlur={(e) => {
-        // Only trigger blur handler if it's an actual user action, not programmatic
-        if (e.relatedTarget || !isMobile) {
-          onBlur?.(e);
-        }
+        if (e.relatedTarget || !isMobile) onBlur?.(e);
       }}
-      onFocus={(e) => {
-        onFocus?.(e);
-      }}
-      // keep DOM stable
+      onFocus={(e) => onFocus?.(e)}
       aria-label="Message"
       disabled={disabled}
       {...rest}
@@ -109,20 +105,42 @@ const ChatPage = () => {
 
   // ------------------------- mobile detection -------------------------
   useEffect(() => {
-    isMobileRef.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                         ('ontouchstart' in window) || 
-                         (window.innerWidth <= 768);
+    isMobileRef.current =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      "ontouchstart" in window ||
+      window.innerWidth <= 768;
+  }, []);
+
+  // **NEW**: responsive signal for md breakpoint (>=768px)
+  const [isMdUp, setIsMdUp] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    const handler = (e) => setIsMdUp(e.matches);
+    try {
+      mql.addEventListener("change", handler);
+    } catch {
+      mql.addListener(handler); // Safari fallback
+    }
+    return () => {
+      try {
+        mql.removeEventListener("change", handler);
+      } catch {
+        mql.removeListener(handler);
+      }
+    };
   }, []);
 
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
   const isOldMessage = textToBool(localStorage.getItem("isOldMessage"));
 
-  // Resolve refresh state once after mount
   useEffect(() => {
     const nav = performance.getEntriesByType?.("navigation")?.[0];
-    const isReload =
-      nav?.type === "reload" || performance.navigation?.type === 1; // legacy
+    const isReload = nav?.type === "reload" || performance.navigation?.type === 1;
     setIsPageRefresh(Boolean(isReload));
   }, []);
 
@@ -237,15 +255,8 @@ const ChatPage = () => {
   // ------------------------- autoscroll (skip if typing) -----------
   useEffect(() => {
     if (!messagesEndRef.current) return;
-    if (
-      composerInputRef.current &&
-      document.activeElement === composerInputRef.current
-    )
-      return;
-    messagesEndRef.current.scrollIntoView({
-      block: "end",
-      behavior: "smooth",
-    });
+    if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
+    messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
   // ------------------------- focus preservation / armor (desktop only) -------------
@@ -253,19 +264,14 @@ const ChatPage = () => {
   const [userIntentBlur, setUserIntentBlur] = useState(false);
 
   const handleInputChange = useCallback((e) => {
-    // Don't mess with focus preservation on mobile during typing
     if (!isMobileRef.current && composerInputRef.current) {
-      preserveFocusRef.current =
-        document.activeElement === composerInputRef.current;
+      preserveFocusRef.current = document.activeElement === composerInputRef.current;
     }
     setInput(e.target.value);
   }, []);
 
-  // Restore focus after state updates when blur was not intentional (desktop only)
   useEffect(() => {
-    // Skip focus restoration on mobile to prevent keyboard issues
     if (isMobileRef.current) return;
-    
     if (
       !userIntentBlur &&
       preserveFocusRef.current &&
@@ -275,7 +281,6 @@ const ChatPage = () => {
       !sidebarOpen
     ) {
       preserveFocusRef.current = false;
-      // Use longer timeout and check if element still exists
       const timer = setTimeout(() => {
         if (
           composerInputRef.current &&
@@ -289,7 +294,6 @@ const ChatPage = () => {
     }
   }, [input, entitySelected, showModal, sidebarOpen, userIntentBlur]);
 
-  // Focus composer when entity is selected (less aggressive on mobile)
   useEffect(() => {
     if (entitySelected && !showModal && !sidebarOpen && !isMobileRef.current) {
       const timer = setTimeout(() => {
@@ -307,7 +311,7 @@ const ChatPage = () => {
       try {
         const leases = await getLeaseDocs(entity_id);
         if (!cancelled) setTerms(leases?.basic_lease ?? []);
-      } catch (_e) {}
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -374,7 +378,7 @@ const ChatPage = () => {
     try {
       const imageurl = await get_entity_image(data[file_path], session);
       setEntityImage(imageurl);
-    } catch (_e) {
+    } catch {
       setEntityImage("");
     }
 
@@ -384,10 +388,9 @@ const ChatPage = () => {
     }
   };
 
-  // Make selectEntity STABLE so Header/SearchBar don't re-render every keystroke
+  // Make selectEntity STABLE
   const selectEntity = useCallback(
     async (entityId, entityType) => {
-      // fully reset thread state
       setMessages([]);
       setSources([]);
       setSelectedSource(null);
@@ -411,14 +414,13 @@ const ChatPage = () => {
 
       getPreviousChats(entityId, session, setPreviousChats);
 
-      // Focus after entity selection (only on desktop)
       if (!isMobileRef.current) {
         setTimeout(() => {
           composerInputRef.current?.focus({ preventScroll: true });
         }, 200);
       }
     },
-    [session, session_id] // minimal deps; other setters are stable
+    [session, session_id]
   );
 
   const pollForNextAssistantResponse = async (
@@ -495,7 +497,6 @@ const ChatPage = () => {
         { role: "assistant", text: "⚠️ Network error. Please try again." },
       ]);
     } finally {
-      // Don't re-focus after sending on mobile - let user decide
       if (!isMobileRef.current) {
         setTimeout(() => {
           composerInputRef.current?.focus({ preventScroll: true });
@@ -562,7 +563,8 @@ const ChatPage = () => {
     );
   });
 
-  const Composer = () => (
+  // Accept an override for which input gets the shared ref
+  const Composer = ({ inputRefOverride, idSuffix = "" }) => (
     <div className="z-10 px-2 sm:px-4 md:px-6">
       <div className="mx-auto w-full max-w-4xl">
         {entitySelected ? (
@@ -574,7 +576,8 @@ const ChatPage = () => {
             className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
           >
             <ComposerInput
-              inputRef={composerInputRef}
+              inputRef={inputRefOverride}
+              id={`ll-composer${idSuffix}`}
               value={input}
               onChange={handleInputChange}
               placeholder="Ask a question…"
@@ -632,6 +635,7 @@ const ChatPage = () => {
         {/* LEFT: main column */}
         <div className="flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
           {/* Messages */}
+          {/* Note: generous bottom padding on mobile so messages don't hide behind fixed composer */}
           <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32">
             <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
               {messages.map((m, i) => (
@@ -644,7 +648,14 @@ const ChatPage = () => {
               ))}
               <div ref={messagesEndRef} />
               <div className="h-2 sm:h-3" />
-              <Composer />
+
+              {/* Desktop composer (inside scroll). Only visible on md+ */}
+              <div className="hidden md:block">
+                <Composer
+                  inputRefOverride={isMdUp ? composerInputRef : undefined}
+                  idSuffix="-desktop"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -764,6 +775,14 @@ const ChatPage = () => {
           onClose={() => setPopUp(false)}
         />
       )}
+
+      {/* **Mobile composer fixed at bottom (outside scroll)** */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#111215] border-t border-white/10 px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+        <Composer
+          inputRefOverride={!isMdUp ? composerInputRef : undefined}
+          idSuffix="-mobile"
+        />
+      </div>
     </div>
   );
 };
