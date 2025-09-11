@@ -18,15 +18,14 @@ Disallow: /profile
 Disallow: /settings
 Disallow: /roles
 Disallow: /roles/edit
-Disallow: /terms
 Disallow: /server
 Disallow: /admindashboard
 Disallow: /login
 Disallow: /signup
 
 # Allow public pages (marketing site, docs, etc.)
-Allow: /home
 Allow: /request
+Allow: /terms
 
 # Sitemap 
 Sitemap: https://www.leaselink.ai/sitemap.xml

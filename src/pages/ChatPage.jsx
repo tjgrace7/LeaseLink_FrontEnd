@@ -1,5 +1,5 @@
 // src/pages/ChatPage.jsx
-import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
+import { useEffect, useRef, useState, memo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import ChatSidebar from "../components/ChatSidebar";
@@ -17,6 +17,7 @@ const ComposerInput = memo(function ComposerInput({
   inputRef,
   placeholder = "Ask a question…",
   disabled = false,
+  ...rest // <-- allow extra props (onBlur/onFocus) to pass through
 }) {
   return (
     <input
@@ -38,11 +39,12 @@ const ComposerInput = memo(function ComposerInput({
       // keep DOM stable
       aria-label="Message"
       disabled={disabled}
+      {...rest}
     />
   );
 });
-function textToBool(str) {
 
+function textToBool(str) {
   if (typeof str !== "string") return Boolean(str);
   return str.trim().toLowerCase() === "true";
 }
@@ -91,118 +93,105 @@ const ChatPage = () => {
 
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
-  const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
-   
+  const isOldMessage = textToBool(localStorage.getItem("isOldMessage"));
 
-// Resolve refresh state once after mount
-useEffect(() => {
-  const nav = performance.getEntriesByType?.("navigation")?.[0];
-  const isReload =
-    nav?.type === "reload" ||
-    performance.navigation?.type === 1; // legacy
-  setIsPageRefresh(Boolean(isReload));
-}, []);
-
+  // Resolve refresh state once after mount
+  useEffect(() => {
+    const nav = performance.getEntriesByType?.("navigation")?.[0];
+    const isReload =
+      nav?.type === "reload" || performance.navigation?.type === 1; // legacy
+    setIsPageRefresh(Boolean(isReload));
+  }, []);
 
   // ------------------------- initialize chat session ------------------
-// 2) Initialize only after we KNOW the refresh state
-useEffect(() => {
-  // wait until:
-  // - we know whether this is a reload (isPageRefresh !== null)
-  // - auth session is ready (so downstream calls have tokens)
-  if (isPageRefresh === null || !session) return;
-  if (isInitializedRef.current) return;
+  useEffect(() => {
+    if (isPageRefresh === null || !session) return;
+    if (isInitializedRef.current) return;
 
-  const init = async () => {
-    const shouldRestore = isPageRefresh || isOldMessage;
+    const init = async () => {
+      const shouldRestore = isPageRefresh || isOldMessage;
 
-    if (shouldRestore) {
-      const storedSessionId     = localStorage.getItem("chat_session_id");
-      const storedEntityId      = localStorage.getItem("entity_id");
-      const storedEntityType    = localStorage.getItem("entity_type");
-      const storedEntitySelected= localStorage.getItem("entity_selected");
+      if (shouldRestore) {
+        const storedSessionId = localStorage.getItem("chat_session_id");
+        const storedEntityId = localStorage.getItem("entity_id");
+        const storedEntityType = localStorage.getItem("entity_type");
+        const storedEntitySelected = localStorage.getItem("entity_selected");
 
-      console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
-      if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
-        setEntityId(storedEntityId);
-        setEntityType(storedEntityType);
-        setSelectedEntity(true);
+        if (
+          storedSessionId &&
+          storedEntityId &&
+          storedEntityType &&
+          storedEntitySelected === "true"
+        ) {
+          setEntityId(storedEntityId);
+          setEntityType(storedEntityType);
+          setSelectedEntity(true);
 
-        await getPreviousChats(storedEntityId, session, setPreviousChats);
-        await getEntityNameImage(storedEntityType, storedEntityId);
-        setSessionId(storedSessionId);
+          await getPreviousChats(storedEntityId, session, setPreviousChats);
+          await getEntityNameImage(storedEntityType, storedEntityId);
+          setSessionId(storedSessionId);
 
-        // hydrate from cache (if present)
-        const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            const normalized = parsed.map((msg) => ({
-              ...msg,
-              message: msg.message || msg.text,
-              role: msg.role,
-            }));
-    
-            setMessages(normalized);
-          } catch (err) {
-            console.warn("Failed to parse cached messages:", err);
+          const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              const normalized = parsed.map((msg) => ({
+                ...msg,
+                message: msg.message || msg.text,
+                role: msg.role,
+              }));
+              setMessages(normalized);
+            } catch (err) {
+              console.warn("Failed to parse cached messages:", err);
+            }
+          } else {
+            const { data: stored, error: msgErr } = await supabase
+              .from("entity_questions")
+              .select("*")
+              .eq("session_id", storedSessionId);
+            if (msgErr) {
+              console.error("Error Fetching Messages", msgErr);
+            } else if (stored) {
+              const messages = stored.map((msg) => ({
+                ...msg,
+                message: msg.message,
+                role: msg.role,
+              }));
+              setMessages(messages);
+            }
           }
+          setSessionReady(true);
+          return;
         }
-        else {
-
-        const {data:stored, error: msgErr} = await supabase.from('entity_questions').select('*').eq('session_id', storedSessionId)
-        if(msgErr)
-        {
-          console.error("Error Fetching Messages", msgErr)
-        }
-        else if(stored)
-        {
-          
-          const messages = stored.map((msg) => ({
-            ...msg,
-            message: msg.message,
-            role: msg.role
-          }))
-          setMessages(messages)
-        }
-
-        }
-        setSessionReady(true);
-        return; // <-- done restoring
       }
-      // falls through to "new session" if any prerequisite is missing
-    }
 
-    // fresh navigation → create new session
-    const newId = crypto.randomUUID();
-    setSessionId(newId);
-    localStorage.setItem("chat_session_id", newId);
+      // fresh navigation → create new session
+      const newId = crypto.randomUUID();
+      setSessionId(newId);
+      localStorage.setItem("chat_session_id", newId);
 
-    // clear thread + entity context
-    setMessages([]);
-    setSources([]);
-    setSelectedSource(null);
-    setSelectedEntity(false);
-    setEntityId("");
-    setEntityType("");
+      // clear thread + entity context
+      setMessages([]);
+      setSources([]);
+      setSelectedSource(null);
+      setSelectedEntity(false);
+      setEntityId("");
+      setEntityType("");
 
-    // Only clear persisted entity when not a page refresh
-    if (!isPageRefresh) {
-      localStorage.removeItem("entity_id");
-      localStorage.removeItem("entity_type");
-      localStorage.removeItem("entity_selected");
-      localStorage.removeItem("image_file_path");
-    }
+      if (!isPageRefresh) {
+        localStorage.removeItem("entity_id");
+        localStorage.removeItem("entity_type");
+        localStorage.removeItem("entity_selected");
+        localStorage.removeItem("image_file_path");
+      }
 
-    setSessionReady(true);
-  };
+      setSessionReady(true);
+    };
 
-  // IMPORTANT: mark initialized *after* init finishes
-  init().finally(() => {
-    isInitializedRef.current = true;
-  });
-}, [isPageRefresh, session]); // note: no guard-set before init runs
-
+    init().finally(() => {
+      isInitializedRef.current = true;
+    });
+  }, [isPageRefresh, session]);
 
   // ------------------------- persist messages ----------------------
   useEffect(() => {
@@ -225,41 +214,56 @@ useEffect(() => {
   // ------------------------- autoscroll (skip if typing) -----------
   useEffect(() => {
     if (!messagesEndRef.current) return;
-    if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
-    console.log("Input Reference")
-    messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
+    if (
+      composerInputRef.current &&
+      document.activeElement === composerInputRef.current
+    )
+      return;
+    messagesEndRef.current.scrollIntoView({
+      block: "end",
+      behavior: "smooth",
+    });
   }, [messages]);
 
-  // ------------------------- focus preservation for all devices -----
+  // ------------------------- focus preservation / armor -------------
   const preserveFocusRef = useRef(false);
-  
+  const [userIntentBlur, setUserIntentBlur] = useState(false);
+
   const handleInputChange = useCallback((e) => {
-    // Preserve focus during state updates on all devices
     if (composerInputRef.current) {
-      preserveFocusRef.current = document.activeElement === composerInputRef.current;
+      preserveFocusRef.current =
+        document.activeElement === composerInputRef.current;
     }
     setInput(e.target.value);
   }, []);
 
-  // Restore focus after state updates on all devices
+  // Restore focus after state updates when blur was not intentional
   useEffect(() => {
-    if (preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen) {
+    if (
+      !userIntentBlur &&
+      preserveFocusRef.current &&
+      composerInputRef.current &&
+      entitySelected &&
+      !showModal &&
+      !sidebarOpen
+    ) {
       preserveFocusRef.current = false;
-      // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
-        if (composerInputRef.current && document.activeElement !== composerInputRef.current) {
-          composerInputRef.current.focus();
+        if (
+          composerInputRef.current &&
+          document.activeElement !== composerInputRef.current
+        ) {
+          composerInputRef.current.focus({ preventScroll: true });
         }
       });
     }
-  }, [input, entitySelected, showModal, sidebarOpen]);
+  }, [input, entitySelected, showModal, sidebarOpen, userIntentBlur]);
 
   // Focus composer when entity is selected
   useEffect(() => {
     if (entitySelected && !showModal && !sidebarOpen) {
-      // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
-        composerInputRef.current?.focus();
+        composerInputRef.current?.focus({ preventScroll: true });
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -275,12 +279,13 @@ useEffect(() => {
         if (!cancelled) setTerms(leases?.basic_lease ?? []);
       } catch (_e) {}
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [entity_type, entity_id]);
 
   // ------------------------- data helpers --------------------------
   const getMessages = async (sessionId) => {
-    console.log(sessionId)
     const { data, error } = await supabase
       .from("entity_questions")
       .select("*")
@@ -349,36 +354,40 @@ useEffect(() => {
     }
   };
 
-  const selectEntity = async (entityId, entityType) => {
-    // fully reset thread state
-    setMessages([]);
-    setSources([]);
-    setSelectedSource(null);
-    setShowModal(false);
+  // Make selectEntity STABLE so Header/SearchBar don't re-render every keystroke
+  const selectEntity = useCallback(
+    async (entityId, entityType) => {
+      // fully reset thread state
+      setMessages([]);
+      setSources([]);
+      setSelectedSource(null);
+      setShowModal(false);
 
-    if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
-    localStorage.removeItem("chat_session_id");
-    localStorage.removeItem("entity_id");
-    localStorage.removeItem("entity_type");
+      if (session_id) localStorage.removeItem(`chat_thread_${session_id}`);
+      localStorage.removeItem("chat_session_id");
+      localStorage.removeItem("entity_id");
+      localStorage.removeItem("entity_type");
 
-    setPopUp(false);
+      setPopUp(false);
 
-    const newId = crypto.randomUUID();
-    setSessionId(newId);
-    localStorage.setItem("chat_session_id", newId);
+      const newId = crypto.randomUUID();
+      setSessionId(newId);
+      localStorage.setItem("chat_session_id", newId);
 
-    setEntityId(entityId);
-    setEntityType(entityType);
-    setSelectedEntity(true);
-    await getEntityNameImage(entityType, entityId);
+      setEntityId(entityId);
+      setEntityType(entityType);
+      setSelectedEntity(true);
+      await getEntityNameImage(entityType, entityId);
 
-    getPreviousChats(entityId, session, setPreviousChats);
+      getPreviousChats(entityId, session, setPreviousChats);
 
-    // Focus after entity selection
-    setTimeout(() => {
-      composerInputRef.current?.focus();
-    }, 200);
-  };
+      // Focus after entity selection
+      setTimeout(() => {
+        composerInputRef.current?.focus({ preventScroll: true });
+      }, 200);
+    },
+    [session, session_id] // minimal deps; other setters are stable
+  );
 
   const pollForNextAssistantResponse = async (
     existingAssistantCount,
@@ -456,104 +465,108 @@ useEffect(() => {
     } finally {
       // Re-focus after sending
       setTimeout(() => {
-        composerInputRef.current?.focus();
+        composerInputRef.current?.focus({ preventScroll: true });
       }, 100);
     }
   };
 
   // ------------------------- render helpers ------------------------
-  const Header = () => (
-    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
-      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
-        {/* Entity label */}
-        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-          {entitySelected && entity_name && (
-            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-              {entity_image && (
-                <img
-                  src={entity_image}
-                  alt="Entity"
-                  className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
-                />
-              )}
-              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
-                <span className="hidden sm:inline">
-                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}-{" "}
-                </span>
-                <span className="text-white/60">
-                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
+  const Header = memo(function Header() {
+    return (
+      <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70 min-h-14">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+          {/* Entity label */}
+          <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+            {entitySelected && entity_name && (
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                {entity_image && (
+                  <img
+                    src={entity_image}
+                    alt="Entity"
+                    className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                  />
+                )}
+                <p className="truncate text-xs sm:text-sm font-medium text-white/90">
+                  <span className="hidden sm:inline">
+                    {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}
+                    -{" "}
+                  </span>
+                  <span className="text-white/60">
+                    {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
 
-        {/* Search (shrinks on mobile) */}
-        <div className="w-full max-w-xs sm:max-w-lg flex-1">
-          <SearchBar
-            placeholder="Search Entities"
-            access_token={access_token}
-            selectEntity={(id, type) => selectEntity(id, type)}
-            type="tenants"
-            entityDisplay={true}
-            noAutoFocus
-            data-no-autofocus
-          />
-        </div>
+          {/* Search (shrinks on mobile) */}
+          <div className="w-full max-w-xs sm:max-w-lg flex-1">
+            <SearchBar
+              placeholder="Search Entities"
+              access_token={access_token}
+              selectEntity={selectEntity} // <-- stable via useCallback
+              type="tenants"
+              entityDisplay={true}
+              noAutoFocus
+              data-no-autofocus
+            />
+          </div>
 
-        {/* Sidebar toggle on mobile */}
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
-          aria-label="Open chat sidebar"
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <span className="hidden sm:inline">Sources</span>
-          <span className="sm:hidden">•••</span>
-        </button>
+          {/* Sidebar toggle on mobile */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+            aria-label="Open chat sidebar"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <span className="hidden sm:inline">Sources</span>
+            <span className="sm:hidden">•••</span>
+          </button>
+        </div>
+      </div>
+    );
+  });
+
+  const Composer = () => (
+    <div className="z-10 px-2 sm:px-4 md:px-6">
+      <div className="mx-auto w-full max-w-4xl">
+        {entitySelected ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+          >
+            <ComposerInput
+              inputRef={composerInputRef}
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Ask a question…"
+              onBlur={() => setUserIntentBlur(true)}   // <-- focus armor
+              onFocus={() => setUserIntentBlur(false)} // <--
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              Send
+            </button>
+          </form>
+        ) : (
+          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
+            Select a property, unit, or tenant to start chatting.
+          </p>
+        )}
+        <p className="mt-2 text-xs text-gray-400 text-center">
+          LeaseLink can make mistakes — be sure to check original sources.
+        </p>
       </div>
     </div>
   );
-
-const Composer = () => (
-  <div className="z-10 px-2 sm:px-4 md:px-6">
-    <div className="mx-auto w-full max-w-4xl">
-      {entitySelected ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
-        >
-          <ComposerInput
-            inputRef={composerInputRef}
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Ask a question…"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            Send
-          </button>
-        </form>
-      ) : (
-        <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
-          Select a property, unit, or tenant to start chatting.
-        </p>
-      )}
-      <p className="mt-2 text-xs text-gray-400 text-center">
-        LeaseLink can make mistakes — be sure to check original sources.
-      </p>
-    </div>
-  </div>
-);
-
 
   const ChatBubble = ({ role, text, loading }) => (
     <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
@@ -596,13 +609,10 @@ const Composer = () => (
                 />
               ))}
               <div ref={messagesEndRef} />
-              <div className="h-2 sm:h-3"/>
-               <Composer />
+              <div className="h-2 sm:h-3" />
+              <Composer />
             </div>
           </div>
-
-          {/* Composer */}
-         
         </div>
 
         {/* RIGHT: desktop sidebar */}
@@ -636,7 +646,7 @@ const Composer = () => (
             aria-hidden
           />
           <div className="absolute inset-y-0 right-0 flex w-[90%] max-w-sm flex-col bg-[#111215] ring-1 ring-white/10">
-            <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="lex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
               <h2 className="text-sm font-semibold">History & Sources</h2>
               <button
                 type="button"
