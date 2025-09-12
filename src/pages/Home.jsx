@@ -108,16 +108,8 @@ export default function HomePage() {
     );
   }, []);
 
-  // Opportunistically pre-load heavier libs on idle (safe no-op if unsupported)
-  useEffect(() => {
-    const cb = () => import("lucide-react").catch(() => {});
-    const id = window.requestIdleCallback ? window.requestIdleCallback(cb) : setTimeout(cb, 500);
-    return () => {
-      if (window.cancelIdleCallback && typeof id === "number") window.cancelIdleCallback(id);
-      else clearTimeout(id);
-    };
-  }, []);
-
+  const isSmallScreen = typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : true;
+  const noMotion = prefersReducedMotion || isSmallScreen;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -295,7 +287,7 @@ export default function HomePage() {
           <section className="relative overflow-hidden" id="story">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-24 grid lg:grid-cols-2 gap-8 lg:gap-10 items-center">
               <div>
-                {prefersReducedMotion ? (
+                {noMotion ? (
                   <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white">
                     Built by Commercial Property Managers,
                     <span className="block">for Commercial Property Managers.</span>
@@ -332,7 +324,7 @@ export default function HomePage() {
               </div>
 
               {/* Right preview: static on mobile, motion on lg+ only */}
-              {prefersReducedMotion ? (
+              {noMotion ? (
                 <div className="lg:justify-self-end w-full max-w-xl">
                   <div className="rounded-3xl shadow-xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
                     <div className="grid grid-cols-3 gap-3 sm:gap-4" role="list" aria-label="Product steps">
