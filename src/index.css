@@ -13,3 +13,9 @@
 html, body {
   @apply m-0 p-0 bg-[#222222];
 }
+
+.ios-allow-select, .ios-allow-select * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: defaul !important;
+}
