@@ -3,13 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-59BF98HC');</script>
-<!-- End Google Tag Manager -->
   <title>LeaseLink — AI Lease Extraction & Search</title>
 
   <!-- Critical CSS - Inline for immediate render -->
@@ -23,14 +16,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       line-height:1.5
     }
     #root{min-height:100vh}
-    
-    /* Critical layout styles for above-the-fold content */
     .header{background:#222;padding:1rem;position:sticky;top:0;z-index:50}
     .hero{padding:2rem 1rem;text-align:center;background:linear-gradient(135deg,#2a2c36,#1e2230)}
     .hero h1{font-size:2rem;margin:0 0 1rem 0;font-weight:700}
     .hero p{font-size:1.125rem;margin:0 auto;max-width:42rem;opacity:0.9}
-    
-    /* Loading state */
     .loading{display:flex;justify-content:center;align-items:center;min-height:50vh}
     .spinner{width:40px;height:40px;border:4px solid #333;border-top-color:#4ea5a8;border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -47,7 +36,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <!-- Icons -->
   <link rel="icon" type="image/png" href="/LeaseLink.png" />
 
-  <!-- Resource Hints (only for essential resources) -->
+  <!-- Resource Hints for GTM -->
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
 
@@ -55,17 +44,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <link rel="preload" href="/assets/index-BQwak9Xg.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="/assets/index-BQwak9Xg.css"></noscript>
 
-  <!-- Font Loading Strategy - Choose ONE approach -->
-  
-  <!-- Option 1: Self-hosted fonts (RECOMMENDED for best performance) -->
+  <!-- Font Loading -->
   <link rel="preload" href="/assets/source-serif-pro-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  
-  <!-- Option 2: Google Fonts (if you prefer external hosting) -->
-  <!--
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap"></noscript>
-  -->
 
   <!-- Open Graph / Social Media -->
   <meta property="og:title" content="LeaseLink — AI Lease Extraction & Search">
@@ -101,22 +81,31 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   </script>
 
-  <!-- Analytics (loaded after critical resources) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X3H684JXMV"></script>
+  <!-- Defer GTM load -->
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-X3H684JXMV', { anonymize_ip: true });
+    function gtm(){ dataLayer.push(arguments); }
+    gtm('js', new Date());
+
+    function loadGTM(){
+      if (loadGTM.loaded) return; loadGTM.loaded = true;
+      var s = document.createElement('script');
+      s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-59BF98HC';
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    }
+    // load GTM after first user interaction or when browser is idle
+    window.addEventListener('pointerdown', loadGTM, { once: true });
+    (window.requestIdleCallback || setTimeout)(loadGTM, 3000);
   </script>
 </head>
 <body>
   <!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-59BF98HC"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-59BF98HC"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
   <div id="root">
-    <!-- Fallback content while React loads -->
     <div class="loading">
       <div class="spinner"></div>
     </div>
