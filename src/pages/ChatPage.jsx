@@ -19,11 +19,10 @@ const ComposerInput = memo(function ComposerInput({
   disabled = false,
 }) {
   return (
-    <textarea
+    <input
       id="ll-composer"
       name="ll-composer"
       ref={inputRef}
-      type="text"
       value={value}
       onChange={onChange}
       placeholder={placeholder}
@@ -38,9 +37,126 @@ const ComposerInput = memo(function ComposerInput({
       // keep DOM stable
       aria-label="Message"
       disabled={disabled}
-      style={{WebkitUserSelect: 'text'}}
+      style={{ WebkitUserSelect: 'text' }}
     />
   );
+});
+// ------------------------- render helpers ------------------------
+const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen }) {
+  return (
+    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+        {/* Entity label */}
+        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+          {entitySelected && entity_name && (
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              {entity_image && (
+                <img
+                  src={entity_image}
+                  alt="Entity"
+                  className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
+                />
+              )}
+              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
+                <span className="hidden sm:inline">
+                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}-{" "}
+                </span>
+                <span className="text-white/60">
+                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Search (shrinks on mobile) */}
+        <div className="w-full max-w-xs sm:max-w-lg flex-1">
+          <SearchBar
+            placeholder="Search Entities"
+            access_token={access_token}
+            selectEntity={(id, type) => selectEntity(id, type)}
+            type="tenants"
+            entityDisplay={true}
+            noAutoFocus
+            data-no-autofocus
+          />
+        </div>
+
+        {/* Sidebar toggle on mobile */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
+          aria-label="Open chat sidebar"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <span className="hidden sm:inline">Sources</span>
+          <span className="sm:hidden">•••</span>
+        </button>
+      </div>
+    </div>
+  )
+});
+
+const Composer = memo(function Composer({ entitySelected, input, setInput, handleSend, composerInputRef }) {
+  const handleChange = useCallback((e) => setInput(e.target.value), [setInput]);
+  return (
+    <div className="z-10 px-2 sm:px-4 md:px-6">
+      <div className="mx-auto w-full max-w-4xl">
+        {entitySelected ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="ios-allow-select flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg"
+          >
+            <ComposerInput
+              inputRef={composerInputRef}
+              value={input}
+              onChange={handleChange}
+              placeholder="Ask a question…"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              Send
+            </button>
+          </form>
+        ) : (
+          <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
+            Select a property, unit, or tenant to start chatting.
+          </p>
+        )}
+        <p className="mt-2 text-xs text-gray-400 text-center">
+          LeaseLink can make mistakes — be sure to check original sources.
+        </p>
+      </div>
+    </div>
+  )
+});
+
+const ChatBubble = memo(function ChatBubble({ role, text, loading }) {
+  return (
+
+    <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
+          }`}
+      >
+        {loading ? (
+          <div className="text-white">
+            <Spinner />
+          </div>
+        ) : (
+          <p className="break-words">{text}</p>
+        )}
+      </div>
+    </div>
+  )
 });
 function textToBool(str) {
 
@@ -80,11 +196,11 @@ const ChatPage = () => {
   const composerInputRef = useRef(null);
   const isInitializedRef = useRef(false);
 
-    // robust iOS detection (covers iPadOS on Mac UA)
- const isiOS = typeof navigator !== 'undefined' && (
-   /iP(ad|hone|od)/.test(navigator.platform) ||
+  // robust iOS detection (covers iPadOS on Mac UA)
+  const isiOS = typeof navigator !== 'undefined' && (
+    /iP(ad|hone|od)/.test(navigator.platform) ||
     (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
- );
+  );
 
   // env + auth
   const server_url = import.meta.env.VITE_SERVER_URL;
@@ -99,129 +215,127 @@ const ChatPage = () => {
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
   const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
-   
 
-// Resolve refresh state once after mount
-useEffect(() => {
-  const nav = performance.getEntriesByType?.("navigation")?.[0];
-  const isReload =
-    nav?.type === "reload" ||
-    performance.navigation?.type === 1; // legacy
-  setIsPageRefresh(Boolean(isReload));
-}, []);
 
-useEffect(() => {
-  const el = composerInputRef.current;
-  if (!el) return;
-  const onBlur = () => setTimeout(() => {
-    console.log('[Composer] blurred. activeElement:', document.activeElement);
-  }, 0);
-  const onFocus = () => console.log('[Composer] focused');
-  el.addEventListener('blur', onBlur);
-  el.addEventListener('focus', onFocus);
-  return () => {
-    el.removeEventListener('blur', onBlur);
-    el.removeEventListener('focus', onFocus);
-  };
-}, []);
+  // Resolve refresh state once after mount
+  useEffect(() => {
+    const nav = performance.getEntriesByType?.("navigation")?.[0];
+    const isReload =
+      nav?.type === "reload" ||
+      performance.navigation?.type === 1; // legacy
+    setIsPageRefresh(Boolean(isReload));
+  }, []);
+
+  useEffect(() => {
+    const el = composerInputRef.current;
+    if (!el) return;
+    const onBlur = () => setTimeout(() => {
+      console.log('[Composer] blurred. activeElement:', document.activeElement);
+    }, 0);
+    const onFocus = () => console.log('[Composer] focused');
+    el.addEventListener('blur', onBlur);
+    el.addEventListener('focus', onFocus);
+    return () => {
+      el.removeEventListener('blur', onBlur);
+      el.removeEventListener('focus', onFocus);
+    };
+  }, []);
   // ------------------------- initialize chat session ------------------
-// 2) Initialize only after we KNOW the refresh state
-useEffect(() => {
-  // wait until:
-  // - we know whether this is a reload (isPageRefresh !== null)
-  // - auth session is ready (so downstream calls have tokens)
-  if (isPageRefresh === null || !session) return;
-  if (isInitializedRef.current) return;
+  // 2) Initialize only after we KNOW the refresh state
+  useEffect(() => {
+    // wait until:
+    // - we know whether this is a reload (isPageRefresh !== null)
+    // - auth session is ready (so downstream calls have tokens)
+    if (isPageRefresh === null || !session) return;
+    if (isInitializedRef.current) return;
 
-  const init = async () => {
-    const shouldRestore = isPageRefresh || isOldMessage;
+    const init = async () => {
+      const shouldRestore = isPageRefresh || isOldMessage;
 
-    if (shouldRestore) {
-      const storedSessionId     = localStorage.getItem("chat_session_id");
-      const storedEntityId      = localStorage.getItem("entity_id");
-      const storedEntityType    = localStorage.getItem("entity_type");
-      const storedEntitySelected= localStorage.getItem("entity_selected");
+      if (shouldRestore) {
+        const storedSessionId = localStorage.getItem("chat_session_id");
+        const storedEntityId = localStorage.getItem("entity_id");
+        const storedEntityType = localStorage.getItem("entity_type");
+        const storedEntitySelected = localStorage.getItem("entity_selected");
 
-      console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
-      if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
-        setEntityId(storedEntityId);
-        setEntityType(storedEntityType);
-        setSelectedEntity(true);
+        console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
+        if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
+          setEntityId(storedEntityId);
+          setEntityType(storedEntityType);
+          setSelectedEntity(true);
 
-        await getPreviousChats(storedEntityId, session, setPreviousChats);
-        await getEntityNameImage(storedEntityType, storedEntityId);
-        setSessionId(storedSessionId);
+          await getPreviousChats(storedEntityId, session, setPreviousChats);
+          await getEntityNameImage(storedEntityType, storedEntityId);
+          setSessionId(storedSessionId);
 
-        // hydrate from cache (if present)
-        const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            const normalized = parsed.map((msg) => ({
-              ...msg,
-              message: msg.message || msg.text,
-              role: msg.role,
-            }));
-    
-            setMessages(normalized);
-          } catch (err) {
-            console.warn("Failed to parse cached messages:", err);
+          // hydrate from cache (if present)
+          const cached = localStorage.getItem(`chat_thread_${storedSessionId}`);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              const normalized = parsed.map((msg) => ({
+                ...msg,
+                message: msg.message || msg.text,
+                role: msg.role,
+              }));
+
+              setMessages(normalized);
+            } catch (err) {
+              console.warn("Failed to parse cached messages:", err);
+            }
           }
-        }
-        else {
+          else {
 
-        const {data:stored, error: msgErr} = await supabase.from('entity_questions').select('*').eq('session_id', storedSessionId)
-        if(msgErr)
-        {
-          console.error("Error Fetching Messages", msgErr)
-        }
-        else if(stored)
-        {
-          
-          const messages = stored.map((msg) => ({
-            ...msg,
-            message: msg.message,
-            role: msg.role
-          }))
-          setMessages(messages)
-        }
+            const { data: stored, error: msgErr } = await supabase.from('entity_questions').select('*').eq('session_id', storedSessionId)
+            if (msgErr) {
+              console.error("Error Fetching Messages", msgErr)
+            }
+            else if (stored) {
 
+              const messages = stored.map((msg) => ({
+                ...msg,
+                message: msg.message,
+                role: msg.role
+              }))
+              setMessages(messages)
+            }
+
+          }
+          setSessionReady(true);
+          return; // <-- done restoring
         }
-        setSessionReady(true);
-        return; // <-- done restoring
+        // falls through to "new session" if any prerequisite is missing
       }
-      // falls through to "new session" if any prerequisite is missing
-    }
 
-    // fresh navigation → create new session
-    const newId = crypto.randomUUID();
-    setSessionId(newId);
-    localStorage.setItem("chat_session_id", newId);
+      // fresh navigation → create new session
+      const newId = crypto.randomUUID();
+      setSessionId(newId);
+      localStorage.setItem("chat_session_id", newId);
 
-    // clear thread + entity context
-    setMessages([]);
-    setSources([]);
-    setSelectedSource(null);
-    setSelectedEntity(false);
-    setEntityId("");
-    setEntityType("");
+      // clear thread + entity context
+      setMessages([]);
+      setSources([]);
+      setSelectedSource(null);
+      setSelectedEntity(false);
+      setEntityId("");
+      setEntityType("");
 
-    // Only clear persisted entity when not a page refresh
-    if (!isPageRefresh) {
-      localStorage.removeItem("entity_id");
-      localStorage.removeItem("entity_type");
-      localStorage.removeItem("entity_selected");
-      localStorage.removeItem("image_file_path");
-    }
+      // Only clear persisted entity when not a page refresh
+      if (!isPageRefresh) {
+        localStorage.removeItem("entity_id");
+        localStorage.removeItem("entity_type");
+        localStorage.removeItem("entity_selected");
+        localStorage.removeItem("image_file_path");
+      }
 
-    setSessionReady(true);
-  };
+      setSessionReady(true);
+    };
 
-  // IMPORTANT: mark initialized *after* init finishes
-  init().finally(() => {
-    isInitializedRef.current = true;
-  });
-}, [isPageRefresh, session]); // note: no guard-set before init runs
+    // IMPORTANT: mark initialized *after* init finishes
+    init().finally(() => {
+      isInitializedRef.current = true;
+    });
+  }, [isPageRefresh, session]); // note: no guard-set before init runs
 
 
   // ------------------------- persist messages ----------------------
@@ -252,23 +366,15 @@ useEffect(() => {
 
   // ------------------------- focus preservation for all devices -----
   const preserveFocusRef = useRef(false);
-  
-  const handleInputChange = useCallback((e) => {
-    // Preserve focus during state updates on all devices
-    if (composerInputRef.current) {
-      preserveFocusRef.current = document.activeElement === composerInputRef.current;
-    }
-    setInput(e.target.value);
-  }, []);
+
 
   // Restore focus after state updates on all devices
   useEffect(() => {
-    if(isiOS) return;
-    if(preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen)
-    {
+    if (isiOS) return;
+    if (preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen) {
       preserveFocusRef.current = false
       requestAnimationFrame(() => {
-        if(composerInputRef.current && document.activeElement !== composerInputRef.current){
+        if (composerInputRef.current && document.activeElement !== composerInputRef.current) {
           composerInputRef.current.focus()
         }
       })
@@ -276,13 +382,13 @@ useEffect(() => {
   }, [isiOS, input, entitySelected, showModal, sidebarOpen])
   // Focus composer when entity is selected
   useEffect(() => {
-    if(isiOS) return;
-    if(entitySelected && !showModal && !sidebarOpen) {
-        const timer = setTimeout(() => {
-          composerInputRef.current?.focus()
-        }, 100)
-        return () => clearTimeout(timer)
-      
+    if (isiOS) return;
+    if (entitySelected && !showModal && !sidebarOpen) {
+      const timer = setTimeout(() => {
+        composerInputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+
     }
   }, [isiOS, entitySelected, showModal, sidebarOpen])
 
@@ -294,7 +400,7 @@ useEffect(() => {
       try {
         const leases = await getLeaseDocs(entity_id);
         if (!cancelled) setTerms(leases?.basic_lease ?? []);
-      } catch (_e) {}
+      } catch (_e) { }
     })();
     return () => { cancelled = true; };
   }, [entity_type, entity_id]);
@@ -482,117 +588,7 @@ useEffect(() => {
     }
   };
 
-  // ------------------------- render helpers ------------------------
-  const Header = () => (
-    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
-      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
-        {/* Entity label */}
-        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-          {entitySelected && entity_name && (
-            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-              {entity_image && (
-                <img
-                  src={entity_image}
-                  alt="Entity"
-                  className="h-8 w-8 sm:h-10 sm:w-10 flex-none rounded-full object-cover ring-1 ring-white/10"
-                />
-              )}
-              <p className="truncate text-xs sm:text-sm font-medium text-white/90">
-                <span className="hidden sm:inline">
-                  {entity_name.charAt(0).toUpperCase() + entity_name.slice(1)}{" "}-{" "}
-                </span>
-                <span className="text-white/60">
-                  {entity_type.charAt(0).toUpperCase() + entity_type.slice(1)}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* Search (shrinks on mobile) */}
-        <div className="w-full max-w-xs sm:max-w-lg flex-1">
-          <SearchBar
-            placeholder="Search Entities"
-            access_token={access_token}
-            selectEntity={(id, type) => selectEntity(id, type)}
-            type="tenants"
-            entityDisplay={true}
-            noAutoFocus
-            data-no-autofocus
-          />
-        </div>
-
-        {/* Sidebar toggle on mobile */}
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          className="flex-none inline-flex items-center rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-white/80 ring-1 ring-inset ring-white/10 hover:text-white hover:ring-white/20 lg:hidden"
-          aria-label="Open chat sidebar"
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <span className="hidden sm:inline">Sources</span>
-          <span className="sm:hidden">•••</span>
-        </button>
-      </div>
-    </div>
-  );
-
-const Composer = () => (
-  <div className="z-10 px-2 sm:px-4 md:px-6">
-    <div className="mx-auto w-full max-w-4xl">
-      {entitySelected ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="ios-allow-select flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg"
-        >
-          <ComposerInput
-            inputRef={composerInputRef}
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Ask a question…"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            Send
-          </button>
-        </form>
-      ) : (
-        <p className="rounded-xl bg-[#2b2e3a]/60 px-3 py-2 text-center text-sm text-white/70 ring-1 ring-inset ring-white/10">
-          Select a property, unit, or tenant to start chatting.
-        </p>
-      )}
-      <p className="mt-2 text-xs text-gray-400 text-center">
-        LeaseLink can make mistakes — be sure to check original sources.
-      </p>
-    </div>
-  </div>
-);
-
-
-  const ChatBubble = ({ role, text, loading }) => (
-    <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${
-          role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
-        }`}
-      >
-        {loading ? (
-          <div className="text-white">
-            <Spinner />
-          </div>
-        ) : (
-          <p className="break-words">{text}</p>
-        )}
-      </div>
-    </div>
-  );
 
   // ------------------------- main render ---------------------------
   if (loading || loadingUserData) return <div className="p-6 text-white">Loading…</div>;
@@ -600,7 +596,15 @@ const Composer = () => (
 
   return (
     <div className="flex min-h-screen md:h-screen flex-col bg-[#1b1b1b] text-white">
-      <Header />
+      <Header 
+      entitySelected={entitySelected}
+      entity_name={entity_name}
+      entity_type={entity_type}
+      entity_image={entity_image}
+      access_token={access_token}
+      selectEntity={(id, type) => selectEntity(id, type)}
+      setSidebarOpen={setSidebarOpen}
+      />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* LEFT: main column */}
@@ -617,13 +621,19 @@ const Composer = () => (
                 />
               ))}
               <div ref={messagesEndRef} />
-              <div className="h-2 sm:h-3"/>
-               <Composer />
+              <div className="h-2 sm:h-3" />
+              <Composer 
+              entitySelected={entitySelected}
+              input={input}
+              setInput={setInput}
+              handleSend={handleSend}
+              composerInputRef={composerInputRef}
+              />
             </div>
           </div>
 
           {/* Composer */}
-         
+
         </div>
 
         {/* RIGHT: desktop sidebar */}
