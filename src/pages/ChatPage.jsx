@@ -79,6 +79,12 @@ const ChatPage = () => {
   const composerInputRef = useRef(null);
   const isInitializedRef = useRef(false);
 
+    // robust iOS detection (covers iPadOS on Mac UA)
+ const isiOS = typeof navigator !== 'undefined' && (
+   /iP(ad|hone|od)/.test(navigator.platform) ||
+    (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+ );
+
   // env + auth
   const server_url = import.meta.env.VITE_SERVER_URL;
   const { session, loading, userData, loadingUserData } = useAuth();
@@ -243,27 +249,28 @@ useEffect(() => {
 
   // Restore focus after state updates on all devices
   useEffect(() => {
-    if (preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen) {
-      preserveFocusRef.current = false;
-      // Use requestAnimationFrame to ensure DOM has updated
+    if(isiOS) return;
+    if(preserveFocusRef.current && composerInputRef.current && entitySelected && !showModal && !sidebarOpen)
+    {
+      preserveFocusRef.current = false
       requestAnimationFrame(() => {
-        if (composerInputRef.current && document.activeElement !== composerInputRef.current) {
-          composerInputRef.current.focus();
+        if(composerInputRef.current && document.activeElement !== composerInputRef.current){
+          composerInputRef.current.focus()
         }
-      });
+      })
     }
-  }, [input, entitySelected, showModal, sidebarOpen]);
-
+  }, [isiOS, input, entitySelected, showModal, sidebarOpen])
   // Focus composer when entity is selected
   useEffect(() => {
-    if (entitySelected && !showModal && !sidebarOpen) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        composerInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
+    if(isiOS) return;
+    if(entitySelected && !showModal && !sidebarOpen) {
+        const timer = setTimeout(() => {
+          composerInputRef.current?.focus()
+        }, 100)
+        return () => clearTimeout(timer)
+      
     }
-  }, [entitySelected, showModal, sidebarOpen]);
+  }, [isiOS, entitySelected, showModal, sidebarOpen])
 
   // ------------------------- fetch tenant terms --------------------
   useEffect(() => {
@@ -525,7 +532,7 @@ const Composer = () => (
             e.preventDefault();
             handleSend();
           }}
-          className="flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg backdrop-blur"
+          className="ios-allow-select flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg"
         >
           <ComposerInput
             inputRef={composerInputRef}
@@ -585,7 +592,7 @@ const Composer = () => (
         {/* LEFT: main column */}
         <div className="flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
           {/* Messages */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32">
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32 ios-scroll">
             <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
               {messages.map((m, i) => (
                 <ChatBubble
