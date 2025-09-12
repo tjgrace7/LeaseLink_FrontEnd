@@ -54,22 +54,34 @@ const Privacy = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#222] text-white flex items-start justify-center px-6 py-12">
-      <div className="max-w-3xl w-full">
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-6 inline-flex items-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-sm font-medium"
-        >
-          ← Back
-        </button>
+    <>
+      <title>Privacy Policy | LeaseLink</title>
+      <meta name="robots" content="noindex, follow" />
+      <meta
+        name="description"
+        content="Learn how LeaseLink collects, uses, and protects your data."
+      />
+      <meta property="og:title" content="Privacy Policy | LeaseLink" />
+      <meta property="og:description" content="LeaseLink's privacy practices." />
+      <meta property="og:url" content="https://www.leaselink.ai/privacy_policy" />
+      <div className="min-h-screen bg-[#222] text-white flex items-start justify-center px-6 py-12">
 
-        <h1 className="text-3xl font-bold mb-8 text-center text-emerald-400">
-          Privacy Policy
-        </h1>
-        <div className="prose prose-invert">{renderPolicy()}</div>
+        <div className="max-w-3xl w-full">
+          {/* Back button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-6 inline-flex items-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-sm font-medium"
+          >
+            ← Back
+          </button>
+
+          <h1 className="text-3xl font-bold mb-8 text-center text-emerald-400">
+            Privacy Policy
+          </h1>
+          <div className="prose prose-invert">{renderPolicy()}</div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

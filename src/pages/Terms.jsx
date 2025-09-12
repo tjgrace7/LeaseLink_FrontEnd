@@ -58,6 +58,18 @@ const TermsAndConditions = () => {
   };
 
   return (
+    <>
+     <title>Terms & Conditions | LeaseLink</title>
+      <meta name="robots" content="noindex, follow" />
+      <meta
+        name="description"
+        content="Read the Terms & Conditions for using LeaseLink."
+      />
+      {/* Optional social tags */}
+      <meta property="og:title" content="Terms & Conditions | LeaseLink" />
+      <meta property="og:description" content="Terms of service for LeaseLink." />
+      <meta property="og:url" content="https://www.leaselink.ai/terms" />
+      
     <div className="min-h-screen bg-[#222] text-white flex items-start justify-center px-6 py-12">
       <div className="max-w-3xl w-full">
         {/* Back button */}
@@ -81,6 +93,7 @@ const TermsAndConditions = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
