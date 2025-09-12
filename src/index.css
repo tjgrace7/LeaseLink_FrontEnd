@@ -20,3 +20,9 @@ html, body {
   user-select: text !important;
   -webkit-touch-callout: default !important;
 }
+
+.ios-scroll {-webkit-overflow-scrolling: touch;}
+
+:root {
+  --vh-100: 100svh;
+}

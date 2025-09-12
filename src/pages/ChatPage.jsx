@@ -19,7 +19,7 @@ const ComposerInput = memo(function ComposerInput({
   disabled = false,
 }) {
   return (
-    <input
+    <textarea
       id="ll-composer"
       name="ll-composer"
       ref={inputRef}
@@ -38,6 +38,7 @@ const ComposerInput = memo(function ComposerInput({
       // keep DOM stable
       aria-label="Message"
       disabled={disabled}
+      style={{WebkitUserSelect: 'text'}}
     />
   );
 });
@@ -109,7 +110,20 @@ useEffect(() => {
   setIsPageRefresh(Boolean(isReload));
 }, []);
 
-
+useEffect(() => {
+  const el = composerInputRef.current;
+  if (!el) return;
+  const onBlur = () => setTimeout(() => {
+    console.log('[Composer] blurred. activeElement:', document.activeElement);
+  }, 0);
+  const onFocus = () => console.log('[Composer] focused');
+  el.addEventListener('blur', onBlur);
+  el.addEventListener('focus', onFocus);
+  return () => {
+    el.removeEventListener('blur', onBlur);
+    el.removeEventListener('focus', onFocus);
+  };
+}, []);
   // ------------------------- initialize chat session ------------------
 // 2) Initialize only after we KNOW the refresh state
 useEffect(() => {
@@ -470,7 +484,7 @@ useEffect(() => {
 
   // ------------------------- render helpers ------------------------
   const Header = () => (
-    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/70">
+    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
         {/* Entity label */}
         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
@@ -585,14 +599,14 @@ const Composer = () => (
   if (!userData) return <div className="p-6 text-white">User record not found</div>;
 
   return (
-    <div className="flex h-[100dvh] md:h-screen min-h-0 flex-col bg-[#1b1b1b] text-white overflow-hidden">
+    <div className="flex min-h-screen md:h-screen flex-col bg-[#1b1b1b] text-white">
       <Header />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* LEFT: main column */}
         <div className="flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
           {/* Messages */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32 ios-scroll">
+          <div className="min-h-0 flex-1 overflow-y-auto ios-scroll px-2 sm:px-4 md:px-6 py-3 sm:py-4 pb-28 sm:pb-32">
             <div className="mx-auto w-full max-w-4xl space-y-3 sm:space-y-4">
               {messages.map((m, i) => (
                 <ChatBubble
