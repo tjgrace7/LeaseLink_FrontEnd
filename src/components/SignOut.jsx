@@ -3,6 +3,7 @@
 import React from 'react';
 import { signOut } from '../utilities/SignOut';
 import { useNavigate } from 'react-router-dom';
+import { GTMSignOut } from './gtag';
 
 /**
  * LogoutButton
@@ -25,6 +26,7 @@ const LogoutButton = () => {
       console.error('Error Signing Out:', result.error.message);
     } else {
       console.log('Signout successful');
+      GTMSignOut()
       navigate('/login');
     }
   };
