@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../components/AuthProvider";
+import { GTMSignIn } from "../components/gtag";
 
 /**
  * SignIn (UI-refactor)
@@ -102,16 +103,18 @@ const SignIn = () => {
 
         if (!userErr && isTrueish(userRow?.archived)) {
           // Block sign-in: immediately sign out & show message
+          GTMSignIn(false)
           await supabase.auth.signOut();
           setError("Your account is archived. Please contact your company admin.");
           return; // do not navigate
         }
       }
-
+      GTMSignIn(true)
       // 3) Proceed normally
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
+      GTMSignIn(false)
       setError(err?.message || "Sign-in failed. Please try again.");
     } finally {
       setIsSubmitting(false);

@@ -48,3 +48,11 @@ export const GTMChatResponse = (successful) => {
         success: successful,
     })
 }
+
+export const GTMSignIn = (success) => {
+    window.dataLayer = window.dataLayer ||[];
+    window.dataLayer.push({
+        event: 'Sign In',
+        success: success
+    })
+}
