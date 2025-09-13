@@ -8,6 +8,7 @@ import DisplayBox from "../components/DisplayBox";
 import Dropdown from "../components/dropdown";
 import { supabase } from "../supabaseClient";
 import Spinner from "../components/Spinner";
+import { GTMUpload } from "../components/gtag";
 
 /**
  * UploadLeases — with per-file progress UI + post-run lock/reset
@@ -238,7 +239,7 @@ const UploadLeases = () => {
             const errText = await res.text().catch(() => "");
             throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
           }
-
+          GTMUpload()
           const { signed_url, lease_file_path, bucket, error: fxError } = await res.json();
           if (fxError) throw new Error(fxError);
           if (!signed_url || !lease_file_path || !bucket) {

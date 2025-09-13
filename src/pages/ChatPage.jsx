@@ -9,6 +9,7 @@ import { supabase } from "../supabaseClient";
 import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
 import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
+import { GTMChat, GTMChatEntity, GTMChatResponse } from "../components/gtag";
 
 /* ---------- stable, memoized input to avoid remounts on re-render ---------- */
 const ComposerInput = memo(function ComposerInput({
@@ -500,7 +501,7 @@ const ChatPage = () => {
     await getEntityNameImage(entityType, entityId);
 
     getPreviousChats(entityId, session, setPreviousChats);
-
+    GTMChatEntity();
     // Focus after entity selection
     setTimeout(() => {
       composerInputRef.current?.focus();
@@ -552,6 +553,7 @@ const ChatPage = () => {
     };
 
     try {
+      GTMChat()
       const res = await fetch(`${server_url}/entity_questions`, {
         method: "POST",
         headers: {
@@ -568,14 +570,17 @@ const ChatPage = () => {
           ...prev.slice(0, -1),
           { role: "assistant", text: "⚠️ An error occurred. Please try again." },
         ]);
+        GTMChatResponse(false)
         return;
       }
 
       const current = await getMessages(session_id);
       const assistantCount = current.filter((m) => m.role === "assistant").length;
       pollForNextAssistantResponse(assistantCount);
+      GTMChatResponse(true)
     } catch (err) {
       console.error("Message Send Failed", err);
+      GTMChatResponse(false)
       setMessages((prev) => [
         ...prev.slice(0, -1),
         { role: "assistant", text: "⚠️ Network error. Please try again." },

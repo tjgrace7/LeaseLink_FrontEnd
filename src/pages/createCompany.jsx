@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../components/AuthProvider";
+import { GTMCreate } from "../components/gtag";
 
 const inputBase =
   "block w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 disabled:opacity-60";
@@ -71,7 +72,8 @@ const CreateCompanies = () => {
         .insert(payload);
 
       if (error) throw error;
-
+      
+      GTMCreate('Create Company', 'Company', companyName)
       // Success → return to dashboard (or navigate to the new company if you have that route)
       navigate("/dashboard");
     } catch (err) {

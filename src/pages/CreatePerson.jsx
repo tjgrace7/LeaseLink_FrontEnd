@@ -18,6 +18,7 @@ import UploadImage from "../components/upload_image";
 import { fileToBase64 } from "../utilities/imageConverter";
 import { get_entity_image } from "../utilities/get_entity_image";
 import { getTable, getTableIdList } from "../utilities/supabaseCalls";
+import { GTMCreate } from "../components/gtag";
 
 // ----------------------------
 // Reusable UI primitives
@@ -484,7 +485,7 @@ const CreateEditPerson = () => {
         setSubmitting(false);
         return;
       }
-
+      GTMCreate('Create Person', selectedPerson, genericFormData.name)
       navigate("/dashboard");
     } catch (err) {
       console.error("Submit error:", err);

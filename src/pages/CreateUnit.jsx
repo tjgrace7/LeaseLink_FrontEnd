@@ -21,6 +21,7 @@ import { fileToBase64 } from "../utilities/imageConverter";
 import { getTable } from "../utilities/supabaseCalls";
 import { FiChevronLeft, FiTrash2, FiImage, FiX } from "react-icons/fi";
 import DropdownPortal from "../components/portal";
+import { GTMCreate } from "../components/gtag";
 
 // ----------------------------
 // Reusable UI primitives
@@ -307,7 +308,7 @@ const hasChanged = useCallback(() => {
         setSubmitting(false);
         return;
       }
-
+      GTMCreate('Create Building', selectedEntity, Entity.label)
       navigate("/dashboard");
     } catch (err) {
       console.error("Submit error:", err);
