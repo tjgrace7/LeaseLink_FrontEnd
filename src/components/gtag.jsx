@@ -56,3 +56,10 @@ export const GTMSignIn = (success) => {
         success: success
     })
 }
+
+export const GTMSignOut = () => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+        event: 'Sign Out'
+    })
+}
