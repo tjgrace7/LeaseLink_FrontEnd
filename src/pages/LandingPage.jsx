@@ -95,6 +95,8 @@ const LinkedInLanding = () => {
       if(unitsNum >= 100)
       {
         pre_qualify = true
+        console.log("Qualified")
+        GTMLead()
       }
       const { error } = await supabase.from('access_request').insert({
         full_name: form.name,
@@ -106,7 +108,7 @@ const LinkedInLanding = () => {
         pre_qualify: pre_qualify
       });
       if (error) throw error;
-      GTMLead(pre_qualify)
+      
       navigate('/thank-you');
     } catch (e) {
       console.error(e);

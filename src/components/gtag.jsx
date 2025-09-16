@@ -64,10 +64,9 @@ export const GTMSignOut = () => {
     })
 }
 
-export const GTMLead = (qualified) => {
+export const GTMLead = () => {
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
-        event: 'Qualify Lead',
-        isQualified: qualified
+        event: 'qualify_lead',
     })
 }
