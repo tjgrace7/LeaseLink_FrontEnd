@@ -1,69 +1,79 @@
-
-import { useEffect, useRef, useState, useMemo } from "react";
+// VimeoEmbed.jsx
+import { useEffect, useRef } from "react";
 import Player from "@vimeo/player";
 
-export default function VimeoEmbed({ src, poster }) {
-  const iframeRef = useRef(null);
-  const [ready, setReady] = useState(false);
-
-  // Never call hooks conditionally — compute flags via useMemo/state instead
-  const hasSrc = useMemo(() => Boolean(src), [src]);
+export default function VimeoEmbed({
+  videoId = 1118917826, // <-- pass your ID in props when you use it
+  autoplay = false,
+  muted = false,
+  byline = false,
+  portrait = false,
+  title = false,
+  responsive = true,
+  playsinline = true,
+}) {
+  const containerRef = useRef(null);
+  const playerRef = useRef(null);
+  const mountedRef = useRef(false); // guard for React StrictMode double effects
 
   useEffect(() => {
-    // Guard: don't run on SSR or before ref exists
-    if (!iframeRef.current || !hasSrc) return;
+    if (mountedRef.current) return;
+    mountedRef.current = true;
 
-    let player;
-    try {
-      player = new Player(iframeRef.current);
+    if (!containerRef.current) return;
 
-      const onLoaded = async () => {
-        setReady(true);
-        try {
-          const qualities = await player.getQualities().catch(() => []);
-          const prefs = ["4k", "2k", "1440p", "1080p", "720p"];
-          for (const q of prefs) {
-            if (qualities?.includes(q)) {
-              await player.setQuality(q);
-              break;
-            }
+    // Let the SDK create the iframe (more reliable)
+    const player = new Player(containerRef.current, {
+      id: videoId,
+      autopause: 0,
+      autoplay: autoplay ? 1 : 0,
+      muted: muted ? 1 : 0,
+      byline: byline ? 1 : 0,
+      portrait: portrait ? 1 : 0,
+      title: title ? 1 : 0,
+      responsive, // creates a responsive iframe
+      playsinline, // iOS inline playback
+      dnt: 1, // "do not track"
+    });
+
+    playerRef.current = player;
+
+    // Use the ready() promise; it's more dependable than just 'loaded'
+    player.ready().then(async () => {
+      try {
+        // Prefer auto; force quality only if the API allows it
+        const qualities = await player.getQualities().catch(() => []);
+        const prefs = ["4k", "2k", "1440p", "1080p", "720p"];
+        for (const q of prefs) {
+          if (qualities?.includes(q)) {
+            await player.setQuality(q);
+            break;
           }
-        } catch {
-          /* quality forcing not supported; ignore */
         }
-      };
+      } catch {
+        // Some accounts/plans or embeds don't allow forcing quality—ignore
+      }
 
-      player.on("loaded", onLoaded);
-    } catch {
-      // fail closed, don’t crash the tree
-    }
+      // If you want immediate playback and it's muted (browser policy), you can:
+      if (autoplay && muted) {
+        player.play().catch(() => {});
+      }
+    });
+
     return () => {
-      if (player) player.destroy();
+      player?.destroy();
+      playerRef.current = null;
     };
-  }, [hasSrc]);
+  }, [videoId, autoplay, muted, byline, portrait, title, responsive, playsinline]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl shadow-lg" style={{ paddingTop: "56.25%" }}>
-      {/* Poster (safe 90% centered) */}
-      {poster && !ready && (
-        <img
-          src={poster}
-          alt="Video poster"
-          className="absolute top-1/2 left-1/2 w-[90%] h-[90%] object-cover -translate-x-1/2 -translate-y-1/2"
-          loading="lazy"
-          decoding="async"
-        />
-      )}
-
-      {/* Iframe is always mounted (no conditional hooks), visibility toggles via CSS */}
-      <iframe
-        ref={iframeRef}
-        src={hasSrc ? src : undefined}
-        title="Vimeo player"
-        className={`absolute inset-0 w-full h-full ${ready ? "opacity-100" : "opacity-0"}`}
-        allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
-        allowFullScreen
-      />
+    <div
+      className="relative w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-cyan-400/30"
+      // 16:9 aspect ratio container for the auto-created iframe
+      style={{ paddingTop: "56.25%" }}
+    >
+      {/* The SDK will inject an iframe into this div */}
+      <div className="absolute inset-0 h-full w-full" ref={containerRef} />
     </div>
   );
 }
