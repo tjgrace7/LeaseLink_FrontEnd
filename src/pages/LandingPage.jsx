@@ -9,6 +9,7 @@ const LinkedInLanding = () => {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     company: "",
     units: "",
     notes: "",
@@ -26,7 +27,7 @@ const LinkedInLanding = () => {
     setErr("");
 
     // Simple validation aligned with Access_Request expectations
-    if (!form.name || !form.email || !form.company || !form.units) {
+    if (!form.name || !form.email || !form.company || !form.units || !form.phone) {
       setErr("Please fill in all required fields.");
       return;
     }
@@ -40,16 +41,14 @@ const LinkedInLanding = () => {
     try {
       // If you already have an Access_Request function, this will match your pattern.
       // Adjust payload keys to exactly what your Edge Function expects.
-      const { data, error } = await supabase.functions.invoke("Access_Request", {
-        body: {
-          name: form.name,
+      const { data, error } = await supabase.from("access_request").insert({
+          full_name: form.name,
           email: form.email,
-          company: form.company,
-          units: unitsNum,
-          notes: form.notes || null,
-          source: "linkedin-landing",
-        },
-      });
+          phone: form.phone,
+          company_name: form.company,
+          number_of_units: unitsNum,
+          message: form.notes || null,
+        })
 
       if (error) throw error;
 
@@ -98,7 +97,7 @@ const LinkedInLanding = () => {
         <div className="grid gap-8 md:grid-cols-2">
           <div className="flex flex-col justify-center">
             <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl">
-              Your friend for <span className="text-emerald-500">better leases</span>
+              Efficiently Manage Your <span className="text-emerald-500">Leases</span>
             </h2>
             <p className="mt-3 text-white/80">
               Upload leases. Ask questions. Get instant answers. Save hours every week.
@@ -170,17 +169,15 @@ const LinkedInLanding = () => {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="company" className="block text-sm text-white/70">Company*</label>
-                  <input
-                    id="company"
-                    name="company"
-                    type="text"
-                    required
-                    value={form.company}
+                  <label htmlFor="phone" className="block text-sm text-white/70">Phone*</label>
+                   <input
+                    id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={form.phone}
                     onChange={onChange}
                     className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none ring-1 ring-transparent focus:ring-cyan-400"
-                    placeholder="Acme Property Management"
-                    autoComplete="organization"
+                    placeholder="(555) 555-5555"
                   />
                 </div>
                 <div>
@@ -198,7 +195,20 @@ const LinkedInLanding = () => {
                   />
                 </div>
               </div>
-
+                <div>
+                  <label htmlFor="company" className="block text-sm text-white/70">Company*</label>
+                  <input
+                    id="company"
+                    name="company"
+                    type="text"
+                    required
+                    value={form.company}
+                    onChange={onChange}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none ring-1 ring-transparent focus:ring-cyan-400"
+                    placeholder="Acme Property Management"
+                    autoComplete="organization"
+                  />
+                </div>
               <div>
                 <label htmlFor="notes" className="block text-sm text-white/70">Notes (optional)</label>
                 <textarea
