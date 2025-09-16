@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 // Helmet lets us declaratively manage the document head. By specifying a
 // canonical URL we ensure search engines understand that this page is
 // distinct from the root domain, resolving the rel=canonical issue reported
-// by PageSpeed Insights.
+// by PageSpeed Insights. 
 import logo from '../assets/Lease_Link_Logo.png';
 import { useEffect } from "react";
 
@@ -183,7 +183,7 @@ const LinkedInLanding = () => {
                   <div className="w-full aspect-video rounded-2xl bg-slate-800/50 animate-pulse" />
                 }
               >
-                <VideoEmbed />
+                <VideoEmbed mode='click' videoId={1118917826} poster={logo}/>
               </Suspense>
               <p className="mt-2 text-xs text-white/50">Demo video: See LeaseLink in action.</p>
             </div>
