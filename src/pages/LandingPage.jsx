@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 // by PageSpeed Insights.
 import logo from '../assets/Lease_Link_Logo.png';
 import { useEffect } from "react";
+import { GTMLead } from '../components/gtag';
 
 function usePageHead({ title, description, canonical }) {
   useEffect(() => {
@@ -90,6 +91,11 @@ const LinkedInLanding = () => {
       // Import supabase on demand. This avoids loading the client on page
       // render, which helps reduce unused JavaScript in the main bundle.
       const { supabase } = await import('../supabaseClient');
+      let pre_qualify = false;
+      if(unitsNum >= 100)
+      {
+        pre_qualify = true
+      }
       const { error } = await supabase.from('access_request').insert({
         full_name: form.name,
         email: form.email,
@@ -97,8 +103,10 @@ const LinkedInLanding = () => {
         company_name: form.company,
         number_of_units: unitsNum,
         message: form.notes || null,
+        pre_qualify: pre_qualify
       });
       if (error) throw error;
+      GTMLead(pre_qualify)
       navigate('/thank-you');
     } catch (e) {
       console.error(e);
