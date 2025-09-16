@@ -1,4 +1,4 @@
-/ VimeoEmbed.jsx
+
 import { useEffect, useRef, useState, useMemo } from "react";
 import Player from "@vimeo/player";
 
