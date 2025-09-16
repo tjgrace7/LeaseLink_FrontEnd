@@ -13,6 +13,7 @@
     "@eslint/plugin-kit": "^0.3.5",
     "@fontsource/source-serif-pro": "^5.2.5",
     "@supabase/supabase-js": "^2.42.4",
+    "@vimeo/player": "^2.29.6",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
     "papaparse": "^5.5.3",

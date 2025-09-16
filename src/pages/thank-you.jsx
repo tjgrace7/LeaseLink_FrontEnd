@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CalendlyInline from '../components/Calendly';
 
 const ThankYou = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const ThankYou = () => {
 
       {/* Placeholder for VSL (coming later) */}
       <div className="w-full max-w-2xl aspect-video bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center text-gray-400">
-        Video walkthrough coming soon...
+        <CalendlyInline/>
       </div>
 
       <button

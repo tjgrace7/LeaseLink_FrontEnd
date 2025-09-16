@@ -34,6 +34,7 @@ import CreateCompanies from './pages/createCompany';
 import Home from './pages/Home';
 import Privacy from './pages/Privacy';
 import TermsAndConditions from './pages/Terms';
+import LinkedInLanding from './pages/LandingPage';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -52,6 +53,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/thank-you' element={<ThankYou/>}/>
           <Route path='/privacy_policy' element={<Privacy/>}/>
           <Route path='/terms' element={<TermsAndConditions/>}/>
+          <Route path='/linkedin/1' element={<LinkedInLanding/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

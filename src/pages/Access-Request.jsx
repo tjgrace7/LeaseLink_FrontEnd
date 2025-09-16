@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import CalendlyInline from "../components/Calendly";
 
 /**
  * RequestAccess (UI-refactor)
@@ -305,7 +306,6 @@ const RequestAccess = () => {
                 aria-hidden
                 className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"
               />
-
               {testimonial ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
                   <blockquote className="text-balance text-xl italic leading-relaxed text-white sm:text-2xl">
