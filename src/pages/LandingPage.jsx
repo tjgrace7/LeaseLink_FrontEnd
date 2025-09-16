@@ -40,7 +40,7 @@ const LinkedInLanding = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("access_request").insert({
+      const { error } = await supabase.from("access_requests").insert({
         full_name: form.name,
         email: form.email,
         phone: form.phone,
