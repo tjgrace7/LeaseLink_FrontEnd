@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient"; // adjust path if needed
 import logo from "../assets/Lease_Link_Logo.png";
-import VimeoEmbed from "../components/VideoEmbed";
+import VimeoEmbed from "../components/VideoEmbed"; // <-- fixed import
+
 const LinkedInLanding = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -39,27 +40,21 @@ const LinkedInLanding = () => {
 
     setLoading(true);
     try {
-      // If you already have an Access_Request function, this will match your pattern.
-      // Adjust payload keys to exactly what your Edge Function expects.
-      const { data, error } = await supabase.from("access_request").insert({
-          full_name: form.name,
-          email: form.email,
-          phone: form.phone,
-          company_name: form.company,
-          number_of_units: unitsNum,
-          message: form.notes || null,
-        })
+      const { error } = await supabase.from("access_request").insert({
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone,
+        company_name: form.company,
+        number_of_units: unitsNum,
+        message: form.notes || null,
+      });
 
       if (error) throw error;
 
-      // Navigate exactly like your Access_Request page does
-      navigate("/thank-you"); // update path if your route differs
+      navigate("/thank-you");
     } catch (e) {
-      // If the function name or payload differs, we still let people through
-      // so your ad flow isn't blocked. You can inspect error and adjust.
       console.error(e);
       setErr("We couldn't submit your request automatically. You can try again, or continue to the next page.");
-      // Fallback: still navigate to thank-you so the ad flow continues smoothly
       navigate("/thank-you");
     } finally {
       setLoading(false);
@@ -72,17 +67,16 @@ const LinkedInLanding = () => {
       <header className="mx-auto w-full max-w-6xl px-4 pt-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* If you have a logo asset, replace with your img */}
             <div className="h-14 w-14 rounded-xl bg-emerald-500/20 ring-1 ring-cyan-400/30 flex items-center justify-center">
               <img
-                              src={logo}
-                              alt="Lease Link logo"
-                              width={64}
-                              height={64}
-                              decoding="async"
-                              fetchpriority="high"
-                              className="h-12 w-12 md:h-14 md:w-14 rounded-lg object-contain"
-                            />
+                src={logo}
+                alt="Lease Link logo"
+                width={64}
+                height={64}
+                decoding="async"
+                fetchPriority="high"
+                className="h-12 w-12 md:h-14 md:w-14 rounded-lg object-contain"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">LeaseLink</h1>
@@ -119,7 +113,8 @@ const LinkedInLanding = () => {
           </div>
 
           <div>
-            <VimeoEmbed />
+            {/* Pass src if your VimeoEmbed expects it; safe even if it doesn't */}
+            <VimeoEmbed src="https://player.vimeo.com/video/1118917826" />
             <p className="mt-2 text-xs text-white/50">Demo video: See LeaseLink in action.</p>
           </div>
         </div>
@@ -170,14 +165,17 @@ const LinkedInLanding = () => {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="phone" className="block text-sm text-white/70">Phone*</label>
-                   <input
+                  <input
                     id="phone"
+                    name="phone"            
                     type="tel"
+                    required
                     inputMode="tel"
                     value={form.phone}
                     onChange={onChange}
                     className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none ring-1 ring-transparent focus:ring-cyan-400"
                     placeholder="(555) 555-5555"
+                    autoComplete="tel"
                   />
                 </div>
                 <div>
@@ -195,20 +193,22 @@ const LinkedInLanding = () => {
                   />
                 </div>
               </div>
-                <div>
-                  <label htmlFor="company" className="block text-sm text-white/70">Company*</label>
-                  <input
-                    id="company"
-                    name="company"
-                    type="text"
-                    required
-                    value={form.company}
-                    onChange={onChange}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none ring-1 ring-transparent focus:ring-cyan-400"
-                    placeholder="Acme Property Management"
-                    autoComplete="organization"
-                  />
-                </div>
+
+              <div>
+                <label htmlFor="company" className="block text-sm text-white/70">Company*</label>
+                <input
+                  id="company"
+                  name="company"
+                  type="text"
+                  required
+                  value={form.company}
+                  onChange={onChange}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none ring-1 ring-transparent focus:ring-cyan-400"
+                  placeholder="Acme Property Management"
+                  autoComplete="organization"
+                />
+              </div>
+
               <div>
                 <label htmlFor="notes" className="block text-sm text-white/70">Notes (optional)</label>
                 <textarea
@@ -265,5 +265,6 @@ const LinkedInLanding = () => {
       </section>
     </div>
   );
-}
+};
+
 export default LinkedInLanding;
