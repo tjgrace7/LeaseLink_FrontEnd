@@ -1,73 +1,24 @@
-// src/components/VimeoEmbed.jsx
-import { useEffect, useRef, useState } from "react";
+/ VimeoEmbed.jsx
+import { useEffect, useRef, useState, useMemo } from "react";
+import Player from "@vimeo/player";
 
-export default function VimeoEmbed({
-  videoId = 1118917826,
-  autoplay = false,
-  muted = false,
-  byline = false,
-  portrait = false,
-  title = false,
-  responsive = true,
-  playsinline = true,
-  // "click"  -> fastest: click-to-play facade (no SDK)
-  // "inview" -> load SDK when near viewport (default)
-  // "eager"  -> create player immediately
-  mode = "inview",
-  poster,
-}) {
-  const shellRef = useRef(null);
-  const playerRef = useRef(null);
-  const [activated, setActivated] = useState(mode === "eager");
+export default function VimeoEmbed({ src, poster }) {
+  const iframeRef = useRef(null);
+  const [ready, setReady] = useState(false);
 
-  // Effect A: in-view activation (hooks always declared; guarded inside)
+  // Never call hooks conditionally — compute flags via useMemo/state instead
+  const hasSrc = useMemo(() => Boolean(src), [src]);
+
   useEffect(() => {
-    if (mode !== "inview") return;
-    if (activated || !shellRef.current) return;
+    // Guard: don't run on SSR or before ref exists
+    if (!iframeRef.current || !hasSrc) return;
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        const e = entries[0];
-        if (e?.isIntersecting) {
-          setActivated(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    io.observe(shellRef.current);
-    return () => io.disconnect();
-  }, [mode, activated]);
-
-  // Effect B: when activated and not in "click" mode, load SDK and build player
-  useEffect(() => {
-    if (!activated) return;
-    if (mode === "click") return; // facade path uses plain iframe, no SDK
-
-    let destroyed = false;
     let player;
+    try {
+      player = new Player(iframeRef.current);
 
-    (async () => {
-      const { default: Player } = await import("@vimeo/player");
-      if (!shellRef.current || destroyed) return;
-
-      player = new Player(shellRef.current, {
-        id: videoId,
-        autopause: 0,
-        autoplay: autoplay ? 1 : 0,
-        muted: muted ? 1 : 0,
-        byline: byline ? 1 : 0,
-        portrait: portrait ? 1 : 0,
-        title: title ? 1 : 0,
-        responsive,
-        playsinline,
-        dnt: 1,
-      });
-
-      playerRef.current = player;
-
-      try {
-        await player.ready();
+      const onLoaded = async () => {
+        setReady(true);
         try {
           const qualities = await player.getQualities().catch(() => []);
           const prefs = ["4k", "2k", "1440p", "1080p", "720p"];
@@ -77,100 +28,42 @@ export default function VimeoEmbed({
               break;
             }
           }
-        } catch {}
-
-        if (autoplay && muted) {
-          player.play().catch(() => {});
+        } catch {
+          /* quality forcing not supported; ignore */
         }
-      } catch {}
-    })();
+      };
 
+      player.on("loaded", onLoaded);
+    } catch {
+      // fail closed, don’t crash the tree
+    }
     return () => {
-      destroyed = true;
-      playerRef.current?.destroy?.();
-      playerRef.current = null;
+      if (player) player.destroy();
     };
-  }, [
-    activated,
-    mode,
-    videoId,
-    autoplay,
-    muted,
-    byline,
-    portrait,
-    title,
-    responsive,
-    playsinline,
-  ]);
-
-  // ---------- Render (after hooks are declared) ----------
-  const onClickFacade = () => setActivated(true);
-
-  // Build inner content per mode/state
-  let inner;
-  if (mode === "click" && !activated) {
-    inner = (
-      <button
-        type="button"
-        onClick={onClickFacade}
-        className="group absolute inset-0 w-full h-full"
-        aria-label="Play video"
-      >
-
-        {poster ? (
-          <img
-            src={poster}
-            alt="Video poster"
-            className="flex items-center w-[80%] h-[80%] object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-slate-800" />
-        )}
-        <div className="absolute inset-0 bg-black/35 group-hover:bg-black/25 transition" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="rounded-full p-4 bg-white/90 group-hover:bg-white transition text-slate-900">
-            ▶
-          </div>
-        </div>
-      </button>
-    );
-  } else if (mode === "click" && activated) {
-    const params = new URLSearchParams({
-      dnt: "1",
-      playsinline: playsinline ? "1" : "0",
-      autoplay: "1",
-      autopause: "0",
-      title: title ? "1" : "0",
-      byline: byline ? "1" : "0",
-      portrait: portrait ? "1" : "0",
-      muted: muted ? "1" : "0",
-      transparent: "0",
-    }).toString();
-
-    inner = (
-      <iframe
-        src={`https://player.vimeo.com/video/${videoId}?${params}`}
-        title="Vimeo video"
-        allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
-        referrerPolicy="strict-origin-when-cross-origin"
-        loading="eager"
-        className="absolute inset-0 h-full w-full border-0"
-      />
-    );
-  } else {
-    // inview/eager: SDK injects iframe into this div
-    inner = <div className="absolute inset-0 h-full w-full" />;
-  }
+  }, [hasSrc]);
 
   return (
-    <div
-      ref={shellRef}
-      className="relative w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-cyan-400/30"
-      style={{ aspectRatio: "16 / 9" }}
-    >
-      {inner}
+    <div className="relative w-full overflow-hidden rounded-2xl shadow-lg" style={{ paddingTop: "56.25%" }}>
+      {/* Poster (safe 90% centered) */}
+      {poster && !ready && (
+        <img
+          src={poster}
+          alt="Video poster"
+          className="absolute top-1/2 left-1/2 w-[90%] h-[90%] object-cover -translate-x-1/2 -translate-y-1/2"
+          loading="lazy"
+          decoding="async"
+        />
+      )}
+
+      {/* Iframe is always mounted (no conditional hooks), visibility toggles via CSS */}
+      <iframe
+        ref={iframeRef}
+        src={hasSrc ? src : undefined}
+        title="Vimeo player"
+        className={`absolute inset-0 w-full h-full ${ready ? "opacity-100" : "opacity-0"}`}
+        allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+        allowFullScreen
+      />
     </div>
   );
 }
