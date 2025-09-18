@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../assets/Lease_Link_Logo.png';
 import { useEffect } from "react";
 import { GTMLead } from '../components/gtag';
+import { EmailNewLead, TeamLeadNotify } from '../utilities/Resend';
 
 function usePageHead({ title, description, canonical }) {
   useEffect(() => {
@@ -63,6 +64,8 @@ const LinkedInLanding = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const onChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
@@ -110,6 +113,9 @@ const LinkedInLanding = () => {
       if (error) throw error;
       
       navigate('/thank-you');
+      TeamLeadNotify(form.name, unitsNum, form.email, form.phone, form.company, form.notes)
+      sleep(2000)
+      EmailNewLead(form.name, unitsNum, form.email, form.company)
     } catch (e) {
       console.error(e);
       setErr("We couldn't submit your request automatically. You can try again, or continue to the next page.");
@@ -165,23 +171,23 @@ const LinkedInLanding = () => {
           <div className="grid gap-8 md:grid-cols-2">
             <div className="flex flex-col justify-center">
               <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl">
-                Efficiently Manage Your <span className="text-emerald-500">Leases</span>
+                Your <span className="text-emerald-500">Leasing</span> Assistant
               </h2>
               <p className="mt-3 text-white/80">
-                Upload leases. Ask questions. Get instant answers. Save hours every week.
+                Upload your leases, amendments, and documents — then get instant, accurate answers with citations. 
               </p>
               <ul className="mt-4 space-y-2 text-sm text-white/80">
                 <li className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                  Answer Tenant Questions in Minutes.
+                  Answer tenant and team questions in minutes, not hours. 
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                  Extract key terms, dates, options, and charges in seconds.
+                  Extract key terms, dates, options, and charges.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                  Built for teams managing 100+ units.
+                  Save dozens of hours every month across your portfolio. 
                 </li>
               </ul>
             </div>
@@ -207,7 +213,7 @@ const LinkedInLanding = () => {
               <h3 className="text-xl font-semibold">Request Access</h3>
               <p className="mt-1 text-sm text-white/70">
                 We’re inviting <span className="font-medium text-emerald-500">5 commercial property managers</span> to try
-                LeaseLink for free. You must manage <span className="font-medium text-emerald-500">100+ units</span>.
+                LeaseLink for free. You must manage <span className="font-medium text-emerald-500">100+ commercial units</span>.
               </p>
               <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -329,18 +335,18 @@ const LinkedInLanding = () => {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
                 <h4 className="font-semibold">Why LeaseLink?</h4>
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-white/80">
-                  <li>Find lease answers fast</li>
-                  <li>Cut response times to tenants</li>
-                  <li>Reduce manual reading & errors</li>
-                  <li>Secure, role-based access</li>
+                  <li>Instant clarity — Get lease answers in seconds, not hours.</li>
+                  <li>Happier tenants — Respond to questions right away and build trust.</li>
+                  <li>Error-proof decisions — Eliminate manual reading and missed details. </li>
+                  <li>Built for teams — Secure, role-based access across your portfolio. </li>
                 </ul>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
                 <h4 className="font-semibold">Great for</h4>
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-white/80">
-                  <li>Commercial PM teams</li>
+                  <li>Commercial Property Management Teams</li>
                   <li>Portfolios 100+ units</li>
-                  <li>Multi-tenant properties</li>
+                  <li>Multi-tenant Retail & Office Properties</li>
                   <li>Non-Residential Commercial Property Managers</li>
                 </ul>
               </div>

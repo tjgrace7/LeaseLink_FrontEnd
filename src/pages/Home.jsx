@@ -146,7 +146,8 @@ export default function HomePage() {
 
   return (
     <LazyMotion features={loadFeatures}>
-      <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen  text-neutral-100">
         {/* SEO / Sharing (runs in effect to avoid blocking first paint) */}
         <Seo
           title="Lease Link — AI Lease Answers for Commercial Property Managers"
@@ -217,7 +218,7 @@ export default function HomePage() {
                 Login
               </button>
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-500"
                 onClick={() => go("/request")}
               >
                 Request a Demo
@@ -226,7 +227,7 @@ export default function HomePage() {
                 href="https://calendly.com/jtaylor-leaselink"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
               >
                 Book a Call
               </a>
@@ -251,7 +252,7 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-                className="md:hidden border-t border-neutral-800 bg-neutral-950/95 backdrop-blur"
+                className="md:hidden border-t border-neutral-800 backdrop-blur"
               >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
                   <nav className="grid gap-2 text-sm" aria-label="Mobile">
@@ -263,14 +264,14 @@ export default function HomePage() {
                     <button className="px-4 py-2 rounded-xl hover:bg-neutral-900" onClick={() => go("/login")}>
                       Login
                     </button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500" onClick={() => go("/request")}>
+                    <button className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-blue-500" onClick={() => go("/request")}>
                       Request a Demo
                     </button>
                     <a
                       href="https://calendly.com/jtaylor-leaselink"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 text-center bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+                      className="px-4 py-2 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
                     >
                       Book a Call
                     </a>
@@ -284,7 +285,6 @@ export default function HomePage() {
         {/* Main */}
         <main id="main">
           {/* Hero */}
-          <section className="relative overflow-hidden" id="story">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-24 grid lg:grid-cols-2 gap-8 lg:gap-10 items-center">
               <div>
                 {noMotion ? (
@@ -377,13 +377,11 @@ export default function HomePage() {
                 </m.div>
               )}
             </div>
-          </section>
+
 
           {/* How it Works — defer layout/paint until scrolled */}
-          <section
-            id="how"
-            className="bg-neutral-950 border-t border-neutral-800 [content-visibility:auto] [contain-intrinsic-size:1px_1000px]"
-          >
+  
+
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
               <div className="max-w-2xl">
                 <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">How it works</h2>
@@ -437,10 +435,10 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </section>
+
 
           {/* Proof / Benefits */}
-          <section id="proof" className="bg-neutral-950 [content-visibility:auto] [contain-intrinsic-size:1px_1200px]">
+
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
               <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
                 <div>
@@ -474,10 +472,9 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </section>
 
           {/* CTA */}
-          <section id="cta" className="relative bg-neutral-950 border-t border-neutral-800 [content-visibility:auto] [contain-intrinsic-size:1px_800px]">
+
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
               <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
                 <div>
@@ -488,7 +485,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 lg:justify-end w-full">
                   <button
-                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 w-full sm:w-auto"
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-blue-500 w-full sm:w-auto"
                     onClick={() => go("/request")}
                   >
                     Request a Demo
@@ -497,18 +494,18 @@ export default function HomePage() {
                     href="https://calendly.com/jtaylor-leaselink"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-6 py-3 text-center bg-blue-600 text-white rounded-xl hover:bg-blue-500 w-full sm:w-auto"
+                    className="px-6 py-3 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500 w-full sm:w-auto"
                   >
                     Book a Call
                   </a>
                 </div>
               </div>
             </div>
-          </section>
+
         </main>
 
         {/* Footer */}
-        <footer className="bg-neutral-950 text-neutral-300 [content-visibility:auto] [contain-intrinsic-size:1px_600px]" role="contentinfo">
+        <footer className="text-neutral-300 [content-visibility:auto] [contain-intrinsic-size:1px_600px]" role="contentinfo">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 font-semibold text-white">
@@ -544,7 +541,7 @@ export default function HomePage() {
               <p className="mt-3 text-sm text-neutral-400">Ready to see it? We’ll tailor a demo to your portfolio.</p>
               <div className="mt-4">
                 <button
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500"
+                  className="w-full px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
                   onClick={() => go("/request")}
                 >
                   Request a Demo
@@ -562,6 +559,7 @@ export default function HomePage() {
             </div>
           </div>
         </footer>
+      </div>
       </div>
     </LazyMotion>
   );
