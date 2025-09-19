@@ -35,6 +35,7 @@ import Home from './pages/Home';
 import Privacy from './pages/Privacy';
 import TermsAndConditions from './pages/Terms';
 import LinkedInLanding from './pages/LandingPage';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -43,6 +44,9 @@ const ProtectedRoute = ({ children}) => {
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+  <GoogleReCaptchaProvider
+    reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+    scriptProps={{async: true, defer: true}}>
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
@@ -80,5 +84,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
+  </GoogleReCaptchaProvider>
 );
 
