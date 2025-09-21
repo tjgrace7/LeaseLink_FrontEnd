@@ -212,6 +212,16 @@ const UploadLeases = () => {
     setSubmittingFiles(true);
 
     try {
+      const groupId = crypto.randomUUID()
+      const { error } = await supabase.from('Upload_Group').insert({
+        id: groupId,
+        company_id: company_id,
+        total_jobs: fileList.length,
+        tenantId: selectedTenant.tenant_id
+      })
+      if (error) {
+        console.error("Group Upload Error")
+      }
       for (const file of fileList) {
         const id = fileId(file);
         try {
@@ -232,6 +242,7 @@ const UploadLeases = () => {
               filename: file.name,
               contentType: file.type || "application/octet-stream",
               user_id: session.user.id,
+              group_id: groupId
             }),
           });
 
@@ -240,7 +251,7 @@ const UploadLeases = () => {
             throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
           }
           GTMUpload()
-          const { signed_url, lease_file_path, bucket, error: fxError } = await res.json();
+          const { signed_url, lease_file_path, bucket, job_id, error: fxError } = await res.json();
           if (fxError) throw new Error(fxError);
           if (!signed_url || !lease_file_path || !bucket) {
             throw new Error("Edge function did not return expected fields.");
@@ -257,25 +268,10 @@ const UploadLeases = () => {
 
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
-         /* const processRes = await fetch(`${supabaseUrl}/functions/v1/new_upload`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: lease_file_path,
-              bucket,
-            }),
-          });
 
-          if (!processRes.ok) {
-            const err = await processRes.text().catch(() => "");
-            throw new Error(`Processing failed (${processRes.status}): ${err}`);
-          }
-            */
-          // Done
           setStatus(id, { step: "Done", message: "Finished!", progress: 100, done: true });
+
+
           console.log(`✅ File processed: ${file.name}`);
         } catch (err) {
           console.error("❌ Error during upload for", file.name, err);
@@ -286,7 +282,7 @@ const UploadLeases = () => {
           });
         }
       }
-
+ 
       // After the whole run, lock + clear input/queues
       setCompleted(true);           // 🔐 lock UI to prevent accidental re-run
       setFileList([]);              // clear queue
@@ -425,13 +421,12 @@ const UploadLeases = () => {
                         <div className="flex items-center justify-between">
                           <div className="font-medium break-all">{s.name || file.name}</div>
                           <div
-                            className={`text-xs px-2 py-1 rounded ${
-                              s.step === "Done"
+                            className={`text-xs px-2 py-1 rounded ${s.step === "Done"
                                 ? "bg-green-600/30 text-green-300"
                                 : s.step === "Error"
-                                ? "bg-red-600/30 text-red-300"
-                                : "bg-blue-600/30 text-blue-200"
-                            }`}
+                                  ? "bg-red-600/30 text-red-300"
+                                  : "bg-blue-600/30 text-blue-200"
+                              }`}
                           >
                             {s.step || "Ready"}
                           </div>
@@ -495,10 +490,10 @@ const UploadLeases = () => {
               {completed
                 ? "Finished"
                 : submittingFiles
-                ? "Uploading…"
-                : fileList.length > 0
-                ? `Upload ${fileList.length} File${fileList.length > 1 ? "s" : ""}`
-                : "Submit"}
+                  ? "Uploading…"
+                  : fileList.length > 0
+                    ? `Upload ${fileList.length} File${fileList.length > 1 ? "s" : ""}`
+                    : "Submit"}
             </button>
 
             {/* Optional post-run CTA */}
