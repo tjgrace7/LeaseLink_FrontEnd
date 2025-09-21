@@ -172,7 +172,7 @@ const Dashboard = () => {
         {/* Page header */}
         <header className="px-4 sm:px-6 md:px-8 pt-4 md:pt-0">
           <div className="flex items-center justify-between">
-            <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-sans font-bold">Dashboard</h1>
+            <h1 className="hidden md:block text-white text-2xl md:text-4xl font-sans font-bold">Dashboard</h1>
           </div>
         </header>
 

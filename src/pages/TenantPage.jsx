@@ -393,16 +393,25 @@ const TenantPage = () => {
                             className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
                             onClick={async () => {
                               // 1) Check if file still exists in Storage
-                              const exists = await fileExistsInStorage("lease-docs", lease?.lease_file_path);
+                              const exists = await fileExistsInStorage(lease?.lease_file_path);
+                              console.log(exists)
                               if (!exists) {
                                 // If missing, send them to upload flow for this tenant
                                 navigate(`/upload_docs?tenant_id=${tenant_id}`);
                                 return;
                               }
+                              const group_id = crypto.randomUUID()
+                              await supabase.from('upload_groups').insert({
+                                id: group_id,
+                                company_id: tenant.property_management_id,
+                                total_jobs: 1,
+                                tenantId: tenant.tenant_id
+                              })
                               // 2) If it exists, requeue the job
                               await supabase.from("Upload_Job_Status").insert({
                                 lease_id: lease?.lease_id,
                                 job_info: { error: null, status: "queued", results: null },
+                                group_id: group_id
                               });
                               loadJobStatuses();
                             }}

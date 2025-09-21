@@ -18,15 +18,26 @@ export const getTableIdList = async (tableName, column_name, IdList) => {
     return data
 }
 
-
-export const fileExistsInStorage = async (filePath) => {
+export async function fileExistsInStorage(filePath) {
   if (!filePath) return false;
-  
-  const path = filePath.trim().toLowerCase();
-  
-  const { error } = await supabase.storage
-    .from("lease-docs")
-    .createSignedUrl(path, 60);
-    
-  return !error;
-};
+
+  // path must be relative to the bucket
+  const bucket = "lease-docs";
+  const parts = filePath.split("/");
+  const name = parts.pop();                   // "dqlease.pdf"
+  const prefix = parts.join("/");             // "leaselink/tyler_grace/uploadsession_d7bb6b0a...”
+
+  // If your keys used "uploadsession:xxx", sanitize to avoid ":" in object names:
+  // (better: fix this at upload time)
+  // const safePath = filePath.replace(/:/g, "_");
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .list(prefix, { search: name, limit: 1 });
+
+  if (error) {
+    console.warn("Storage list error:", error); // helps you see if it's a policy problem
+    return false;
+  }
+  return !!data?.some(obj => obj.name === name);
+}

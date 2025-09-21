@@ -213,7 +213,8 @@ const UploadLeases = () => {
 
     try {
       const groupId = crypto.randomUUID()
-      const { error } = await supabase.from('Upload_Group').insert({
+      console.log(groupId)
+      const { error } = await supabase.from('upload_groups').insert({
         id: groupId,
         company_id: company_id,
         total_jobs: fileList.length,
