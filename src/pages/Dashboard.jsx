@@ -156,23 +156,12 @@ const Dashboard = () => {
 
   return (
     // Mobile: full viewport minus nav | Desktop: normal flow
-    <div className="
-      w-full 
-      md:mt-6
-      md:static
-      md:min-h-0
-      px-0 md:px-0
-    ">
-      <div
-        className="
-          fixed inset-x-0 top-14 bottom-0 overflow-y-auto
-          md:static md:inset-auto md:overflow-visible
-        "
-      >
+ <div className="w-full pt-8 md:pt-8 px-0 md:px-0">
+      <div className="md:static md:inset-auto md:overflow-visible">
         {/* Page header */}
         <header className="px-4 sm:px-6 md:px-8 pt-4 md:pt-0">
           <div className="flex items-center justify-between">
-            <h1 className="hidden md:block text-white text-2xl md:text-4xl font-sans font-bold">Dashboard</h1>
+            <h1 className="text-white text-2xl md:text-4xl font-sans font-bold">Dashboard</h1>
           </div>
         </header>
 

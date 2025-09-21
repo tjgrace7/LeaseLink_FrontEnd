@@ -39,7 +39,7 @@ const TopNav = () => {
   const activeClass = 'text-blue-400';
 
   return (
-    <div className="sticky top-0 bg-black text-white">
+    <div className="sticky top-0 z-40 bg-black text-white">
       <div className="mx-auto flex max-w-full items-center justify-between px-3 py-2 md:px-4 md:py-3">
         {/* Brand / Home */}
         <button
