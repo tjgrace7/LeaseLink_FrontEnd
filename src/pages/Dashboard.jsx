@@ -156,7 +156,7 @@ const Dashboard = () => {
 
   return (
     // Mobile: full viewport minus nav | Desktop: normal flow
- <div className="w-full pt-8 md:pt-8 px-0 md:px-0">
+ <div className="w-full pt-2 md:pt-8 px-0 md:px-0">
       <div className="md:static md:inset-auto md:overflow-visible">
         {/* Page header */}
         <header className="px-4 sm:px-6 md:px-8 pt-4 md:pt-0">

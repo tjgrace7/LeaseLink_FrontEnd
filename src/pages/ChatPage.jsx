@@ -45,8 +45,8 @@ const ComposerInput = memo(function ComposerInput({
 // ------------------------- render helpers ------------------------
 const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen }) {
   return (
-    <div className="hidden md:block sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
-      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+    <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:px-4 sm:py-3 md:px-6">
         {/* Entity label */}
         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
           {entitySelected && entity_name && (
