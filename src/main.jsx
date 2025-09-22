@@ -36,6 +36,8 @@ import Privacy from './pages/Privacy';
 import TermsAndConditions from './pages/Terms';
 import LinkedInLanding from './pages/LandingPage';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import LinkedInLanding2 from './pages/LandingPage2';
+
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -55,9 +57,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>
+
           <Route path='/privacy_policy' element={<Privacy/>}/>
           <Route path='/terms' element={<TermsAndConditions/>}/>
           <Route path='/linkedin/1' element={<LinkedInLanding/>}/>
+          <Route path='/linkedin/2' element={<LinkedInLanding2/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

@@ -600,7 +600,7 @@ const ChatPage = () => {
   if (!userData) return <div className="p-6 text-white">User record not found</div>;
 
   return (
-    <div className="flex min-h-screen md:h-screen flex-col bg-[#1b1b1b] text-white">
+    <div className="flex min-h-screen md:h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       <Header 
       entitySelected={entitySelected}
       entity_name={entity_name}

@@ -18,7 +18,7 @@ const Layout = () => {
         <main
           className={
             // scroll normally everywhere, but lock for /chat
-            `flex-1 bg-[#222222] mt-0 md:mt-0 ${isChat ? 'overflow-hidden' : 'overflow-y-auto'}`
+            `flex-1 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 mt-0 md:mt-0 ${isChat ? 'overflow-hidden' : 'overflow-y-auto'}`
           }
         >
           <Outlet />
