@@ -145,9 +145,9 @@ const LinkedInLanding = () => {
         throw new Error("We could not verify you as human. Please try again.");
       }
 
-      if (unitsNum >= 100) {
+  
         GTMLead();
-      }
+    
 
       navigate("/thank-you");
       await sleep(300);
@@ -254,11 +254,8 @@ const LinkedInLanding = () => {
               <span className="font-medium text-emerald-500">
                 5 commercial property managers
               </span>{" "}
-              to try LeaseLink for free. You must manage{" "}
-              <span className="font-medium text-emerald-500">
-                100+ commercial units
-              </span>
-              .
+              to try LeaseLink for free.
+              
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
