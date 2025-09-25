@@ -325,31 +325,31 @@ const LinkedInLanding = () => {
                     autoComplete="tel"
                   />
                 </div>
-          <div>
-  <label htmlFor="units" className="block text-sm text-white/70">
-    Units Managed*
-  </label>
-  <select
-    id="units"
-    name="units"
-    required
-    value={form.units}
-    onChange={onChange}
-    className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none focus:ring-cyan-400"
-  >
-    <option value="" disabled>
-      Number of Units
-    </option>
-    <option value="49">&lt; 50</option>
-    <option value="50">50–99</option>
-    <option value="100">100–249</option>
-    <option value="250">250–499</option>
-    <option value="500">500+</option>
-  </select>
-  <p className="mt-1 text-xs text-white/50">
-    We use ranges to qualify access. Values reflect the minimum in each range.
-  </p>
-</div>
+                <div>
+                  <label htmlFor="units" className="block text-sm text-white/70">
+                    Units Managed*
+                  </label>
+                  <select
+                    id="units"
+                    name="units"
+                    required
+                    value={form.units}
+                    onChange={onChange}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-white placeholder-white/30 outline-none focus:ring-cyan-400"
+                  >
+                    <option value="" disabled>
+                      Number of Units
+                    </option>
+                    <option value="49">&lt; 50</option>
+                    <option value="50">50–99</option>
+                    <option value="100">100–249</option>
+                    <option value="250">250–499</option>
+                    <option value="500">500+</option>
+                  </select>
+                  <p className="mt-1 text-xs text-white/50">
+                    We use ranges to qualify access. Values reflect the minimum in each range.
+                  </p>
+                </div>
 
               </div>
 
