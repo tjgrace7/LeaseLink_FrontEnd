@@ -427,7 +427,6 @@ const LinkedInLanding = () => {
               <h4 className="font-semibold">Great for</h4>
               <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-white/80">
                 <li>Commercial Property Management Teams</li>
-                <li>Portfolios 100+ units</li>
                 <li>Multi-tenant Retail & Office Properties</li>
                 <li>Non-Residential Commercial Property Managers</li>
               </ul>
