@@ -207,7 +207,7 @@ const LinkedInLanding = () => {
         <div className="grid gap-8 md:grid-cols-2">
           <div className="flex flex-col justify-center">
             <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl">
-              Your <span className="text-emerald-500">Leasing</span> Assistant
+              Get <span className="text-emerald-500">1,000</span> Lease Abstractions for FREE
             </h2>
             <p className="mt-3 text-white/80">
               Upload your leases, amendments, and documents — then get instant,
