@@ -37,6 +37,8 @@ import TermsAndConditions from './pages/Terms';
 import LinkedInLanding from './pages/LandingPage';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import LinkedInLanding2 from './pages/LandingPage2';
+import InviteComplete from './pages/changePassword';
+
 
 
 const ProtectedRoute = ({ children}) => {
@@ -83,6 +85,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
+            <Route path='/auth/invite-complete' element={<ProtectedRoute><InviteComplete/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>
