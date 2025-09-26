@@ -39,12 +39,22 @@ import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import LinkedInLanding2 from './pages/LandingPage2';
 import InviteComplete from './pages/changePassword';
 
-
+import { useLocation } from 'react-router-dom';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
-  if (auth.session === undefined) return <Spinner />; // wait until session loads
-  return auth.session ? children : <Navigate to="/login" replace/>;
+  const location = useLocation();
+
+  // Let the password-reset/invite page load if a supabase code is present.
+  const hasCode = new URLSearchParams(location.search).get("code");
+
+  if (auth.session === undefined) return <Spinner />;
+
+  // If no session yet but we have a code, allow the page to render
+  // so it can call exchangeCodeForSession on mount.
+  if (!auth.session && hasCode) return children;
+
+  return auth.session ? children : <Navigate to="/login" replace />;
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -64,6 +74,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/terms' element={<TermsAndConditions/>}/>
           <Route path='/linkedin/1' element={<LinkedInLanding/>}/>
           <Route path='/linkedin/2' element={<LinkedInLanding2/>}/>
+          <Route path='/auth/invite-complete' element={<ProtectedRoute><InviteComplete/></ProtectedRoute>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
@@ -85,7 +96,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
-            <Route path='/auth/invite-complete' element={<ProtectedRoute><InviteComplete/></ProtectedRoute>}/>
+            
           </Route>
         </Routes>
       </AuthProvider>
