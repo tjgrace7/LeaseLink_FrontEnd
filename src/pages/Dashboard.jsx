@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { session, userData } = useAuth();
+  const { session} = useAuth();
 
   // ——— Date window: first day of this month → now (ISO)
   const { startISO, nowISO } = useMemo(() => {

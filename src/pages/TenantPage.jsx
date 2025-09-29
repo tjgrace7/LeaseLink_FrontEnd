@@ -11,6 +11,69 @@ import DisplayBox from "../components/DisplayBox";
 import LoadPreviousMessages from "../components/PreviousMessages";
 import { getTenantLeaseInfo } from "../utilities/GetMessages";
 import { getTableIdList, fileExistsInStorage } from "../utilities/supabaseCalls";
+import { getTenantTermOverrides } from "../utilities/supabaseCalls.jsx";
+
+/** ---------- Field mapping (Display Label → canonical key used for overrides) ---------- */
+const FIELD_KEYS = {
+  // Dates (examples)
+  "Lease Execution Date": "lease_execution_date",
+  "Lease Commencement Date": "lease_commencement_date",
+  "Delivery/Possession Date": "delivery_possession_date",
+  "Lease Expiration Date": "lease_expiration_date",
+  "Rent Commencement Date": "rent_commencement_date",
+  "CAM Start Date": "cam_start_date",
+
+  // Financial (examples)
+  "Base Rent Monthly": "base_rent_monthly",
+  "Base Rent Annually": "base_rent_annually",
+  "Base Rent PSF": "base_rent_psf",
+  "Operating Expenses CAM Monthly": "operating_expenses_cam_monthly",
+  "Operating Expenses CAM PSF": "operating_expenses_cam_psf",
+
+  // Responsibility / rights / other (extend as needed)
+  "Property Taxes": "property_taxes",
+  "Insurance Cost": "insurance_cost",
+  "Tenant Reimbursement": "tenant_reimbursement",
+  "Utility Responsibility": "utility_responsibility",
+  "HVAC Responsibilities": "hvac_responsibilities",
+  "Tenant Maintenance Responsibilities": "tenant_maintenance_responsibilities",
+  "Landlord Maintenance Responsibilities": "landlord_maintenance_responsibilities",
+  "Renewal Options": "renewal_options",
+  "Option Exercise Deadlines": "option_exercise_deadlines",
+  "Holdover Terms": "holdover_terms",
+  "ROFR/ROFO Clauses": "rofr_rofo_clauses",
+  "Purchase Options": "purchase_options",
+  "Termination Rights": "termination_rights",
+};
+
+/** Limit the date-based rule to these keys (recommended) */
+const DATE_KEYS = new Set([
+  "lease_execution_date",
+  "lease_commencement_date",
+  "delivery_possession_date",
+  "lease_expiration_date",
+  "rent_commencement_date",
+  "cam_start_date",
+]);
+
+/** Loose date parser to handle common formats like 1/2/2026, 01-02-2026, ISO, etc. */
+function parseDateLoose(input) {
+  if (!input) return null;
+  if (input instanceof Date) return isNaN(input) ? null : input;
+
+  const s = String(input).trim();
+  if (!s) return null;
+
+  const mdy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (mdy) {
+    let [, m, d, y] = mdy;
+    if (y.length === 2) y = Number(y) + (Number(y) >= 70 ? 1900 : 2000);
+    const dObj = new Date(`${y}-${m}-${d}`);
+    return isNaN(dObj) ? null : dObj;
+  }
+  const dObj = new Date(s);
+  return isNaN(dObj) ? null : dObj;
+}
 
 /** ---------- Shared UI bits (match TenantTerms style) ---------- */
 const EntryRow = ({ item }) => {
@@ -50,7 +113,7 @@ const EmptyState = ({ title, hint }) => (
   </div>
 );
 
-/** ---------- Page ---------- */
+/** ---------- Page (view-only) ---------- */
 const TenantPage = () => {
   const { session, roleData } = useAuth();
   const { tenant_id } = useParams();
@@ -67,6 +130,9 @@ const TenantPage = () => {
   const [rights, setRights] = useState([]);
   const [leaseDocs, setLeaseDocs] = useState([]);
   const [leaseStatus, setLeaseStatus] = useState({});
+
+  // Overrides come in as { key: { value, modified_at } }
+  const [overrides, setOverrides] = useState({});
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -149,7 +215,7 @@ const TenantPage = () => {
         setLeaseSummary(leases.lease_summary || []);
         setFinancial(leases.financial_snapshot || []);
         setResponsibility(leases.responsibility || []);
-        setKeyDates(leases.keyDates || []);
+        setKeyDates(leases.keyDates || []); // note: key may be 'keyDates' in your result
         setRights(leases.rights || []);
         setLeaseDocs(leases.lease_docs || []);
       } catch (err) {
@@ -158,6 +224,36 @@ const TenantPage = () => {
     };
 
     loadLeases();
+    return () => {
+      isCancelled = true;
+    };
+  }, [tenant_id]);
+
+  /** ---------- Load overrides (with modified_at) ---------- */
+  useEffect(() => {
+    if (!tenant_id) return;
+    let isCancelled = false;
+
+    (async () => {
+      try {
+        const o = await getTenantTermOverrides(tenant_id);
+        if (isCancelled) return;
+
+        // compatibility: if helper returns { key: value }, wrap it
+        const shaped = Object.fromEntries(
+          Object.entries(o || {}).map(([k, v]) => {
+            if (v && typeof v === "object" && ("value" in v || "modified_at" in v)) {
+              return [k, { value: v.value ?? "", modified_at: v.modified_at ?? null }];
+            }
+            return [k, { value: v ?? "", modified_at: null }];
+          })
+        );
+        setOverrides(shaped);
+      } catch (e) {
+        console.error("Error loading term overrides", e);
+      }
+    })();
+
     return () => {
       isCancelled = true;
     };
@@ -212,6 +308,42 @@ const TenantPage = () => {
     return data?.signedUrl ?? null;
   }, []);
 
+  /** ---------- Override application ---------- */
+  const applyOverridesToList = useCallback(
+    (list) => {
+      if (!Array.isArray(list) || list.length === 0) return list;
+      const now = new Date();
+
+      return list.map((item) => {
+        if (!item || typeof item !== "object") return item;
+        const entries = Object.entries(item);
+        if (entries.length === 0) return item;
+
+        const [label, raw] = entries[0];
+        const key = FIELD_KEYS[label];
+        if (!key) return item;
+
+        const ov = overrides[key]; // { value, modified_at }
+        if (!ov) return item;
+
+        // Only apply the date rule to specific date keys (recommended)
+        if (DATE_KEYS.has(key)) {
+          const rawDate = parseDateLoose(raw);
+          const ovEditedAt = ov.modified_at ? new Date(ov.modified_at) : null;
+
+          // If raw (amendment) is newer than the edit and already effective, prefer raw
+          if (rawDate && ovEditedAt && rawDate > ovEditedAt && now >= rawDate) {
+            return item; // keep raw (amendment)
+          }
+        }
+
+        // Otherwise show override value
+        return { [label]: ov.value ?? "" };
+      });
+    },
+    [overrides]
+  );
+
   /** ---------- Derived ---------- */
   const hasAnyTerms =
     (leaseSummary?.length ?? 0) +
@@ -230,7 +362,7 @@ const TenantPage = () => {
     );
   }
 
-  /** ---------- Render ---------- */
+  /** ---------- Render (view-only) ---------- */
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-7xl mx-auto">
       {/* Header / Actions */}
@@ -289,7 +421,7 @@ const TenantPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SectionCard title="Lease Summary">
           {leaseSummary?.length ? (
-            leaseSummary.map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
+            applyOverridesToList(leaseSummary).map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
           ) : (
             <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
           )}
@@ -322,7 +454,7 @@ const TenantPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SectionCard title="Financial Snapshot">
           {financial?.length ? (
-            financial.map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
+            applyOverridesToList(financial).map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
           ) : (
             <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
           )}
@@ -330,7 +462,7 @@ const TenantPage = () => {
 
         <SectionCard title="Responsibility">
           {responsibility?.length ? (
-            responsibility.map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
+            applyOverridesToList(responsibility).map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
           ) : (
             <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
           )}
@@ -341,7 +473,7 @@ const TenantPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SectionCard title="Key Dates">
           {keyDates?.length ? (
-            keyDates.map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
+            applyOverridesToList(keyDates).map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
           ) : (
             <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
           )}
@@ -349,7 +481,7 @@ const TenantPage = () => {
 
         <SectionCard title="Critical Rights and Options">
           {rights?.length ? (
-            rights.map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
+            applyOverridesToList(rights).map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
           ) : (
             <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
           )}
@@ -394,24 +526,23 @@ const TenantPage = () => {
                             onClick={async () => {
                               // 1) Check if file still exists in Storage
                               const exists = await fileExistsInStorage(lease?.lease_file_path);
-                              console.log(exists)
                               if (!exists) {
                                 // If missing, send them to upload flow for this tenant
                                 navigate(`/upload_docs?tenant_id=${tenant_id}`);
                                 return;
                               }
-                              const group_id = crypto.randomUUID()
-                              await supabase.from('upload_groups').insert({
+                              const group_id = crypto.randomUUID();
+                              await supabase.from("upload_groups").insert({
                                 id: group_id,
                                 company_id: tenant.property_management_id,
                                 total_jobs: 1,
-                                tenantId: tenant.tenant_id
-                              })
-                              // 2) If it exists, requeue the job
+                                tenantId: tenant.tenant_id,
+                              });
+                              // 2) Requeue the job
                               await supabase.from("Upload_Job_Status").insert({
                                 lease_id: lease?.lease_id,
                                 job_info: { error: null, status: "queued", results: null },
-                                group_id: group_id
+                                group_id: group_id,
                               });
                               loadJobStatuses();
                             }}

@@ -41,3 +41,41 @@ export async function fileExistsInStorage(filePath) {
   }
   return !!data?.some(obj => obj.name === name);
 }
+
+/** Fetch all overrides for a tenant_id as { [field]: value } map */
+export async function getTenantTermOverrides(tenant_id) {
+  const { data, error } = await supabase
+    .from("tenant_term_overrides")
+    .select("field, value, modified_at")
+    .eq("tenant_id", tenant_id);
+
+  if (error) throw error;
+
+  // prefer modified_at, then updated_at, then created_at
+  const map = {};
+  (data || []).forEach(({ field, value, modified_at}) => {
+    map[field] = {
+      value,
+      modified_at: modified_at || null,
+    };
+  });
+  return map;
+}
+
+/** Upsert many overrides at once (batch) */
+export async function upsertTenantTermOverrides(tenant_id, editsMap, note, modified_by) {
+  const rows = Object.entries(editsMap).map(([field, value]) => ({
+    tenant_id,
+    field,
+    value,
+    note: note || null,
+    modified_by: modified_by ?? null,
+    // let DB default/trigger set modified_at/updated_at
+  }));
+
+  const { error } = await supabase
+    .from("tenant_term_overrides")
+    .upsert(rows, { onConflict: "tenant_id,field" });
+
+  if (error) throw error;
+}
