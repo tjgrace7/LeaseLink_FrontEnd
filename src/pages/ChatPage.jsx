@@ -216,7 +216,7 @@ const ChatPage = () => {
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
   const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
-
+  const isNewNavigation = textToBool(localStorage.getItem('isNewNavigation'))
 
   // Resolve refresh state once after mount
   useEffect(() => {
@@ -251,7 +251,7 @@ const ChatPage = () => {
     if (isInitializedRef.current) return;
 
     const init = async () => {
-      const shouldRestore = isPageRefresh || isOldMessage;
+      const shouldRestore = isPageRefresh || isOldMessage || isNewNavigation;
 
       if (shouldRestore) {
         const storedSessionId = localStorage.getItem("chat_session_id");

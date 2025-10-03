@@ -164,6 +164,21 @@ const Profile = ({
 
   const hasRelated = (relatedEntities?.length || 0) > 0;
 
+  const loadChat = (tenant) => {
+
+    if(!entityId ) return;
+    console.log(tenant.Tenant_Name)
+    console.log(Title)
+    console.log(entityId)
+    localStorage.setItem("chat_session_id", crypto.randomUUID());
+    localStorage.setItem('entity_id', entityId);
+    localStorage.setItem('entity_type', Title.toLowerCase());
+    localStorage.setItem('entity_selected', 'true')
+    localStorage.setItem('isNewNavigation', 'true')
+    localStorage.setItem('entity_name', tenant.Tenant_Name)
+    navigate('/chat')
+  }
+
   return (
     <div
       className={[
@@ -329,6 +344,21 @@ const Profile = ({
                     Create Unit
                   </button>
                 )}
+              </div>
+            )}
+            {console.log(Title)}
+            {(Title === 'Tenant') && (
+              <div className="flex flex-col mt-4 gap-2">
+                <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
+                  Create Chat
+                </h2>
+                <button
+                  onClick={() => loadChat(entity)}
+                  className="mt-1 cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
+                >
+                  New Chat
+                </button>
+                
               </div>
             )}
           </div>

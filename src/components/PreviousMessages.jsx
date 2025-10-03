@@ -40,6 +40,7 @@ const LoadPreviousMessages = ({
     if (!chat?.session_id) return;
     localStorage.setItem("chat_session_id", chat.session_id);
     localStorage.setItem("entity_id", entityId);
+    console.log(entityType)
     localStorage.setItem("entity_type", entityType);
     localStorage.setItem("entity_selected", "true");
     localStorage.setItem('isOldMessage', "true")
