@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { LazyMotion, m, AnimatePresence } from "framer-motion";
 import {
   FileUp,
@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/Lease_Link_Logo.png";
+
+const VideoEmbed = lazy(() => import("../components/VideoEmbed"));
 
 // 👇 CHANGE THIS TO YOUR LIVE OR PREVIEW BASE URL (no trailing slash)
 const SITE_URL = "https://leaselink.ai";
@@ -324,58 +326,20 @@ export default function HomePage() {
               </div>
 
               {/* Right preview: static on mobile, motion on lg+ only */}
-              {noMotion ? (
-                <div className="lg:justify-self-end w-full max-w-xl">
-                  <div className="rounded-3xl shadow-xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4" role="list" aria-label="Product steps">
-                      {["Upload", "Ask", "Citations"].map((label, idx) => (
-                        <div key={idx} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4 flex flex-col items-center gap-2" role="listitem">
-                          {idx === 0 && <FileUp className="h-6 w-6" aria-hidden />}
-                          {idx === 1 && <MessageSquare className="h-6 w-6" aria-hidden />}
-                          {idx === 2 && <BookOpenCheck className="h-6 w-6" aria-hidden />}
-                          <span className="text-xs sm:text-sm font-medium text-neutral-200">{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 sm:mt-6 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 sm:p-4">
-                      <p className="text-sm text-neutral-300">
-                        “What are the CAM charge caps and renewal options for Suite 210?”
-                      </p>
-                      <div className="mt-3 text-xs text-neutral-400">
-                        Answer: CAM cap at 5% annually; 2× 5-year renewals. <span className="underline">See source (p. 14, 27)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <m.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.05 }}
-                  className="hidden lg:block lg:justify-self-end w-full max-w-xl"
-                >
-                  <div className="rounded-3xl shadow-xl border border-neutral-800 bg-neutral-900 p-4 sm:p-6">
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4" role="list" aria-label="Product steps">
-                      {["Upload", "Ask", "Citations"].map((label, idx) => (
-                        <div key={idx} className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4 flex flex-col items-center gap-2" role="listitem">
-                          {idx === 0 && <FileUp className="h-6 w-6" aria-hidden />}
-                          {idx === 1 && <MessageSquare className="h-6 w-6" aria-hidden />}
-                          {idx === 2 && <BookOpenCheck className="h-6 w-6" aria-hidden />}
-                          <span className="text-xs sm:text-sm font-medium text-neutral-200">{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 sm:mt-6 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 sm:p-4">
-                      <p className="text-sm text-neutral-300">
-                        “What are the CAM charge caps and renewal options for Suite 210?”
-                      </p>
-                      <div className="mt-3 text-xs text-neutral-400">
-                        Answer: CAM cap at 5% annually; 2× 5-year renewals. <span className="underline">See source (p. 14, 27)</span>
-                      </div>
-                    </div>
-                  </div>
-                </m.div>
-              )}
+                      <div>
+            <Suspense
+              fallback={
+                <div className="w-full aspect-video rounded-2xl bg-slate-800/50 animate-pulse" />
+              }
+            >
+              <VideoEmbed />
+            </Suspense>
+            <p className="mt-2 text-xs text-white/50">
+              Demo video: See LeaseLink in action.
+            </p>
+          </div>
+
+           
             </div>
 
 
