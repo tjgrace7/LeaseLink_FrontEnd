@@ -654,7 +654,6 @@ const ChatPage = () => {
                 setMessages(oldmessages);
               }}
               onSourceClick={(source) => {
-                console.log(source)
                 setSelectedSource(source);
                 setShowModal(true);
               }}
