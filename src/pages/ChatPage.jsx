@@ -710,6 +710,7 @@ const ChatPage = () => {
       {/* Source modal */}
       {showModal && selectedSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4">
+          {console.log(selectedSource)}
           <div className="relative w-full max-w-6xl h-[90vh] my-6 sm:my-10 overflow-hidden rounded-2xl bg-white text-black shadow-2xl flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-6 flex-none">
