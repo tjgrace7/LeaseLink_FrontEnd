@@ -520,6 +520,7 @@ const ChatPage = () => {
       if (newAssistantMessages.length > existingAssistantCount) {
         setMessages(msgs);
         const last = msgs[msgs.length - 1];
+        console.log(last)
         if (last?.sources) setSources(last.sources);
         return;
       }
