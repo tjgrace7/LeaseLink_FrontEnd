@@ -65,7 +65,7 @@ const IntegrationsResponsePage = () => {
       return {
         title: `Connected to ${providerLabel}`,
         description:
-          "Your mailbox is now linked to LeaseLink. We’re starting the initial sync in the background — emails may take a few minutes to appear in search.",
+          "Your mailbox is now linked to LeaseLink. We’re starting the initial sync in the background — It may take several hours to process depending on the quantity and size of emails. You will be notified when they are synced.",
         tone: "success",
       };
     }
@@ -113,7 +113,7 @@ const IntegrationsResponsePage = () => {
   return (
     <div className="w-full pt-2 md:pt-8 px-4 sm:px-6 md:px-8">
       {/* Header to match Dashboard style */}
-      <header className="pt-4 md:pt-0 mb-4 md:mb-6">
+      <header className="pt-4 md:pt-0 mb-4 md:mb-6 mr-4" >
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">

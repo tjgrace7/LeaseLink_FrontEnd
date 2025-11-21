@@ -11,6 +11,7 @@ import chatIcon from '../assets/ChatIcon.png'
 import uploadIcon from '../assets/Upload_Icon.png'
 import createPerson from '../assets/CreatePerson.png'
 import propertyIcon from '../assets/Property_Icon.png'
+import resyncEmail from '../assets/ResyncEmail.png'
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -136,6 +137,7 @@ const TopNav = () => {
               <p className='md:0'>Upload</p>
             </div>
           </NavLink>
+          {console.log(emailIntegrated)}
           {emailAccess && emailIntegrated && (
             <div>
               <button
@@ -148,7 +150,7 @@ const TopNav = () => {
               >
                 <div className='flex flex-col items-center'>
                   <img
-                    src={uploadIcon}
+                    src={resyncEmail}
                     alt="Upload icon"
                     className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
                   />
