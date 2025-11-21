@@ -11,6 +11,9 @@ const UserProfile = () => {
 
   const [company, setCompany] = useState(null);
   const [loadingCompany, setLoadingCompany] = useState(true);
+  const [emailPopUp, setPopUp] = useState(false)
+  //TODO Change to actual backend URL before launching
+  const backendURL = 'https://leaselink.onrender.com'
 
   // ---------- Fetch company once userData is available ----------
   useEffect(() => {
@@ -95,6 +98,13 @@ const formatPhone = (raw = "") => {
       {label || "—"}
     </span>
   );
+  const integrateEmail = async (provider) => {
+    //Redirect to backend starter route
+
+    const uid = session.user?.id ?? "";
+    console.log("User Id", uid)
+    window.location.href = `${backendURL}/api/integrations/email/start?provider=${provider}&uid=${encodeURIComponent(uid)}`
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 pb-6 pt-4 sm:pt-6">
@@ -160,7 +170,7 @@ const formatPhone = (raw = "") => {
           </div>
 
           {/* Contact grid */}
-          <div className="grid grid-cols-1 gap-3 pl-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 pl-3 sm:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
               <h3 className="mb-1 text-sm font-medium text-white/80">Phone</h3>
               <p className="text-sm">{formatPhone(getPhone())}</p>
@@ -170,14 +180,36 @@ const formatPhone = (raw = "") => {
               <h3 className="mb-1 text-sm font-medium text-white/80">Email</h3>
               <p className="text-sm break-words">{getEmail()}</p>
             </div>
-          </div>
-        </div>
 
+
+          </div>
+
+        </div>
+            <button className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+            onClick={() => setPopUp(!emailPopUp)}>
+              <h3 className="mb-1 text-sm font-medium text-white">Integrate Email</h3>
+            </button>
         {/* Footer note */}
         <p className="pt-1 text-center text-xs text-white/50">
           LeaseLink can make mistakes — please verify important details.
         </p>
       </DisplayBox>
+      {emailPopUp && (
+         <div className="flex flex-col space-y-2 rounded-lg p-3 bg-lease-gradient mt-5">
+          <button
+            onClick={() => integrateEmail("microsoft")}
+            className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+          >
+            Connect Microsoft Outlook
+          </button>
+          <button
+            onClick={() => integrateEmail("google")}
+            className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+          >
+            Connect Gmail 
+          </button>
+        </div>
+      )}
     </div>
   );
 };

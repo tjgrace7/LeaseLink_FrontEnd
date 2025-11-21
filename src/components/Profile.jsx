@@ -167,9 +167,6 @@ const Profile = ({
   const loadChat = (tenant) => {
 
     if(!entityId ) return;
-    console.log(tenant.Tenant_Name)
-    console.log(Title)
-    console.log(entityId)
     localStorage.setItem("chat_session_id", crypto.randomUUID());
     localStorage.setItem('entity_id', entityId);
     localStorage.setItem('entity_type', Title.toLowerCase());
@@ -346,7 +343,6 @@ const Profile = ({
                 )}
               </div>
             )}
-            {console.log(Title)}
             {(Title === 'Tenant') && (
               <div className="flex flex-col mt-4 gap-2">
                 <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
@@ -373,7 +369,7 @@ const Profile = ({
             if (confirmData.mode === 'restore') {
               await UnarchiveEntity(Title, entityId);
             } else {
-              await ArchiveEntity(Title, entityId);
+              await ArchiveEntity(Title, entityId, session?.access_token);
             }
             setConfirmData(null); // close popup
             navigate('/dashboard');

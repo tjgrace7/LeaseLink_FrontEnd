@@ -29,7 +29,7 @@ import { supabase } from '../supabaseClient';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { roleData, session } = useAuth();
+  const { roleData, session, emailAccess } = useAuth();
 
   // —— Active company
   const currentCompanyId = localStorage.getItem('activeCompanyId');
@@ -88,6 +88,7 @@ const Settings = () => {
 
   // UI: import button state
   const [importing, setImporting] = useState(false);
+  const backendURL = import.meta.env.VITE_SERVER_URL
 
   // ——— Expected fields by type (required vs optional + one-of groups)
   // NOTE: "oneOf" means at least ONE of the labels in the inner array must be mapped.
@@ -558,7 +559,13 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
       setImporting(false);
     }
   };
+  const integrateEmail = async (provider) => {
+    //Redirect to backend starter route
 
+    const uid = session.user?.id ?? "";
+    console.log("User Id", uid)
+    window.location.href = `${backendURL}/api/integrations/email/start?provider=${provider}&uid=${encodeURIComponent(uid)}`
+  }
   return (
     <div className="px-4 sm:px-6 md:px-8 py-6">
       {/* Tabs header */}
@@ -588,6 +595,7 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
             Import
           </TabButton>
         )}
+        <TabButton isActive={tab === 'Email'} onClick={() => setTab("Email")}>Integrate Emails </TabButton>
       </div>
 
       <DisplayBox className="p-4 sm:p-5 md:p-6">
@@ -749,7 +757,34 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
             <p className="opacity-80">Coming soon! Currently in testing.</p>
           </div>
         )}
-
+        {tab === "Email" && (
+          <div>
+            {console.log(emailAccess)}
+            {!emailAccess && (
+              <div>
+                <h2 className='text-xl sm:text-2xl font-semibold mb-2'>Email Subscription not Available</h2>
+                <p className='opacity-80'>Coming Soon! Currently in Testing</p>
+              </div>
+            )}
+            {emailAccess && (
+              <div>
+                <h2 className='text-xl sm:text-2xl font-semibold mb-2'>Integrate Your Personal Email by Connecting Below</h2>
+                <p className='opacity-80'>Simply Click the Button of the Email Provider you use below to pull your emails into Lease Link. You will be taken to another page!</p>
+                <p>The Email will pull every Email for a Contact. Contacts are attached to Tenants and the Emails will be able to be accessed in Chat of the Tenant the Contact is connected to</p>
+                <div className="flex flex-col space-y-2 rounded-lg p-3 mt-10">
+                  <button
+                    onClick={() => integrateEmail("microsoft")}
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+                  >Connect Microsoft</button>
+                  <button
+                    onClick={() => integrateEmail("google")}
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+                  >Connect Google</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {/* Import */}
         {tab === 'Import' && (
           <div>

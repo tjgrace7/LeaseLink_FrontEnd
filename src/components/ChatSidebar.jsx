@@ -20,31 +20,52 @@ const ChatSidebar = ({
   onSelectChat,
   onSourceClick,
   termsRent = [],
+  emailSources = [],
+  onEmailClick,
 }) => {
   return (
     <aside className="w-full min-w-[16rem] bg-[#2c2c2e] text-white flex flex-col p-4 border-r border-gray-700 overflow-y-auto">
       {/* Sources */}
       <SectionTitle>Sources</SectionTitle>
-      <ul className="text-sm space-y-1 mb-6">
-        {sources.length === 0 ? (
-          <li className="text-gray-400">Ask a Question for Sources</li>
-        ) : (
-          sources.map((source, idx) => (
-            <li
-              key={`source-${idx}`}
-              className="text-sm border-l-4 pl-2 border-blue-500"
-            >
-              <button
-                onClick={() => onSourceClick?.(source)}
-                className="text-left text-blue-500 hover:underline w-full break-words"
-              >
-                Page {source.pageNumber}:{" "}
-                {truncateText(source.highlight_text, 80)}
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
+<ul className="text-sm space-y-1 mb-6">
+  {(!sources?.length && !emailSources?.length) ? (
+    <li className="text-gray-400">Ask a Question for Sources</li>
+  ) : (
+    <>
+      {Array.isArray(sources) && sources?.map((source, idx) => (
+        
+        <li
+          key={`doc-${source?.pageNumber + " " + idx ?? idx}`}
+          className="text-sm border-l-4 pl-2 border-blue-500"
+        >
+          <button
+            onClick={() => onSourceClick?.(source)}
+            className="text-left text-blue-500 hover:underline w-full break-words"
+          >
+            Page {source?.pageNumber}:{' '}
+            {truncateText?.(source?.highlight_text ?? '', 80)}
+          </button>
+        </li>
+      ))}
+
+      {Array.isArray(emailSources) && emailSources?.map((email, idx) => (
+        <li
+          key={`email-${email?.id ?? idx}`}
+          className="text-sm border-l-4 pl-2 border-blue-500"
+        >
+          <button
+            
+            onClick={() => {
+              onEmailClick?.(email)}}
+            className="text-left text-blue-500 hover:underline w-full break-words"
+          >
+            Email Subject: {email?.subject ?? '(no subject)'}
+          </button>
+        </li>
+      ))}
+    </>
+  )}
+</ul>
 
       {/* Terms & Rent */}
       {termsRent.length > 0 && (

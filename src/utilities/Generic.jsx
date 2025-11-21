@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { useAuth } from "../components/AuthProvider";
 
 /**
  * Archive an entity and (optionally) its dependents by flipping `archived: true`.
@@ -8,8 +9,9 @@ import { supabase } from "../supabaseClient";
  * @param {string|number} entity_id
  * @returns {Promise<{ok:boolean, errors:string[]}>}
  */
-export const ArchiveEntity = async (entity, entity_id) => {
+export const ArchiveEntity = async (entity, entity_id, access_token) => {
   const errors = [];
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!entity_id) return { ok: false, errors: ["Missing entity_id"] };
 
   const basePatch = { archived: true };
@@ -47,7 +49,6 @@ export const ArchiveEntity = async (entity, entity_id) => {
     }
     return data || [];
   };
-
   try {
     switch (entity) {
       case "Property": {
@@ -82,7 +83,28 @@ export const ArchiveEntity = async (entity, entity_id) => {
       }
 
       case "Tenant": {
-        await updateEq("tenant", "tenant_id", entity_id);
+        try {
+          console.log("Removing Tenant")
+          const res = await fetch(`${supabaseUrl}/functions/v1/remove_Tenant`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${access_token}`,
+            },
+            body: JSON.stringify({ tenant_id: entity_id }),
+          });
+
+          const text = await res.text();
+          console.log("Status:", res.status, "Body:", text);
+          console.log("Tenant Update")
+          await Promise.all([
+            updateEq("tenant", "tenant_id", entity_id),
+          ]);
+        }
+        catch (e) {
+          console.error("update eq failed", e)
+        }
+
         break;
       }
 

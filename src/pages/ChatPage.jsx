@@ -10,6 +10,7 @@ import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
 import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
 import { GTMChat, GTMChatEntity, GTMChatResponse } from "../components/gtag";
+import {ShowModal, EmailModal} from "../components/Modal"
 
 /* ---------- stable, memoized input to avoid remounts on re-render ---------- */
 const ComposerInput = memo(function ComposerInput({
@@ -184,8 +185,11 @@ const ChatPage = () => {
   // sidebar + resources
   const [previousChats, setPreviousChats] = useState([]);
   const [currentSources, setSources] = useState([]);
+  const [emailSources, setEmailSources] = useState([])
   const [selectedSource, setSelectedSource] = useState(null);
+  const [selectedEmail, setSelectedEmail] = useState(null)
   const [showModal, setShowModal] = useState(false);
+  const [showEmailModal, setEmailModal] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // lease terms quick-view
@@ -204,8 +208,9 @@ const ChatPage = () => {
   );
 
   // env + auth
-  const server_url = import.meta.env.VITE_SERVER_URL;
-  const { session, loading, userData, loadingUserData } = useAuth();
+  //switch to import.meta.env.VITE_SERVER_URL
+  const server_url = "https://leaselink.onrender.com";
+  const { session, loading, userData, loadingUserData, baseAccess } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
@@ -479,6 +484,11 @@ const ChatPage = () => {
 
   const selectEntity = async (entityId, entityType) => {
     // fully reset thread state
+    if(!baseAccess)
+    {
+      console.log("No Access Granted")
+      return;
+    }
     setMessages([]);
     setSources([]);
     setSelectedSource(null);
@@ -516,11 +526,17 @@ const ChatPage = () => {
     for (let i = 0; i < retries; i++) {
       const msgs = await getMessages(session_id);
       const newAssistantMessages = msgs.filter((m) => m.role === "assistant");
-
+  
       if (newAssistantMessages.length > existingAssistantCount) {
         setMessages(msgs);
+        
         const last = msgs[msgs.length - 1];
+        console.log(last)
         if (last?.sources) setSources(last.sources);
+        console.log("Last.sources", last?.sources)
+        if (last?.email_sources) {
+          setEmailSources(last.email_sources);
+        }
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -535,7 +551,10 @@ const ChatPage = () => {
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-
+    if(!baseAccess) {
+      console.log("Access Not Granted")
+      return;
+    }
     setMessages((prev) => [
       ...prev,
       { role: "user", text: trimmed },
@@ -654,10 +673,18 @@ const ChatPage = () => {
                 setMessages(oldmessages);
               }}
               onSourceClick={(source) => {
+                console.log(source)
                 setSelectedSource(source);
                 setShowModal(true);
               }}
               termsRent={terms}
+              emailSources={emailSources}
+              onEmailClick={(email) => {
+                console.log(email)
+                setSelectedEmail(email)
+                setEmailModal(true)
+                setSidebarOpen(false)
+              }}
             />
           </div>
         </div>
@@ -701,6 +728,13 @@ const ChatPage = () => {
                   setSidebarOpen(false);
                 }}
                 termsRent={terms}
+                emailSources = {emailSources}
+                onEmailClick={(email) => {
+                  console.log("Clicked")
+                  setSelectedEmail(email);
+                  setEmailModal(true);
+                  setSidebarOpen(false);
+                }}
               />
             </div>
           </div>
@@ -709,44 +743,15 @@ const ChatPage = () => {
 
       {/* Source modal */}
       {showModal && selectedSource && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4">
-          <div className="relative w-full max-w-6xl h-[90vh] my-6 sm:my-10 overflow-hidden rounded-2xl bg-white text-black shadow-2xl flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-6 flex-none">
-              <h2 className="text-base sm:text-lg font-semibold truncate pr-4">
-                Document Excerpt
-              </h2>
-              <button
-                className="flex-none rounded-md p-1 text-2xl leading-none text-gray-500 hover:text-black hover:bg-gray-100"
-                onClick={() => setShowModal(false)}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
-            </div>
+       <ShowModal OnClose={() => setShowModal(false)} selectedSource={selectedSource}/>
+      )}
+      {showEmailModal && selectedEmail &&  (
+        <div>
 
-            {/* Body */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {selectedSource.highlight_text && (
-                <div className="px-4 py-3 sm:px-6 sm:py-4 overflow-y-auto max-h-[25%]">
-                  <p className="whitespace-pre-wrap text-sm sm:text-base text-gray-800 break-words">
-                    {selectedSource.highlight_text}
-                  </p>
-                </div>
-              )}
-              <div className="flex-1 px-4 sm:px-6 pb-4">
-                <div className="w-full h-full overflow-hidden rounded-md border">
-                  <iframe
-                    src={selectedSource.viewer_url}
-                    title="Document Viewer"
-                    className="w-full h-full"
-                    loading="lazy"
-                  />
-                </div>
-              </div>
-            </div>
+        <EmailModal 
+        Email={selectedEmail}
+        OnClose={() => setEmailModal(false)} />
           </div>
-        </div>
       )}
 
       {popUp && (

@@ -2,7 +2,7 @@
 import { HiPlus, HiOfficeBuilding } from 'react-icons/hi';
 import { FaUserPlus } from 'react-icons/fa';
 import { FiUpload, FiMessageCircle } from 'react-icons/fi';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { data, NavLink, useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import UserDropdown from './UserDropdown';
 import { useAuth } from './AuthProvider';
@@ -15,13 +15,51 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
 const TopNav = () => {
-  const { roleData, userData, clearFrontEndCompany } = useAuth();
+  const { session, roleData, userData, clearFrontEndCompany, emailAccess } = useAuth();
   const navigate = useNavigate();
   const [imposter, setImposter] = useState(false)
+  const [emailIntegrated, setEmailIntegrated] = useState(false)
+
+  const auth_id = session?.user?.id;
+  const access_token = session?.access_token;
+    //switch to import.meta.env.VITE_SERVER_URL
+  const server_url = "https://leaselink.onrender.com";
+
   useEffect(() => {
     if (!userData) return
     if (userData.Imposter) setImposter(true)
   }, [userData])
+
+  useEffect(() => {
+    if (!emailAccess) return;
+    const getSyncLogs = async () => {
+      const { data, error } = await supabase.from("Email_Sync_Logs").select("*").eq("user_id", userData.user_id).single()
+      if (error) {
+        console.log("No Sync Logs Available", error)
+        return
+      }
+      if (data.sync_status === 'complete') {
+        setEmailIntegrated(true)
+      }
+      else {
+        setEmailIntegrated(false)
+      }
+    }
+    getSyncLogs()
+  })
+  const syncEmail = async () => {
+    const payload = {
+      auth_id,
+    }
+    const res = await fetch(`${server_url}/api/email/resync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  }
   const canCreatePerson =
     !!roleData &&
     (roleData.CreateUsers ||
@@ -98,7 +136,27 @@ const TopNav = () => {
               <p className='md:0'>Upload</p>
             </div>
           </NavLink>
-
+          {emailAccess && emailIntegrated && (
+            <div>
+              <button
+                aria-label="Sync Email"
+                title="Sync Email"
+                className={({ isActive }) =>
+                  `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+                }
+                onClick={async () => await syncEmail()}
+              >
+                <div className='flex flex-col items-center'>
+                  <img
+                    src={uploadIcon}
+                    alt="Upload icon"
+                    className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                  />
+                  <p className='md:0'>Sync Email</p>
+                </div>
+              </button>
+            </div>
+          )}
           {/* Create Person (hide on xs to reduce clutter) */}
           {canCreatePerson && (
             <NavLink

@@ -40,6 +40,7 @@ import LinkedInLanding2 from './pages/LandingPage2';
 import InviteComplete from './pages/changePassword';
 
 import { useLocation } from 'react-router-dom';
+import IntegrationsResponsePage from './pages/Integrations';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -96,7 +97,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
-            
+            <Route path='/settings/integrations' element={<ProtectedRoute><IntegrationsResponsePage/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

@@ -15,6 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [roleData, setRoleData] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(true); // Loading state for user data
   const [effectiveCompanyId, setEffectiveCompanyId] = useState('')
+  const [emailAccess, setEmailAccess] = useState(false)
+  const [baseAccess, setBaseAccess] = useState(false)
 
   // Fetch session and listen for changes on component mount
   useEffect(() => {
@@ -82,6 +84,14 @@ export const AuthProvider = ({ children }) => {
       }
       setRoleData(roleData)
       setUserData(data);
+      const {data: companyData, error: companyError} = await supabase.from("Property_Management_Companies").select("Base_Function, Email_Function").eq('company_id', data.company_id).single()
+      if (companyError)
+      {
+        console.error("Error Fetching Company Data", companyError)
+        return;
+      }
+      setEmailAccess(companyData.Email_Function)
+      setBaseAccess(companyData.Base_Function)
     } catch (err) {
       console.error('FetchUserData Error:', err);
     } finally {
@@ -98,8 +108,9 @@ export const AuthProvider = ({ children }) => {
     setEffectiveCompanyId(null)
     localStorage.setItem('activeCompanyId', userData.company_id)
   }
+
   return (
-    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData, setFrontEndCompany, clearFrontEndCompany }}>
+    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData, setFrontEndCompany, clearFrontEndCompany, baseAccess, emailAccess }}>
       {children}
     </AuthContext.Provider>
   );

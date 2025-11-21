@@ -19,6 +19,7 @@ import { fileToBase64 } from "../utilities/imageConverter";
 import { get_entity_image } from "../utilities/get_entity_image";
 import { getTable, getTableIdList } from "../utilities/supabaseCalls";
 import { GTMCreate } from "../components/gtag";
+import { supabase } from "../supabaseClient";
 
 // ----------------------------
 // Reusable UI primitives
@@ -141,10 +142,12 @@ const CreateEditPerson = () => {
   const [initialProperties, setInitialProperties] = useState(null);
   const [initialTenants, setInitialTenants] = useState(null);
   const [initialPermission, setInitialPermission] = useState("");
+  const [unitOccupied, setUnitOccupied] = useState(false)
 
   const [submitting, setSubmitting] = useState(false);
   const supabase_url = import.meta.env.VITE_SUPABASE_URL;
   const company_id = localStorage.getItem('activeCompanyId')
+
 
   // --------------------------------------
   // Allowed person types by role
@@ -184,25 +187,31 @@ const CreateEditPerson = () => {
         if (selectedPerson === "Building Owner") return; // No extra lists needed
 
         // Properties (common)
-        const propertyData = await getTable(
-          "properties",
-          "pm_company",
-          company_id
-        );
+
+        const { data: propertyData, error: propertyError } = await supabase.from("properties").select("*").eq("pm_company", company_id).eq("archived", false)
+        if (propertyError) {
+          console.error("Error Fetching Properties")
+        }
         if (!propertyData) return;
+
         setProperties(propertyData);
 
         // Units (only for Tenant & after properties are selected)
         if (selectedPerson === "Tenant" && selectedProperties.length > 0) {
-          const unitData = await getTable("Units", "pmcompany_id", company_id);
-          if (!unitData) return;
+          const { data: unitData, error: unitError } = await supabase.from("Units").select("*").eq("pmcompany_id", company_id).eq("archived", false)
+          if (unitError) {
+            console.log("Unit Error:", unitError)
+            return;
+          }
 
           // Units already linked to tenants
-          const usedUnits = await getTableIdList(
-            "Tenant_Unit",
-            "unit_id",
-            unitData.map((u) => u.unit_id)
-          );
+
+          const {data:usedUnits, error: usedUnitsError} = await supabase.from("Tenant_Unit").select("*").in("unit_id", unitData.map((u) => u.unit_id)).eq("Is_Current", true)
+          if(usedUnitsError)
+          {
+            console.error("Used Units Error:", usedUnitsError)
+            return;
+          }
           const usedIds = new Set((usedUnits || []).map((u) => u.unit_id));
 
           const selectedPropIds = selectedProperties.map((p) => p.prop_id);
@@ -319,6 +328,7 @@ const CreateEditPerson = () => {
           const pt = await getTable("Property_Tenant", "tenant_id", id);
           const propIds = pt.map((j) => j.property_id);
           const propertyData = await getTableIdList("properties", "prop_id", propIds);
+
           setSelectedProperties(propertyData);
           setProperties((prev) => prev.filter((p) => !propertyData.map((pd) => pd.prop_id).includes(p.prop_id)));
           setInitialProperties(propertyData);
@@ -481,8 +491,14 @@ const CreateEditPerson = () => {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
         console.error("Create_Person error:", result);
-        alert(result?.error || "Something went wrong. Check console.");
-        setSubmitting(false);
+        if (result?.error?.include("Cannot assign tenant to occupied units")) {
+          setUnitOccupied(true)
+        }
+        else {
+
+          alert(result?.error || "Something went wrong. Check console.");
+          setSubmitting(false);
+        }
         return;
       }
       const confirmEmail = `<html lang="en" style="margin:0;padding:0;">
@@ -589,22 +605,24 @@ const CreateEditPerson = () => {
   </table>
 </body>
 </html>`
-      const emailres = await fetch(`${supabase_url}/functions/v1/internal-Emails`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": 'application/json' },
-        body: JSON.stringify({
-          emailbody: confirmEmail,
-          emailsubject: 'Welcome to Lease Link',
-          emailto: genericFormData.email,
-          user_id: session.user.id,
-          newUserEmail: true
+      if (selectedPerson === "App User") {
+        const emailres = await fetch(`${supabase_url}/functions/v1/internal-Emails`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": 'application/json' },
+          body: JSON.stringify({
+            emailbody: confirmEmail,
+            emailsubject: 'Welcome to Lease Link',
+            emailto: genericFormData.email,
+            user_id: session.user.id,
+            newUserEmail: true
+          })
         })
-      })
-      if (!emailres.ok) {
-        console.error("Email Error:", result);
-        alert(result?.error || "Something went wrong. Check console.");
-        setSubmitting(false);
-        return;
+        if (!emailres.ok) {
+          console.error("Email Error:", result);
+          alert(result?.error || "Something went wrong. Check console.");
+          setSubmitting(false);
+          return;
+        }
       }
       GTMCreate('Create Person', selectedPerson, genericFormData.name)
 
@@ -956,6 +974,61 @@ const CreateEditPerson = () => {
           </div>
         </div>
       </DisplayBox >
+      {unitOccupied && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center animate-fadeIn scale-95">
+            <div className="flex flex-col items-center space-y-4">
+
+              {/* Icon */}
+              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-10 h-10 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v3m0 4h.01M4.93 4.93l14.14 14.14M12 3C7.03 3 3 7.03 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-4.97-4.03-9-9-9z"
+                  />
+                </svg>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-xl font-bold text-gray-800">
+                Unit Already Occupied
+              </h2>
+
+              {/* Message */}
+              <p className="text-gray-600">
+                This unit already has a tenant assigned. Please select another unit
+                or remove the current tenant first.
+              </p>
+
+              {/* Buttons */}
+              <div className="pt-4 flex justify-center space-x-3">
+                <button
+                  onClick={onClose}
+                  className="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium transition"
+                >
+                  Close
+                </button>
+
+                <button
+                  onClick={goToUnitPage}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow transition"
+                >
+                  View Unit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      )}
     </div >
   );
 };
