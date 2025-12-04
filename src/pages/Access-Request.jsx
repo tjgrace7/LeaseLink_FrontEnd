@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import CalendlyInline from "../components/Calendly";
 
+
 /**
  * RequestAccess (UI-refactor)
  * ------------------------------------------------------------------
@@ -51,7 +52,11 @@ const RequestAccess = () => {
   const [companyName, setCompanyName] = useState("");
   const [numberOfUnits, setNumberOfUnits] = useState("");
   const [message, setMessage] = useState("");
+  const [code, setCode] = useState("")
   const [agree, setAgree] = useState(false); // NEW: must agree to policies
+
+
+  const supabaseurl = import.meta.env.VITE_SUPABASE_URL;
 
   // -------------------- ui state ----------------------
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,11 +116,31 @@ const RequestAccess = () => {
         company_name: companyName.trim(),
         number_of_units: Number(numberOfUnits),
         message: message.trim() || null,
+        PrivacyPolicy: agree
       };
 
-      const { error } = await supabase.from("access_requests").insert(payload);
+      const { data, error } = await supabase.from("access_requests").insert(payload).select().single();
       if (error) throw error;
+      console.log(data)
 
+
+      if(code) {
+        const response = await fetch(`${supabaseurl}/functions/v1/Site_Key_Access_Request`, {
+        method:"POST",
+        body: JSON.stringify({
+          code,
+          request_id: data.id
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        console.error(" error:", result);
+        return;
+      }
+      else 
+        navigate('/check-email')
+        return;
+      }
       // Navigate to thank-you screen on success
       navigate("/thank-you");
     } catch (err) {
@@ -234,7 +259,19 @@ const RequestAccess = () => {
                     <ErrorText>Enter a non-negative number.</ErrorText>
                   )}
                 </div>
-
+                {/*Have an Access Code*/}
+                <div>
+                  <Label htmlFor='accesscode'>Do you have an Access Code?</Label>
+                  <input
+                  id="accesscode"
+                  type="string"
+                  value={code}
+                  onChange={(e) => 
+                  {
+                    setCode(e.target.value)}}
+                  className={inputBase}
+                  />
+                </div>
                 {/* Message */}
                 <div>
                   <Label htmlFor="message">

@@ -18,7 +18,25 @@ import { GTMUpload } from "../components/gtag";
  *  3) Processing
  *  4) Done / Error
  */
-
+  // XHR PUT to get upload progress (fetch has no native upload progress)
+  export const putWithProgress = (signedUrl, file, contentType, onProgress) =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl, true);
+      xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && typeof onProgress === "function") {
+          const pct = Math.round((evt.loaded / evt.total) * 100);
+          onProgress(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || ""}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
+    });
 const UploadLeases = () => {
   const { session, userData } = useAuth();
   const navigate = useNavigate();
@@ -60,25 +78,7 @@ const UploadLeases = () => {
       [id]: { ...(prev[id] || {}), ...patch },
     }));
 
-  // XHR PUT to get upload progress (fetch has no native upload progress)
-  const putWithProgress = (signedUrl, file, contentType, onProgress) =>
-    new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", signedUrl, true);
-      xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
-      xhr.upload.onprogress = (evt) => {
-        if (evt.lengthComputable && typeof onProgress === "function") {
-          const pct = Math.round((evt.loaded / evt.total) * 100);
-          onProgress(pct);
-        }
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || ""}`));
-      };
-      xhr.onerror = () => reject(new Error("Network error during upload"));
-      xhr.send(file);
-    });
+
 
   // ----------------- Fetch Tenants on Load -----------------
   useEffect(() => {

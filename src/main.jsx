@@ -41,6 +41,8 @@ import InviteComplete from './pages/changePassword';
 
 import { useLocation } from 'react-router-dom';
 import IntegrationsResponsePage from './pages/Integrations';
+import SpecialAccess from './pages/specialAccess';
+import CheckEmail from './pages/checkEmail';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -70,6 +72,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>
+          <Route path='check-email' element={<CheckEmail/>}/>
 
           <Route path='/privacy_policy' element={<Privacy/>}/>
           <Route path='/terms' element={<TermsAndConditions/>}/>
@@ -98,6 +101,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
             <Route path='/settings/integrations' element={<ProtectedRoute><IntegrationsResponsePage/></ProtectedRoute>}/>
+            <Route path='/special-access' element={<ProtectedRoute><SpecialAccess/></ProtectedRoute>}/>
           </Route>
         </Routes>
       </AuthProvider>

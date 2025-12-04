@@ -20,6 +20,7 @@ const TopNav = () => {
   const navigate = useNavigate();
   const [imposter, setImposter] = useState(false)
   const [emailIntegrated, setEmailIntegrated] = useState(false)
+  const [firstValue, setFirstValue] = useState(true)
 
   const auth_id = session?.user?.id;
   const access_token = session?.access_token;
@@ -29,7 +30,9 @@ const TopNav = () => {
   useEffect(() => {
     if (!userData) return
     if (userData.Imposter) setImposter(true)
+    setFirstValue(userData.First_Value)
   }, [userData])
+
 
   useEffect(() => {
     if (!emailAccess) return;
@@ -79,6 +82,7 @@ const TopNav = () => {
 
   return (
     <div className="sticky top-0 z-40 bg-black/40 backdrop-blur-md border-b border-white/10 text-white">
+      {firstValue && (
       <div className="mx-auto flex max-w-full items-center justify-between px-3 py-2 md:px-4 md:py-3">
         {/* Brand / Home */}
         <button
@@ -217,6 +221,7 @@ const TopNav = () => {
           </div>
         </div>
       </div>
+      )}
       {imposter && (
         <button
           type="button"
@@ -231,7 +236,9 @@ const TopNav = () => {
           Cancel Imposter Mode
         </button>
       )}
+    
     </div>
+      
   );
 };
 

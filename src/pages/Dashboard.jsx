@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { session} = useAuth();
+  const { session, userData} = useAuth();
 
   // ——— Date window: first day of this month → now (ISO)
   const { startISO, nowISO } = useMemo(() => {
@@ -121,6 +121,27 @@ const Dashboard = () => {
     }
   }, [isReady, activeCompanyId]);
 
+  useEffect(() => {
+    if(!userData) return;
+    if(!userData.First_Value )
+      {
+        const getRole = async () => {
+          const {data, error} = await supabase.from('Roles').select("*").eq(id, userData.role_id).single()
+          if(error) {
+            console.error("Error Fetching Role")
+          }
+          if(data.Create_Properties)
+          {
+            navigate('/special-access')
+          }
+          else {
+            navigate('/chat')
+          }
+        }
+        getRole()
+
+      }
+  })
   useEffect(() => {
     if (!isReady) return;
     fetchKpis();
