@@ -9,6 +9,7 @@ import { supabase } from "../supabaseClient";
 import { getTable } from "../utilities/supabaseCalls";
 import { GTMUpload } from "../components/gtag";
 import { putWithProgress, preLoadedChat } from "../utilities/Generic";
+import { LoadingSpinner } from "../utilities/Generic";
 
 const specialAccess = () => {
     const navigate = useNavigate();
@@ -54,6 +55,11 @@ const specialAccess = () => {
     const [tenantName, setTenantName] = useState("")
     const [property_id, setPropertyId] = useState("")
     const [unit_id, setUnitId] = useState("")
+    useEffect(() => {
+        if(!submittingFiles) return;
+        LoadingSpinner()
+
+    }, [submittingFiles])
     useEffect(() => {
         if (!userData) return;
         const getEntities = async () => {
@@ -237,17 +243,11 @@ const specialAccess = () => {
             throw new Error("Edge function did not return expected fields.");
         }
 
-        // Step 2: Upload with progress
-        setStatus(id, { step: "Uploading", message: "Uploading to storage…", progress: 0 });
         await putWithProgress(
             signed_url,
             file[0],
             file[0].type || "application/octet-stream",
-            (pct) => setStatus(id, { progress: pct })
         );
-        setStatus(id, { step: "Processing", message: "Starting file processing…" });
-
-        setStatus(id, { step: "Done", message: "Finished!", progress: 100, done: true });
         const lease_request = {
             user_id: session.user.id,
             property_id: property_id,
@@ -259,7 +259,7 @@ const specialAccess = () => {
         }
 
         try {
-            submittingFiles(true);
+            setSubmitFiles(true);
             const serverRes = await fetch(`${serverurl}/firstLease`, {
                 method: "POST",
                 headers: {
