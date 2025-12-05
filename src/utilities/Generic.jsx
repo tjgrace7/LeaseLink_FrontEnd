@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../components/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Archive an entity and (optionally) its dependents by flipping `archived: true`.
@@ -193,3 +194,33 @@ export const UnarchiveEntity = async (entity, entity_id) => {
 
   return { ok: errors.length === 0, errors };
 };
+
+  export const putWithProgress = (signedUrl, file, contentType, onProgress) =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl, true);
+      xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && typeof onProgress === "function") {
+          const pct = Math.round((evt.loaded / evt.total) * 100);
+          onProgress(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || ""}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
+    });
+
+  export const preLoadedChat = (entityId, entityType, entityName) => {
+    const navigate = useNavigate();
+        localStorage.setItem("chat_session_id", crypto.randomUUID());
+    localStorage.setItem('entity_id', entityId);
+    localStorage.setItem('entity_type', entityType.toLowerCase());
+    localStorage.setItem('entity_selected', 'true')
+    localStorage.setItem('isNewNavigation', 'true')
+    localStorage.setItem('entity_name', entityName)
+    navigate('/chat')
+  }

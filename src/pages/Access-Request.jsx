@@ -116,20 +116,16 @@ const RequestAccess = () => {
         company_name: companyName.trim(),
         number_of_units: Number(numberOfUnits),
         message: message.trim() || null,
-        PrivacyPolicy: agree
-      };
-
-      const { data, error } = await supabase.from("access_requests").insert(payload).select().single();
-      if (error) throw error;
-      console.log(data)
+        PrivacyPolicy: agree,
+      }
 
 
-      if(code) {
+
         const response = await fetch(`${supabaseurl}/functions/v1/Site_Key_Access_Request`, {
         method:"POST",
         body: JSON.stringify({
           code,
-          request_id: data.id
+          payload: payload
         }),
       });
       const result = await response.json();
@@ -137,12 +133,17 @@ const RequestAccess = () => {
         console.error(" error:", result);
         return;
       }
-      else 
+      console.log(result)
+      if(result.accessCode)
+      {
         navigate('/check-email')
         return;
       }
-      // Navigate to thank-you screen on success
-      navigate("/thank-you");
+      else 
+        // Navigate to thank-you screen on success
+        navigate("/thank-you");
+      
+      
     } catch (err) {
       console.error(err);
       setError("There was a problem submitting your request. Please try again.");

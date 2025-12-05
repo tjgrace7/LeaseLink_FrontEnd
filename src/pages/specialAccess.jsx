@@ -8,18 +8,24 @@ import { useAuth } from "../components/AuthProvider";
 import { supabase } from "../supabaseClient";
 import { getTable } from "../utilities/supabaseCalls";
 import { GTMUpload } from "../components/gtag";
-import { putWithProgress } from "./UploadLeases";
+import { putWithProgress, preLoadedChat } from "../utilities/Generic";
 
 const specialAccess = () => {
     const navigate = useNavigate();
     const { userData, session } = useAuth()
     const [currentH1, setH1] = useState("")
-    const [Stage, setStage] = useState("Entity Create")
+    const [Stage, setStage] = useState("Upload")
     const [errors, setErrors] = useState({});
     const [buttonText, setButtonText] = useState("Next")
     const [submitting, setSubmitting] = useState(false)
 
+
+    const [fileStatus, setFileStatus] = useState({})
+    const [completed, setCompleted] = useState(false);
+    const [submittingFiles, setSubmitFiles] = useState(false)
+
     const supabaseurl = import.meta.env.VITE_SUPABASE_URL;
+    const serverurl = import.meta.env.VITE_SERVER_URL;
     const [Entity, setEntity] = useState({
         square_footage: "",
         label: "", // Address (Unit) or Property Name (Property)
@@ -38,7 +44,14 @@ const specialAccess = () => {
         type: ''
     })
 
+    const setStatus = (id, patch) =>
+        setFileStatus((prev) => ({
+            ...prev,
+            [id]: { ...(prev[id] || {}), ...patch },
+        }));
+
     const [tenant_id, setTenantId] = useState("")
+    const [tenantName, setTenantName] = useState("")
     const [property_id, setPropertyId] = useState("")
     const [unit_id, setUnitId] = useState("")
     useEffect(() => {
@@ -54,7 +67,7 @@ const specialAccess = () => {
 
             if (properties.length < 1) {
 
-                setStage('Entity Create')
+                setStage('Upload')
                 console.log("Stage Set")
 
             } else {
@@ -82,7 +95,7 @@ const specialAccess = () => {
         getEntities()
     }, [userData])
 
-    SubmitEntities = async () => {
+    const SubmitEntities = async () => {
         const newErrors = {}
         if (!Entity.label) newErrors.label = true
         if (!Entity.square_footage) newErrors.square_footage = true
@@ -152,6 +165,7 @@ const specialAccess = () => {
         console.log(unitResult)
         setPropertyId(result.property_id)
         setUnitId(unitResult.unit_id)
+        setTenantName(Entity.tenantName)
         const propertyData = await getTable('properties', 'prop_id', result.property_id)
         const unitData = await getTable('Units', 'unit_id', unitResult.unit_id)
         const tenantPayload = {
@@ -183,6 +197,7 @@ const specialAccess = () => {
         setStage("Upload")
     }
     const Uploading = async () => {
+        if (completed || submittingFiles) return;
         const groupId = crypto.randomUUID()
         const res = await fetch(`${supabaseurl}/functions/v1/generate_upload_url`, {
             method: "POST",
@@ -199,7 +214,6 @@ const specialAccess = () => {
                 contentType: file.type || "application/octet-stream",
                 user_id: session.user.id,
                 group_id: groupId,
-                quene: false
             }),
         });
         if (!res.ok) {
@@ -207,7 +221,7 @@ const specialAccess = () => {
             throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
         }
         GTMUpload()
-        const { signed_url, lease_file_path, bucket, job_id, error: fxError } = await res.json();
+        const { lease_id, signed_url, lease_file_path, bucket, job_id, error: fxError } = await res.json();
         if (fxError) throw new Error(fxError);
         if (!signed_url || !lease_file_path || !bucket) {
             throw new Error("Edge function did not return expected fields.");
@@ -224,14 +238,61 @@ const specialAccess = () => {
         setStatus(id, { step: "Processing", message: "Starting file processing…" });
 
         setStatus(id, { step: "Done", message: "Finished!", progress: 100, done: true });
+        const lease_request = {
+            user_id: session.user.id,
+            property_id: property_id,
+            unit_id: unit_id,
+            file_path: lease_file_path,
+            lease_document_id: lease_id,
+            bucket: bucket,
+            company_id: userData.company_id
+        }
+        
+        try {
+            submittingFiles(true);
+            const serverRes = await fetch(`${serverurl}/firstLease`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    auth_id: session.user.id,
+                    lease_data: lease_request,
+                    job_id: job_id,
+                    group_id: groupId
+                }),
+            });
+            // If FastAPI raised HTTPException or an unhandled error → !ok
+            if (!serverRes.ok) {
+                const errorBody = await serverRes.json().catch(() => null);
+
+                const message =
+                    errorBody?.detail ||          // from HTTPException(detail="...")
+                    errorBody?.error ||           // from JSONResponse({"error": ...})
+                    `Request failed with status ${serverRes.status}`;
+
+                throw new Error(message);
+            }
+
+            data = await serverRes.json(); // success path
+            console.log("Success:", data);
+            submittingFiles(false)
+            preLoadedChat(tenant_id, "tenant", )
+        } catch (err) {
+            console.error("firstLease error:", err);
+            submittingFiles(false)
+            // Show toast, set error state, etc.
+            // setError(err.message);
+        }
+
+
+
     }
     const buttonClick = async () => {
         console.log(Stage)
         if (Stage === "Entity Create") {
             SubmitEntities();
-        }
-        else if (Stage === "Upload") {
-            Uploading()
         }
 
     }
@@ -242,8 +303,31 @@ const specialAccess = () => {
         const { name, value } = e.target;
         setEntity((prev) => ({ ...prev, [name]: value }));
     };
+
+    const handleFileChange = (event) => {
+        const incoming = Array.from(event.target.files || []);
+        // If picking new files after a completed run, unlock a new run
+        if (incoming.length > 0 && completed) setCompleted(false);
+        console.log(incoming)
+        setFile(incoming);
+
+        // Initialize statuses
+        const init = {};
+
+
+        init = {
+            name: incoming.name,
+            step: "Ready",
+            progress: 0,
+            message: "",
+            error: null,
+            done: false,
+        };
+
+        setFileStatus(init);
+    };
     return (
-        <div className="mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8 py-6">
+        <div className="mx-auto w-full max-w-4xl px-4 md:px-6 lg:px-8 py-6">
             <h1>{currentH1}</h1>
             <div className="flex items-center gap-3 mb-6">
 
@@ -349,7 +433,7 @@ const specialAccess = () => {
                                     </Field>
                                 </div>
                             </SectionCard>
-                            <div className="flex items-left">
+                            <div className="flex justify-end mt-4">
                                 <button
                                     onClick={buttonClick}
                                     disabled={submitting}
@@ -363,7 +447,26 @@ const specialAccess = () => {
 
                     {Stage === "Upload" && (
                         <div>
+                            <SectionCard title="Upload 1 Lease!">
 
+                                <Input
+                                    type='file'
+                                    single
+                                    onChange={handleFileChange}
+
+                                    disabled={submittingFiles || completed}
+                                    aria-label="Select one or more lease files to upload"
+                                />
+                            </SectionCard>
+                            <div className="flex justify-end mt-4">
+                                <button
+                                    onClick={Uploading}
+                                    disabled={submittingFiles}
+                                    type="button"
+                                    className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed p-4">
+                                    Upload File
+                                </button>
+                            </div>
                         </div>
                     )}
 
