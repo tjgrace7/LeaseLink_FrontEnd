@@ -199,6 +199,7 @@ const specialAccess = () => {
     const Uploading = async () => {
         if (completed || submittingFiles) return;
         const groupId = crypto.randomUUID()
+        console.log
         const res = await fetch(`${supabaseurl}/functions/v1/generate_upload_url`, {
             method: "POST",
             headers: {
@@ -210,8 +211,8 @@ const specialAccess = () => {
                 tenant_id: tenant_id,
                 property_id: property_id,
                 unit_id: unit_id,
-                filename: file.name,
-                contentType: file.type || "application/octet-stream",
+                filename: file[0].name,
+                contentType: file[0].type || "application/octet-stream",
                 user_id: session.user.id,
                 group_id: groupId,
             }),
@@ -231,8 +232,8 @@ const specialAccess = () => {
         setStatus(id, { step: "Uploading", message: "Uploading to storage…", progress: 0 });
         await putWithProgress(
             signed_url,
-            file,
-            file.type || "application/octet-stream",
+            file[0],
+            file[0].type || "application/octet-stream",
             (pct) => setStatus(id, { progress: pct })
         );
         setStatus(id, { step: "Processing", message: "Starting file processing…" });
@@ -343,7 +344,7 @@ const specialAccess = () => {
                                         <Input
                                             id="label"
                                             name="label"
-                                            placeholder={(Stage === "Property/Unit" ? "Enter property name" : "Enter Tenant Name")}
+                                            placeholder="Enter property name"
                                             value={Entity.label}
                                             onChange={handleChange}
                                         />
