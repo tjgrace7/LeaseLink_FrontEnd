@@ -311,11 +311,10 @@ const specialAccess = () => {
         console.log(incoming)
         setFile(incoming);
 
-        // Initialize statuses
-        const init = {};
 
 
-        init = {
+
+        const init = {
             name: incoming.name,
             step: "Ready",
             progress: 0,
