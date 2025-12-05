@@ -55,11 +55,7 @@ const specialAccess = () => {
     const [tenantName, setTenantName] = useState("")
     const [property_id, setPropertyId] = useState("")
     const [unit_id, setUnitId] = useState("")
-    useEffect(() => {
-        if(!submittingFiles) return;
-        LoadingSpinner()
 
-    }, [submittingFiles])
     useEffect(() => {
         if (!userData) return;
         const getEntities = async () => {
@@ -204,7 +200,7 @@ const specialAccess = () => {
     const Uploading = async () => {
         if (completed || submittingFiles) return;
         const groupId = crypto.randomUUID()
-        setSubmitFiles(true);
+        setSubmitting(true);
         const { error } = await supabase.from('upload_groups').insert({
             id: groupId,
             company_id: userData.company_id,
@@ -337,7 +333,9 @@ const specialAccess = () => {
     };
     return (
         <div className="mx-auto w-full max-w-4xl px-4 md:px-6 lg:px-8 py-6">
+            
             <h1>{currentH1}</h1>
+            {!submitting &&(
             <div className="flex items-center gap-3 mb-6">
 
                 <DisplayBox className="p-4 md:p-4 flex justify-center">
@@ -482,7 +480,10 @@ const specialAccess = () => {
 
                 </DisplayBox>
             </div >
+            )}
+            {submitting && <LoadingSpinner/>}
         </div >
+        
     )
 }
 
