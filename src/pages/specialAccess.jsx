@@ -162,7 +162,7 @@ const specialAccess = () => {
         });
         const unitResult = await unitResponse.json();
         if (!unitResponse.ok) {
-            console.error(" error:", result);
+            console.error(" error:", unitResult.error);
             alert(unitResult.error || `Failed to create Unit.`);
             setSubmitting(false);
             return;
@@ -204,6 +204,7 @@ const specialAccess = () => {
     const Uploading = async () => {
         if (completed || submittingFiles) return;
         const groupId = crypto.randomUUID()
+        setSubmitFiles(true);
         const { error } = await supabase.from('upload_groups').insert({
             id: groupId,
             company_id: userData.company_id,
@@ -258,7 +259,7 @@ const specialAccess = () => {
         }
 
         try {
-            setSubmitFiles(true);
+            
             const serverRes = await fetch(`${serverurl}/firstLease`, {
                 method: "POST",
                 headers: {
@@ -286,11 +287,11 @@ const specialAccess = () => {
 
             data = await serverRes.json(); // success path
             console.log("Success:", data);
-            submittingFiles(false)
+            setSubmitFiles(false)
             preLoadedChat(tenant_id, "tenant",)
         } catch (err) {
             console.error("firstLease error:", err);
-            submittingFiles(false)
+            setSubmitFiles(false)
             // Show toast, set error state, etc.
             // setError(err.message);
         }
