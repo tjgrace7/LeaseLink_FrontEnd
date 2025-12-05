@@ -199,6 +199,15 @@ const specialAccess = () => {
     const Uploading = async () => {
         if (completed || submittingFiles) return;
         const groupId = crypto.randomUUID()
+        const { error } = await supabase.from('upload_groups').insert({
+            id: groupId,
+            company_id: userData.company_id,
+            total_jobs: 1,
+            tenantId: tenant_id
+        })
+        if (error) {
+            console.error("Group Upload Error")
+        }
         console.log
         const res = await fetch(`${supabaseurl}/functions/v1/generate_upload_url`, {
             method: "POST",
@@ -248,7 +257,7 @@ const specialAccess = () => {
             bucket: bucket,
             company_id: userData.company_id
         }
-        
+
         try {
             submittingFiles(true);
             const serverRes = await fetch(`${serverurl}/firstLease`, {
@@ -279,7 +288,7 @@ const specialAccess = () => {
             data = await serverRes.json(); // success path
             console.log("Success:", data);
             submittingFiles(false)
-            preLoadedChat(tenant_id, "tenant", )
+            preLoadedChat(tenant_id, "tenant",)
         } catch (err) {
             console.error("firstLease error:", err);
             submittingFiles(false)
