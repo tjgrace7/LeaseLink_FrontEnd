@@ -14,7 +14,7 @@ const specialAccess = () => {
     const navigate = useNavigate();
     const { userData, session } = useAuth()
     const [currentH1, setH1] = useState("")
-    const [Stage, setStage] = useState("Upload")
+    const [Stage, setStage] = useState("Create Person")
     const [errors, setErrors] = useState({});
     const [buttonText, setButtonText] = useState("Next")
     const [submitting, setSubmitting] = useState(false)
