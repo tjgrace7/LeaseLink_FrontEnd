@@ -78,52 +78,61 @@ const LoadPreviousMessages = ({
   }, [listHeight, autoSize, previousChats.length, maxRowsBeforeScroll, listMaxHeight, listMinHeight]);
 
   return (
-    <DisplayBox className={`w-full ${className}`}>
-      <section className="bg-lease-gradient text-white p-5 sm:p-6 rounded-xl w-full">
-        {/* Header */}
-        <div className="flex items-center justify-center pb-4 sm:pb-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center" aria-label="Previous Messages list">
-            Previous Messages
-          </h1>
-        </div>
+    <div>
+      {previousChats.length &&
+        <DisplayBox className={`w-full ${className}`}>
+          <section className="bg-lease-gradient text-white p-5 sm:p-6 rounded-xl w-full">
+            {/* Header */}
+            <div className="flex items-center justify-center pb-4 sm:pb-5">
+              <h1 className="text-2xl sm:text-3xl font-bold text-center" aria-label="Previous Messages list">
+                Previous Messages
+              </h1>
+            </div>
 
-        {/* Body */}
-        {isLoading ? (
-          <p className="text-sm text-gray-200/90">Loading…</p>
-        ) : previousChats.length === 0 ? (
-          <p className="text-sm text-gray-200/90">No Previous Chats</p>
-        ) : (
-          <div className="rounded-lg ring-1 ring-white/10 p-1">
-            <ul className={`space-y-2 pr-1 ${listSizing}`}>
-              {previousChats.map((chat, idx) => {
-                const title = chat?.title || `Chat ${idx + 1}`;
-                const when = formatWhen(chat);
-                return (
-                  <li key={chat.session_id || idx} className="last:mb-0">
-                    <button
-                      onClick={() => loadChat(chat)}
-                      className="w-full text-left border border-white/20 hover:border-white/40 focus:border-white/60 transition-colors
+            {/* Body */}
+            {isLoading ? (
+              <p className="text-sm text-gray-200/90">Loading…</p>
+            ) : previousChats.length === 0 ? (
+              <p className="text-sm text-gray-200/90">No Previous Chats</p>
+            ) : (
+              <div className="rounded-lg ring-1 ring-white/10 p-1">
+                <ul className={`space-y-2 pr-1 ${listSizing}`}>
+                  {previousChats.map((chat, idx) => {
+                    const title = chat?.title || `Chat ${idx + 1}`;
+                    const when = formatWhen(chat);
+                    return (
+                      <li key={chat.session_id || idx} className="last:mb-0">
+                        <button
+                          onClick={() => loadChat(chat)}
+                          className="w-full text-left border border-white/20 hover:border-white/40 focus:border-white/60 transition-colors
                                  px-4 sm:px-5 py-3 sm:py-3.5 rounded-lg bg-white/5 hover:bg-white/10"
-                      title={title}
-                      aria-label={`Open chat ${title}`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
-                        <span className="font-medium text-base sm:text-lg leading-tight break-words">
-                          {title}
-                        </span>
-                        <span className="text-xs sm:text-sm text-white/80">
-                          {when ? when : chat.session_id}
-                        </span>
-                      </div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-      </section>
-    </DisplayBox>
+                          title={title}
+                          aria-label={`Open chat ${title}`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
+                            <span className="font-medium text-base sm:text-lg leading-tight break-words">
+                              {title}
+                            </span>
+                            <span className="text-xs sm:text-sm text-white/80">
+                              {when ? when : chat.session_id}
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </section>
+        </DisplayBox>
+      } : {
+        <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+          <p className="text-base font-medium">No Messages yet</p>
+          <p className="text-sm opacity-70 mt-1">Chat with AI to see it here!</p>
+        </div>
+      }
+    </div>
   );
 };
 

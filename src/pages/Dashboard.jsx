@@ -126,7 +126,7 @@ const Dashboard = () => {
     if(!userData.First_Value )
       {
         const getRole = async () => {
-          const {data, error} = await supabase.from('Roles').select("*").eq(id, userData.role_id).single()
+          const {data, error} = await supabase.from('Roles').select("*").eq('id', userData.role_id).single()
           if(error) {
             console.error("Error Fetching Role")
           }
