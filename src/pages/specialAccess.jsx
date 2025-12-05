@@ -111,7 +111,6 @@ const specialAccess = () => {
         if (!Entity.state) newErrors.state = true
         if (!Entity.zip) newErrors.zip = true
         if (!Entity.tenantName) newErrors.tenantName = true
-        if (!Entity.DBA) newErrors.DBA = true
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
@@ -432,7 +431,7 @@ const specialAccess = () => {
                                             onChange={handleChange}
                                         />
                                     </Field>
-                                    <Field label='Tenant DBA' htmlFor='dba' error={errors.dba}>
+                                    <Field label='Tenant DBA' htmlFor='dba'>
                                         <Input
                                             id='DBA'
                                             name='DBA'
