@@ -67,7 +67,7 @@ const specialAccess = () => {
 
             if (properties.length < 1) {
 
-                setStage('Upload')
+                setStage('Entity Create')
                 console.log("Stage Set")
 
             } else {
