@@ -238,7 +238,7 @@ const Dashboard = () => {
               {activeCompanyId && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
                   <LoadPreviousMessages
-                    className="w-full"
+                    className="w-full h-full"
                     entityId={activeCompanyId}
                     session={session}
                     entityType="company"
