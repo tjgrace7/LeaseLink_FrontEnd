@@ -597,6 +597,12 @@ const ChatPage = () => {
       const assistantCount = current.filter((m) => m.role === "assistant").length;
       pollForNextAssistantResponse(assistantCount);
       GTMChatResponse(true)
+      if(!userData.First_Value) {
+        const {data, error} = await supabase.from('User_Data').update({"First_Value": true}).eq('auth_id', session.user.id)
+        if (error) {
+          console.error("Error Updating User", error)
+        }
+      }
     } catch (err) {
       console.error("Message Send Failed", err);
       GTMChatResponse(false)
