@@ -250,6 +250,7 @@ const specialAccess = () => {
             user_id: session.user.id,
             property_id: property_id,
             unit_id: unit_id,
+            tenant_id: tenant_id,
             file_path: lease_file_path,
             lease_document_id: lease_id,
             bucket: bucket,
