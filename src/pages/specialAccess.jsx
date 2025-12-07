@@ -193,6 +193,8 @@ const specialAccess = () => {
             return;
         }
 
+        setSubmitting(false)
+
         setTenantId(tenantResult.id)
         setButtonText("Chat")
         setStage("Upload")
