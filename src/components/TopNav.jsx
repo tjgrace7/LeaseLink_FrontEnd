@@ -42,7 +42,7 @@ const TopNav = () => {
         console.log("No Sync Logs Available", error)
         return
       }
-      if (data.sync_status === 'complete') {
+      if (data.sync_status === 'complete' || data.sync_status === 'error') {
         setEmailIntegrated(true)
       }
       else {
