@@ -67,12 +67,7 @@ const specialAccess = () => {
                 return
             }
 
-            if (properties.length < 1) {
-
-                setStage('Entity Create')
-                console.log("Stage Set")
-
-            } else {
+            if (properties.length >= 1) {
                 const { data: units, error: unitError } = await supabase.from("Units").select("*").eq("pmcompany_id", userData.company_id);
                 if (unitError) {
                     console.error("Error Fetching Units")
@@ -258,7 +253,7 @@ const specialAccess = () => {
         }
 
         try {
-            
+
             const serverRes = await fetch(`${serverurl}/firstLease`, {
                 method: "POST",
                 headers: {
@@ -273,6 +268,7 @@ const specialAccess = () => {
                 }),
             });
             // If FastAPI raised HTTPException or an unhandled error → !ok
+            console.log("serverRes", serverRes);
             if (!serverRes.ok) {
                 const errorBody = await serverRes.json().catch(() => null);
 
@@ -284,10 +280,10 @@ const specialAccess = () => {
                 throw new Error(message);
             }
 
-            data = await serverRes.json(); // success path
+            const data = await serverRes.json(); // success path
             console.log("Success:", data);
             setSubmitFiles(false)
-            preLoadedChat(tenant_id, "tenant",)
+            preLoadedChat({entityId:tenant_id, entityType:"tenant", entityName:Entity.tenantName, navigate})
         } catch (err) {
             console.error("firstLease error:", err);
             setSubmitFiles(false)
@@ -336,157 +332,161 @@ const specialAccess = () => {
     };
     return (
         <div className="mx-auto w-full max-w-4xl px-4 md:px-6 lg:px-8 py-6">
-            
+
             <h1>{currentH1}</h1>
-            {!submitting &&(
-            <div className="flex items-center gap-3 mb-6">
+            {!submitting && (
+                <div className="flex items-center gap-3 mb-6">
 
-                <DisplayBox className="p-4 md:p-4 flex justify-center">
+                    <DisplayBox className="p-4 md:p-4 flex justify-center">
 
-                    {/* Left: Form (2 cols on desktop) */}
-                    {Stage === "Entity Create" && (
-                        <div>
-                            <SectionCard title='Property' >
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        {/* Left: Form (2 cols on desktop) */}
+                        {Stage === "Entity Create" && (
+                            <div>
+                                <SectionCard title='Property' >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
 
 
-                                    <Field label="Property Name" htmlFor="label" error={errors.label}>
-                                        <Input
-                                            id="label"
-                                            name="label"
-                                            placeholder="Enter property name"
-                                            value={Entity.label}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label="City" htmlFor="city" error={errors.city}>
-                                        <Input
-                                            id="city"
-                                            name="city"
-                                            placeholder="Enter city"
-                                            value={Entity.city}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label="State" htmlFor="state" error={errors.state}>
-                                        <Input
-                                            id="state"
-                                            name="state"
-                                            placeholder="Enter state (e.g., IN)"
-                                            value={Entity.state}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label="Zip Code" htmlFor="zip" error={errors.zip}>
-                                        <Input
-                                            id="zip"
-                                            name="zip"
-                                            placeholder="Enter ZIP"
-                                            value={Entity.zip}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
+                                        <Field label="Property Name" htmlFor="label" error={errors.label}>
+                                            <Input
+                                                id="label"
+                                                name="label"
+                                                placeholder="Enter property name"
+                                                value={Entity.label}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label="City" htmlFor="city" error={errors.city}>
+                                            <Input
+                                                id="city"
+                                                name="city"
+                                                placeholder="Enter city"
+                                                value={Entity.city}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label="State" htmlFor="state" error={errors.state}>
+                                            <Input
+                                                id="state"
+                                                name="state"
+                                                placeholder="Enter state (e.g., IN)"
+                                                value={Entity.state}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label="Zip Code" htmlFor="zip" error={errors.zip}>
+                                            <Input
+                                                id="zip"
+                                                name="zip"
+                                                placeholder="Enter ZIP"
+                                                value={Entity.zip}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
 
+                                    </div>
+                                </SectionCard>
+                                <SectionCard title='unit'>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+
+
+                                        <Field label="Unit Address" htmlFor='address' error={errors.address}>
+                                            <Input
+                                                id="address"
+                                                name='address'
+                                                placeholder='Enter Unit Address'
+                                                value={Entity.address}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label="Suite" htmlFor='suite' error={errors.suite}>
+                                            <Input
+                                                id='suite'
+                                                name='suite'
+                                                placeholder='Enter Suite (e.g. 12A)'
+                                                value={Entity.suite}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label='Square Footage' htmlFor='squarefoot' error={errors.square_footage}>
+                                            <Input
+                                                id='squarefoot'
+                                                name='square_footage'
+                                                placeholder="Suite's Square Footage"
+                                                value={Entity.square_footage}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                    </div>
+                                </SectionCard>
+                                <SectionCard title='Tenant'>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                                        <Field label="Tenant Name" htmlFor='tenantName' error={errors.tenantName}>
+                                            <Input
+                                                id='tenantName'
+                                                name='tenantName'
+                                                placeholder='Enter Tenant Name'
+                                                value={Entity.tenantName}
+                                                onChange={handleChange}
+                                            />
+                                        </Field>
+                                        <Field label='Tenant DBA' htmlFor='dba'>
+                                            <Input
+                                                id='DBA'
+                                                name='DBA'
+                                                placeholder="Enter Tenant DBA Name"
+                                                value={Entity.DBA}
+                                                onChange={handleChange} />
+                                        </Field>
+                                    </div>
+                                </SectionCard>
+                                <div className="flex justify-end mt-4">
+                                    <button
+                                        onClick={buttonClick}
+                                        disabled={submitting}
+                                        type="button"
+                                        className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed p-4">
+                                        {buttonText}
+                                    </button>
                                 </div>
-                            </SectionCard>
-                            <SectionCard title='unit'>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-
-
-                                    <Field label="Unit Address" htmlFor='address' error={errors.address}>
-                                        <Input
-                                            id="address"
-                                            name='address'
-                                            placeholder='Enter Unit Address'
-                                            value={Entity.address}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label="Suite" htmlFor='suite' error={errors.suite}>
-                                        <Input
-                                            id='suite'
-                                            name='suite'
-                                            placeholder='Enter Suite (e.g. 12A)'
-                                            value={Entity.suite}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label='Square Footage' htmlFor='squarefoot' error={errors.square_footage}>
-                                        <Input
-                                            id='squarefoot'
-                                            name='square_footage'
-                                            placeholder="Suite's Square Footage"
-                                            value={Entity.square_footage}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                </div>
-                            </SectionCard>
-                            <SectionCard title='Tenant'>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                                    <Field label="Tenant Name" htmlFor='tenantName' error={errors.tenantName}>
-                                        <Input
-                                            id='tenantName'
-                                            name='tenantName'
-                                            placeholder='Enter Tenant Name'
-                                            value={Entity.tenantName}
-                                            onChange={handleChange}
-                                        />
-                                    </Field>
-                                    <Field label='Tenant DBA' htmlFor='dba'>
-                                        <Input
-                                            id='DBA'
-                                            name='DBA'
-                                            placeholder="Enter Tenant DBA Name"
-                                            value={Entity.DBA}
-                                            onChange={handleChange} />
-                                    </Field>
-                                </div>
-                            </SectionCard>
-                            <div className="flex justify-end mt-4">
-                                <button
-                                    onClick={buttonClick}
-                                    disabled={submitting}
-                                    type="button"
-                                    className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed p-4">
-                                    {buttonText}
-                                </button>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {Stage === "Upload" && (
-                        <div>
-                            <SectionCard title="Upload 1 Lease!">
+                        {Stage === "Upload" && (
+                            <div>
+                                <SectionCard title="Upload 1 Lease!">
 
-                                <Input
-                                    type='file'
-                                    single
-                                    onChange={handleFileChange}
+                                    <Input
+                                        type='file'
+                                        single
+                                        onChange={handleFileChange}
 
-                                    disabled={submittingFiles || completed}
-                                    aria-label="Select one or more lease files to upload"
-                                />
-                            </SectionCard>
-                            <div className="flex justify-end mt-4">
-                                <button
-                                    onClick={Uploading}
-                                    disabled={submittingFiles}
-                                    type="button"
-                                    className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed p-4">
-                                    Upload File
-                                </button>
+                                        disabled={submittingFiles || completed}
+                                        aria-label="Select one or more lease files to upload"
+                                    />
+                                </SectionCard>
+                                <div className="flex justify-end mt-4">
+                                    <button
+                                        onClick={Uploading}
+                                        disabled={submittingFiles}
+                                        type="button"
+                                        className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed p-4">
+                                        Upload File
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
 
-                </DisplayBox>
-            </div >
+                    </DisplayBox>
+                </div >
             )}
-            {submitting && <LoadingSpinner/>}
+            {submitting &&
+                <div>
+                    <LoadingSpinner />
+                    <p className="text-center mt-4 text-gray-400">Processing. This can take several Minutes. Please Do not Leave this page</p>
+                </div>}
         </div >
-        
+
     )
 }
 

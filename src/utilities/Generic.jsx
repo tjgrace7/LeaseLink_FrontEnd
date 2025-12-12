@@ -216,8 +216,9 @@ export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =
     }
   });
 
-export const preLoadedChat = (entityId, entityType, entityName) => {
-  const navigate = useNavigate();
+export const preLoadedChat = ({entityId, entityType, entityName, navigate}) => {
+
+  console.log(entityId, entityType, entityName)
   localStorage.setItem("chat_session_id", crypto.randomUUID());
   localStorage.setItem('entity_id', entityId);
   localStorage.setItem('entity_type', entityType.toLowerCase());
