@@ -195,13 +195,12 @@ export const UnarchiveEntity = async (entity, entity_id) => {
   return { ok: errors.length === 0, errors };
 };
 
-  export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =>
-    new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", signedUrl, true);
-      xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
-      if(onProgress)
-      {
+export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =>
+  new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", signedUrl, true);
+    xhr.setRequestHeader("Content-Type", contentType || "application/octet-stream");
+    if (onProgress) {
       xhr.upload.onprogress = (evt) => {
         if (evt.lengthComputable && typeof onProgress === "function") {
           const pct = Math.round((evt.loaded / evt.total) * 100);
@@ -215,20 +214,20 @@ export const UnarchiveEntity = async (entity, entity_id) => {
       xhr.onerror = () => reject(new Error("Network error during upload"));
       xhr.send(file);
     }
-    });
+  });
 
-  export const preLoadedChat = (entityId, entityType, entityName) => {
-    const navigate = useNavigate();
-        localStorage.setItem("chat_session_id", crypto.randomUUID());
-    localStorage.setItem('entity_id', entityId);
-    localStorage.setItem('entity_type', entityType.toLowerCase());
-    localStorage.setItem('entity_selected', 'true')
-    localStorage.setItem('isNewNavigation', 'true')
-    localStorage.setItem('entity_name', entityName)
-    navigate('/chat')
-  }
+export const preLoadedChat = (entityId, entityType, entityName) => {
+  const navigate = useNavigate();
+  localStorage.setItem("chat_session_id", crypto.randomUUID());
+  localStorage.setItem('entity_id', entityId);
+  localStorage.setItem('entity_type', entityType.toLowerCase());
+  localStorage.setItem('entity_selected', 'true')
+  localStorage.setItem('isNewNavigation', 'true')
+  localStorage.setItem('entity_name', entityName)
+  navigate('/chat')
+}
 
-  export const LoadingSpinner = () => {
+export const LoadingSpinner = () => {
   return (
     <div className="w-full h-full flex items-center justify-center py-20">
       <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500" />

@@ -78,20 +78,62 @@ function parseDateLoose(input) {
 /** ---------- Shared UI bits (match TenantTerms style) ---------- */
 const EntryRow = ({ item }) => {
   if (!item || typeof item !== "object") return null;
+
   const entries = Object.entries(item);
   if (entries.length === 0) return null;
 
-  const [key, value] = entries[0];
-  const clean = String(value ?? "").trim();
-  if (!clean) return null;
+  const [label, rawValue] = entries[0];
+  if (rawValue == null) return null;
+
+  let display = String(rawValue).trim();
+  if (!display) return null;
+
+  // 🔹 Special case: Rent Escalation
+  if (label === "Rent Escalation") {
+    // Remove surrounding [] if present
+    if (display.startsWith("[") && display.endsWith("]")) {
+      display = display.slice(1, -1);
+    }
+
+    // Try to pretty-print JSON-like content
+    try {
+      const parsed = JSON.parse(`[${display}]`);
+      display = parsed
+        .map(
+          (r) =>
+            `${r.period}\n` +
+            `• Base Rent: $${r.monthly_base_rent.toLocaleString()}\n` +
+            `• CAM: $${r.monthly_cam.toLocaleString()}\n` +
+            `• Total: $${r.total_monthly_rent.toLocaleString()}`
+        )
+        .join("\n\n");
+    } catch {
+      // fallback: just show cleaned text
+    }
+  }
+  // 🔹 Generic JSON fallback (other fields)
+  else if (
+    (display.startsWith("{") && display.endsWith("}")) ||
+    (display.startsWith("[") && display.endsWith("]"))
+  ) {
+    try {
+      display = JSON.stringify(JSON.parse(display), null, 2);
+    } catch {}
+  }
 
   return (
-    <div className="space-y-1 border-b border-muted/30 py-2 last:border-b-0">
-      <dt className="text-lg font-medium text-muted-foreground">{key}:</dt>
-      <dd className="text-sm leading-relaxed break-words whitespace-pre-wrap">{clean}</dd>
+    <div className="border-b border-muted/30 py-2 last:border-b-0 overflow-hidden">
+      <dt className="text-sm font-medium text-muted-foreground mb-1">
+        {label}
+      </dt>
+      <dd className="text-sm leading-relaxed whitespace-pre-wrap break-all">
+        {display}
+      </dd>
     </div>
   );
 };
+
+
 
 const SectionCard = ({ title, children }) => (
   <DisplayBox className="h-full overflow-hidden">
@@ -420,6 +462,7 @@ const TenantPage = () => {
       {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SectionCard title="Lease Summary">
+          {console.log("Lease Summary", leaseSummary)}
           {leaseSummary?.length ? (
             applyOverridesToList(leaseSummary).map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
           ) : (

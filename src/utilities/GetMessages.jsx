@@ -134,73 +134,75 @@ const getLeaseInfo = async (tenant_id) => {
     }
     return Array.isArray(data) ? data : [];
 };
+const getMostRecentField = (fieldname, data) => {
+  if (!data || data.length === 0) return null;
 
+  let value;
+  if (data.length > 1) {
+    const getSortDate = (lease) => {
+      if (lease.lease_commencement_date) return lease.lease_commencement_date
+      if (lease.lease_execution_date) return lease.lease_execution_date
+      return null
+    };
+    const byDate = (a, b) => new Date(getSortDate(b)) - new Date(getSortDate(a));
+    value =
+      data
+        .filter((lease) => getSortDate(lease) && lease[fieldname] != null)
+        .sort(byDate)[0]?.[fieldname] ?? null;
+  } else {
+    value = data[0]?.[fieldname] ?? null;
+  }
+
+  if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
+    value = value
+      .slice(1, -1)
+      .split(",")
+      .map((item) => item.trim())
+      .join("\n");
+  }
+  console.log(value)
+  return value;
+};
 /* ------------------------------- getLeaseDocs ------------------------------ */
 
 export const getLeaseDocs = async (tenant_id) => {
     const data = await getLeaseInfo(tenant_id);
-
-    const getMostRecentField = (fieldname) => {
-        if (!data || data.length === 0) return null;
-
-        let value;
-        if (data.length > 1) {
-            const sortDate = "lease_commencement_date";
-            const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
-            value =
-                data
-                    .filter((lease) => lease[sortDate] && lease[fieldname] != null)
-                    .sort(byDate)[0]?.[fieldname] ?? null;
-        } else {
-            value = data[0]?.[fieldname] ?? null;
-        }
-
-        // Pretty-print JSON-like single object strings
-        if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
-            value = value
-                .slice(1, -1)
-                .split(",")
-                .map((item) => item.trim())
-                .join("\n");
-        }
-
-        return value;
-    };
+    
 
     const basic_lease = [
-        { "Lease Execution Date": getMostRecentField("lease_execution_date") },
-        { "Lease Commencement Date": getMostRecentField("lease_commencement_date") },
-        { "Delivery/Possession Date": getMostRecentField("delivery_posession_date") },
-        { "Lease Expiration Date": getMostRecentField("lease_expiration_date") },
-        { "Lease Term": getMostRecentField("lease_term") },
-        { "Suite Identifier": getMostRecentField("suite_identifier") },
-        { "Property Address": getMostRecentField("Property_Address") },
-        { "Premises Description": getMostRecentField("premises_description") },
-        { "Permitted Use": getMostRecentField("permitted_use") },
-        { "Rentable Square Footage": getMostRecentField("rentable_square_footage") },
-        { "Usable Square Footage": getMostRecentField("usable_square_footage") },
-        { "Parking Allocation": getMostRecentField("parking_allocation") },
-        { "Storage/Additional Space": getMostRecentField("storage_additional_space") },
+        { "Lease Execution Date": getMostRecentField("lease_execution_date", data) },
+        { "Lease Commencement Date": getMostRecentField("lease_commencement_date", data) },
+        { "Delivery/Possession Date": getMostRecentField("delivery_posession_date", data) },
+        { "Lease Expiration Date": getMostRecentField("lease_expiration_date", data) },
+        { "Lease Term": getMostRecentField("lease_term", data) },
+        { "Suite Identifier": getMostRecentField("suite_identifier", data) },
+        { "Property Address": getMostRecentField("Property_Address", data) },
+        { "Premises Description": getMostRecentField("premises_description", data) },
+        { "Permitted Use": getMostRecentField("permitted_use", data) },
+        { "Rentable Square Footage": getMostRecentField("rentable_square_footage", data) },
+        { "Usable Square Footage": getMostRecentField("usable_square_footage", data) },
+        { "Parking Allocation": getMostRecentField("parking_allocation", data) },
+        { "Storage/Additional Space": getMostRecentField("storage_additional_space", data) },
     ];
 
-    const rawRentEsc = getMostRecentField("rent_escalation");
+    const rawRentEsc = getMostRecentField("rent_escalation", data);
     const rentEscalationDisplay = getNextRentEscalation(rawRentEsc);
 
     const rent = [
-        { "Base Rent Monthly": getMostRecentField("base_rent_monthly") },
-        { "Base Rent Annually": getMostRecentField("base_rent_annually") },
-        { "Base Rent PSF": getMostRecentField("base_rent_psf") },
-        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly") },
-        { "Operating Expenses CAM PSF": getMostRecentField("operating_expenses_CAM_psf") },
-        { "CAM Start Date": getMostRecentField("CAM_start_date") },
-        { "CAM Summary": getMostRecentField("CAM_Summary") },
+        { "Base Rent Monthly": getMostRecentField("base_rent_monthly", data) },
+        { "Base Rent Annually": getMostRecentField("base_rent_annually", data) },
+        { "Base Rent PSF": getMostRecentField("base_rent_psf", data) },
+        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly", data) },
+        { "Operating Expenses CAM PSF": getMostRecentField("operating_expenses_CAM_psf", data) },
+        { "CAM Start Date": getMostRecentField("CAM_start_date", data) },
+        { "CAM Summary": getMostRecentField("CAM_Summary", data) },
         // Use the computed next escalation here:
         { "Rent Escalation": rentEscalationDisplay },
-        { "Rent Commencement Date": getMostRecentField("rent_commmencement_date") },
-        { "Rent Abatement End": getMostRecentField("rent_abatement_end") },
-        { "Security Deposit Amount": getMostRecentField("security_deposit_amount") },
-        { "Security Deposit Term": getMostRecentField("security_deposit_term") },
-        { "Tenant Improvement Allowance": getMostRecentField("tenant_improvement_allowance") },
+        { "Rent Commencement Date": getMostRecentField("rent_commmencement_date", data) },
+        { "Rent Abatement End": getMostRecentField("rent_abatement_end", data) },
+        { "Security Deposit Amount": getMostRecentField("security_deposit_amount", data) },
+        { "Security Deposit Term": getMostRecentField("security_deposit_term", data) },
+        { "Tenant Improvement Allowance": getMostRecentField("tenant_improvement_allowance", data) },
     ];
 
     // Backfill Annual if missing but Monthly exists
@@ -211,47 +213,47 @@ export const getLeaseDocs = async (tenant_id) => {
     }
 
     const expense = [
-        { "Property Taxes": getMostRecentField("property_taxes") },
-        { "Insurance Cost": getMostRecentField("insurance_cost") },
-        { "Tenant Reimbursement": getMostRecentField("tenant_reimbursement") },
-        { "Utility Responsibility": getMostRecentField("utility_responsibility") },
-        { "HVAC Responsibilities": getMostRecentField("hvac_responsibilities") },
-        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities") },
-        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities") },
+        { "Property Taxes": getMostRecentField("property_taxes", data) },
+        { "Insurance Cost": getMostRecentField("insurance_cost", data) },
+        { "Tenant Reimbursement": getMostRecentField("tenant_reimbursement", data) },
+        { "Utility Responsibility": getMostRecentField("utility_responsibility", data) },
+        { "HVAC Responsibilities": getMostRecentField("hvac_responsibilities", data) },
+        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities", data) },
+        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities", data) },
     ];
 
     const legal = [
-        { "Indemnity Clauses": getMostRecentField("indemnity_clauses") },
-        { "Insurance Requirements": getMostRecentField("insurance_requirements") },
-        { "Property Insurance": getMostRecentField("property_insurance") },
-        { "Default and Remedies": getMostRecentField("default_and_remedies") },
-        { "Force Majeure": getMostRecentField("force_majeure") },
-        { "Estoppel Certificate Required": getMostRecentField("estoppel_certificate_required") },
-        { "Assignment and Subletting": getMostRecentField("assignment_and_subletting") },
-        { "Guarantor Information": getMostRecentField("guarantor_information") },
-        { "Security Access Rights": getMostRecentField("security_access_rights") },
+        { "Indemnity Clauses": getMostRecentField("indemnity_clauses", data) },
+        { "Insurance Requirements": getMostRecentField("insurance_requirements", data) },
+        { "Property Insurance": getMostRecentField("property_insurance", data) },
+        { "Default and Remedies": getMostRecentField("default_and_remedies", data) },
+        { "Force Majeure": getMostRecentField("force_majeure", data) },
+        { "Estoppel Certificate Required": getMostRecentField("estoppel_certificate_required", data) },
+        { "Assignment and Subletting": getMostRecentField("assignment_and_subletting", data) },
+        { "Guarantor Information": getMostRecentField("guarantor_information", data) },
+        { "Security Access Rights": getMostRecentField("security_access_rights", data) },
     ];
 
     const options = [
-        { "Renewal Options": getMostRecentField("renewal_options") },
-        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines") },
-        { "Holdover Terms": getMostRecentField("holdover_terms") },
-        { "ROFR/ROFO Clauses": getMostRecentField("ROFR_ROFO_clauses") },
-        { "Purchase Options": getMostRecentField("purchase_options") },
+        { "Renewal Options": getMostRecentField("renewal_options", data) },
+        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines", data) },
+        { "Holdover Terms": getMostRecentField("holdover_terms", data) },
+        { "ROFR/ROFO Clauses": getMostRecentField("ROFR_ROFO_clauses", data) },
+        { "Purchase Options": getMostRecentField("purchase_options", data) },
     ];
 
     const special = [
-        { "Exclusivity Rights": getMostRecentField("exclusivity_rights") },
-        { "Exclusive Use Clause": getMostRecentField("exclusive_use_clause") },
-        { "Signage Rights": getMostRecentField("signage_rights") },
-        { "Co-Tenancy Clauses": getMostRecentField("co_tenancy_clauses") },
-        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights") },
-        { "Termination Rights": getMostRecentField("termination_rights") },
+        { "Exclusivity Rights": getMostRecentField("exclusivity_rights", data) },
+        { "Exclusive Use Clause": getMostRecentField("exclusive_use_clause", data) },
+        { "Signage Rights": getMostRecentField("signage_rights", data) },
+        { "Co-Tenancy Clauses": getMostRecentField("co_tenancy_clauses", data) },
+        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights", data) },
+        { "Termination Rights": getMostRecentField("termination_rights", data) },
     ];
 
     const landlord = [
-        { "Landlord Work": getMostRecentField("landlord_work") },
-        { "Tenant Work": getMostRecentField("Tenant_work") },
+        { "Landlord Work": getMostRecentField("landlord_work", data) },
+        { "Tenant Work": getMostRecentField("Tenant_work", data) },
     ];
 
     return { 'basic_lease': basic_lease, 'rent': rent || "", 'expense': expense || "", legal: legal || "", 'options': options, 'special': special, landlord: landlord || "" }
@@ -262,70 +264,44 @@ export const getLeaseDocs = async (tenant_id) => {
 export const getTenantLeaseInfo = async (tenant_id) => {
     const data = await getLeaseInfo(tenant_id);
 
-    const getMostRecentField = (fieldname) => {
-        if (!data || data.length === 0) return null;
-
-        let value;
-        if (data.length > 1) {
-            const sortDate = "lease_commencement_date";
-            const byDate = (a, b) => new Date(b[sortDate]) - new Date(a[sortDate]);
-            value =
-                data
-                    .filter((lease) => lease[sortDate] && lease[fieldname] != null)
-                    .sort(byDate)[0]?.[fieldname] ?? null;
-        } else {
-            value = data[0]?.[fieldname] ?? null;
-        }
-
-        if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
-            value = value
-                .slice(1, -1)
-                .split(",")
-                .map((item) => item.trim())
-                .join("\n");
-        }
-
-        return value;
-    };
-
     const lease_summary = [
-        { "Lease Commencement Date": getMostRecentField("lease_commencement_date") },
-        { "Lease Expiration Date": getMostRecentField("lease_expiration_date") },
-        { "Lease Term": getMostRecentField("lease_term") },
-        { "Suite Identifier": getMostRecentField("suite_identifier") },
-        { "Property Address": getMostRecentField("Property_Address") },
+        { "Lease Commencement Date": getMostRecentField("lease_commencement_date", data) },
+        { "Lease Expiration Date": getMostRecentField("lease_expiration_date", data) },
+        { "Lease Term": getMostRecentField("lease_term", data) },
+        { "Suite Identifier": getMostRecentField("suite_identifier", data) },
+        { "Property Address": getMostRecentField("Property_Address", data) },
     ];
 
     // Special handling for rent escalation here too
-    const rawRentEsc = getMostRecentField("rent_escalation");
+    const rawRentEsc = getMostRecentField("rent_escalation", data);
     const rentEscalationDisplay = getNextRentEscalation(rawRentEsc);
 
     const financial_snapshot = [
-        { "Base Rent Monthly": getMostRecentField("base_rent_monthly") },
-        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly") },
+        { "Base Rent Monthly": getMostRecentField("base_rent_monthly", data) },
+        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly", data) },
         { "Rent Escalation": rentEscalationDisplay },
-        { "Security Deposit Amount": getMostRecentField("security_deposit_amount") },
+        { "Security Deposit Amount": getMostRecentField("security_deposit_amount", data) },
     ];
 
     const responsibility = [
-        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities") },
-        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities") },
-        { "Property Taxes": getMostRecentField("property_taxes") },
-        { "Insurance Requirements": getMostRecentField("insurance_requirements") },
-        { "Property Insurance": getMostRecentField("property_insurance") },
+        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities", data) },
+        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities", data) },
+        { "Property Taxes": getMostRecentField("property_taxes", data) },
+        { "Insurance Requirements": getMostRecentField("insurance_requirements", data) },
+        { "Property Insurance": getMostRecentField("property_insurance", data) },
     ];
 
     const keyDates = [
-        { "Rent Commencement Date": getMostRecentField("rent_commencement_date") },
-        { "Rent Abatement End": getMostRecentField("rent_abatement_end") },
-        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines") },
+        { "Rent Commencement Date": getMostRecentField("rent_commencement_date", data) },
+        { "Rent Abatement End": getMostRecentField("rent_abatement_end", data) },
+        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines", data) },
     ];
 
     const rights = [
-        { "Renewal Options": getMostRecentField("renewal_options") },
-        { "Termination Rights": getMostRecentField("termination_rights") },
-        { "Exclusivity Rights": getMostRecentField("exclusivity_rights") },
-        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights") },
+        { "Renewal Options": getMostRecentField("renewal_options", data) },
+        { "Termination Rights": getMostRecentField("termination_rights", data) },
+        { "Exclusivity Rights": getMostRecentField("exclusivity_rights", data) },
+        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights", data) },
     ];
 
     const lease_docs = data;

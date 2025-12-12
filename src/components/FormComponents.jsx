@@ -1,3 +1,4 @@
+import { FiX } from "react-icons/fi";
 export const Label = ({ children, htmlFor, className = "" }) => (
   <label htmlFor={htmlFor} className={`text-sm font-medium mb-1 ${className}`}>
     {children}

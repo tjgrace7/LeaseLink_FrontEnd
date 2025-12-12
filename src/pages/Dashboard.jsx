@@ -216,6 +216,7 @@ const Dashboard = () => {
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
                   <EntityListBox
+                  className
                     type="units_properties_tenants"
                     entities={properties}
                     selectEntity={navigateEntity}

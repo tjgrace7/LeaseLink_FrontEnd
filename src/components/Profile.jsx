@@ -251,9 +251,9 @@ const Profile = ({
       </div>
 
       {/* Main entity column */}
-      <div className="flex flex-col items-center justify-center text-center md:col-start-2">
+      <div className="flex flex-col items-center justify-center text-center md:col-start- min-w-0 w-full">
         {Title && (
-          <h1 className="text-xl sm:text-2xl font-bold underline underline-offset-4 decoration-white/30">
+          <h1 className="max-w-full line-clamp-2 break-words [overflow-wrap:anywhere] text-xl sm:text-2xl font-bold underline underline-offset-4 decoration-white/30">
             {Title}
           </h1>
         )}
@@ -268,8 +268,8 @@ const Profile = ({
           </div>
         )}
 
-        <div className="mt-2 text-lg sm:text-xl font-semibold max-w-full">
-          <span className="block truncate">{getLabel?.(entity) || 'Unnamed Entity'}</span>
+        <div className="mt-2 text-lg sm:text-xl font-semibold">
+          <span className="block w-full line-clamp-2 break-words [overflow-wrap:anywhere]">{getLabel?.(entity) || 'Unnamed Entity'}</span>
         </div>
       </div>
 

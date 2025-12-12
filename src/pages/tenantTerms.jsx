@@ -104,6 +104,30 @@ const FIELD_KEYS = {
   "Landlord Work": "landlord_work",
   "Tenant Work": "tenant_work",
 };
+function formatForDisplay(label, value) {
+  let s = String(value ?? "").trim();
+
+  if (label === "Rent Escalation") {
+    // remove surrounding [ ... ]
+    if (s.startsWith("[") && s.endsWith("]")) s = s.slice(1, -1);
+
+    // try to pretty format JSON list entries
+    try {
+      const arr = JSON.parse(`[${s}]`);
+      return arr
+        .map((r) =>
+          `${r.period}\n• Base Rent: $${Number(r.monthly_base_rent).toLocaleString()}\n` +
+          `• CAM: $${Number(r.monthly_cam).toLocaleString()}\n` +
+          `• Total: $${Number(r.total_monthly_rent).toLocaleString()}`
+        )
+        .join("\n\n");
+    } catch {
+      return s;
+    }
+  }
+
+  return s;
+}
 
 /** Read-only row */
 const FieldRow = React.memo(function FieldRow({ label, value, hasOverride, onClick }) {
@@ -120,12 +144,14 @@ const FieldRow = React.memo(function FieldRow({ label, value, hasOverride, onCli
           </span>
         )}
       </div>
-      <dd className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-        {String(value ?? "").trim() || <span className="text-white/40">—</span>}
+
+      <dd className="max-w-full overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-relaxed">
+        {formatForDisplay(label, value) || <span className="text-white/40">—</span>}
       </dd>
     </div>
   );
 });
+
 
 const TenantTerms = () => {
   const { tenant_id } = useParams();

@@ -193,7 +193,7 @@ const EntityListBox = ({
             <li key={String(id)}>
               <button
                 onClick={() => handleClick(entity)}
-                className={`w-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
+                className={`w-full h-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
                 aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}${archived ? " (archived)" : ""}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
