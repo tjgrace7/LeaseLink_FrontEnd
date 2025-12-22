@@ -61,6 +61,7 @@ const RequestAccess = () => {
   // -------------------- ui state ----------------------
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [siteCodeError, setSiteCodeError] = useState(false);
   const [testimonial, setTestimonial] = useState(null);
 
   const navigate = useNavigate();
@@ -129,11 +130,18 @@ const RequestAccess = () => {
         }),
       });
       const result = await response.json();
+      console.log(result)
+      if(result.error === "Incorrect Site Code")
+      {
+        setSiteCodeError(true);
+        return;
+      }
+      
       if (!response.ok) {
         console.error(" error:", result);
         return;
       }
-      console.log(result)
+
       if(result.accessCode)
       {
         navigate('/check-email')
@@ -216,8 +224,8 @@ const RequestAccess = () => {
 
                 {/* Phone */}
                 <div>
-                  <Label htmlFor="phone">
-                    Phone <span className="text-white/40">(Optional)</span>
+                  <Label htmlFor="phone" required>
+                    Phone 
                   </Label>
                   <input
                     id="phone"
@@ -261,6 +269,13 @@ const RequestAccess = () => {
                   )}
                 </div>
                 {/*Have an Access Code*/}
+                {siteCodeError && (
+                  
+                  <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-300 mb-2">
+                    {console.log("Site code error shown")}
+                    The access code you entered is incorrect. Please try again.
+                  </div>
+                )}
                 <div>
                   <Label htmlFor='accesscode'>Do you have an Access Code?</Label>
                   <input

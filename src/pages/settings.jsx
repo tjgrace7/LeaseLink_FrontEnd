@@ -29,7 +29,7 @@ import { supabase } from '../supabaseClient';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { roleData, session, emailAccess } = useAuth();
+  const { roleData, session, emailAccess, userData } = useAuth();
 
   // —— Active company
   const currentCompanyId = localStorage.getItem('activeCompanyId');
@@ -85,6 +85,10 @@ const Settings = () => {
   // mapping: expectedHeader -> detectedHeader (or '')
   const [mapping, setMapping] = useState({});
   const [mappingValid, setMappingValid] = useState(false);
+
+  const [gmailIntegrated, setGmailIntegrated] = useState(false)
+  const [microsoftIntegrated, setMicrosoftIntegrated] = useState(false)
+  
 
   // UI: import button state
   const [importing, setImporting] = useState(false);
@@ -240,6 +244,29 @@ const Settings = () => {
     resolveRoles();
     return () => { cancelled = true; };
   }, [users]);
+  useEffect(() => {
+    if (!userData) return;
+    const getAccessToken = async () => {
+      const { data, error } = await supabase.from("Email_Sync_Logs").select("*").eq("user_id", userData.user_id)
+      if (error) {
+        console.log("No access token found", error)
+        setGmailIntegrated(false)
+        setMicrosoftIntegrated(false)
+      }
+      console.log("Access Token Data:", data)
+      data.map((sync) => {
+        if (sync.provider === "google" && (sync.sync_status === 'complete' || sync.sync_status === 'in_progress')) {
+        setGmailIntegrated(true)
+      }
+      if (sync.provider === "microsoft" && (sync.sync_status === 'complete' || sync.sync_status === 'in_progress')) {
+        setMicrosoftIntegrated(true)
+      }
+      })
+      
+
+    }
+    getAccessToken()
+  }, [userData])
 
   // ——— Load roles list
   useEffect(() => {
@@ -566,6 +593,36 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
     console.log("User Id", uid)
     window.location.href = `${backendURL}/api/integrations/email/start?provider=${provider}&uid=${encodeURIComponent(uid)}`
   }
+  const disconnectEmail = async (provider, deleteData) => {
+    const uid = session.user?.id ?? "";
+    const res = await fetch(`${backendURL}/api/integrations/email/disconnect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ provider: provider, auth_id: uid, delete_qdrant: deleteData }),
+    })
+
+    if (res.ok) {
+      alert("Email disconnected successfully")
+      setGmailIntegrated(false)
+    } else {
+      alert("Failed to disconnect email integration")
+    }
+  }
+  const disconnectPrompt = (provider) => {
+    const confirmDelete = window.confirm("Are you sure you want to disconnect your email integration?");
+    if (confirmDelete)
+      deleteDataPrompt(provider);
+    else return;
+  }
+  const deleteDataPrompt = (provider) => {
+    const confirmDelete = window.confirm("Do you also want to delete all email data associated with your account? This action cannot be undone.");
+    console.log("Confirm delete data:", confirmDelete)
+    disconnectEmail(provider, confirmDelete)
+    navigate('/dashboard')
+  }
   return (
     <div className="px-4 sm:px-6 md:px-8 py-6">
       {/* Tabs header */}
@@ -757,6 +814,7 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
             <p className="opacity-80">Coming soon! Currently in testing.</p>
           </div>
         )}
+        {/* Email Integration */}
         {tab === "Email" && (
           <div>
             {console.log(emailAccess)}
@@ -769,17 +827,33 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
             {emailAccess && (
               <div>
                 <h2 className='text-xl sm:text-2xl font-semibold mb-2'>Integrate Your Personal Email by Connecting Below</h2>
-                <p className='opacity-80'>Simply Click the Button of the Email Provider you use below to pull your emails into Lease Link. You will be taken to another page!</p>
+                <p className='opacity-80'>Simply Click the Button of the Email Provider you use below to pull your emails into Lease Link for each contact created. You will be taken to another page!</p>
                 <p>The Email will pull every Email for a Contact. Contacts are attached to Tenants and the Emails will be able to be accessed in Chat of the Tenant the Contact is connected to</p>
                 <div className="flex flex-col space-y-2 rounded-lg p-3 mt-10">
+                  {console.log("Microsoft Integrated:", microsoftIntegrated)}
+                  {!microsoftIntegrated && (
                   <button
                     onClick={() => integrateEmail("microsoft")}
-                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white hover:bg-blue-500"
                   >Connect Microsoft</button>
+                  ) }
+                  {microsoftIntegrated && (
                   <button
+                    onClick={() => disconnectPrompt("microsoft")}
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-red-600 text-white hover:bg-blue-500"
+                  >Disconnect Microsoft</button> )}
+                  {console.log("Gmail Integrated:", gmailIntegrated)}
+                 {!gmailIntegrated && (
+                   <button
                     onClick={() => integrateEmail("google")}
-                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white rounded-xl hover:bg-blue-500"
-                  >Connect Google</button>
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-emerald-600 text-white hover:bg-blue-500"
+                  >Connect Gmail</button> )} 
+                  {gmailIntegrated && (
+                    <button
+                    onClick={() => disconnectPrompt("google")}
+                    className="rounded-xl border border-white/10 p-3 sm:p-4 text-center bg-red-600 text-white hover:bg-blue-500"
+                  >Disconnect Gmail</button> 
+                  )}
                 </div>
               </div>
             )}
@@ -865,7 +939,7 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
                     <span>Download {selectedImport} Template</span>
                   </button>
 
-                  <div className="ml-auto" />
+                  <div className="ml-auto" /> 
                   <label className="inline-flex items-center gap-2 text-sm">
                     <span className="opacity-80">Switch:</span>
                     <select
