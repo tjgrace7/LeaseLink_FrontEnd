@@ -43,6 +43,7 @@ import { useLocation } from 'react-router-dom';
 import IntegrationsResponsePage from './pages/Integrations';
 import SpecialAccess from './pages/specialAccess';
 import CheckEmail from './pages/checkEmail';
+import ForgotPassword from './pages/ForgotPassword';
 
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
@@ -72,6 +73,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
           <Route path='/thank-you' element={<ThankYou/>}/>
+          <Route path='/forgot-password' element={<ForgotPassword/>}/>
           <Route path='check-email' element={<CheckEmail/>}/>
 
           <Route path='/privacy_policy' element={<Privacy/>}/>
