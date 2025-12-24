@@ -68,7 +68,8 @@ const Dashboard = () => {
         .select('role', { count: 'exact', head: true })
         .gte('created_at', startISO)
         .lte('created_at', nowISO)
-        .eq('role', 'assistant');
+        .eq('role', 'assistant')
+        .eq('company_id', activeCompanyId);
 
       // 2) Tenants for this company
       const qTenants = supabase
@@ -80,7 +81,8 @@ const Dashboard = () => {
       //    TODO: For multi-tenant safety, add `.eq('company_id', company_id)` if available.
       const qDocs = supabase
         .from('lease_documents')
-        .select('lease_id', { count: 'exact', head: true });
+        .select('lease_id', { count: 'exact', head: true })
+        .eq('company_id', activeCompanyId);
 
       const [mRes, tRes, dRes] = await Promise.all([qMessages, qTenants, qDocs]);
 
