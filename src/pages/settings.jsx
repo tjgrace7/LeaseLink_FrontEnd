@@ -191,9 +191,15 @@ const Settings = () => {
       setError((e) => ({ ...e, company: '' }));
       try {
         const res = await getTable('Property_Management_Companies', 'company_id', currentCompanyId);
+        const {data: tenantData, error: tenantError} = await supabase.from('tenant').select('tenant_id').eq('property_management_id', currentCompanyId);
+        if (tenantError) {
+
+          console.error('Error fetching tenants:', tenantError);
+        }
+
         if (!res || !res[0]) throw new Error('Company not found');
         setCompanyName(res[0].company_name || '');
-        setNumTenants(res[0].numTenants ?? '');
+        setNumTenants(tenantData?.length || 0);
       } catch (err) {
         console.error('Company load error', err);
         setError((e) => ({ ...e, company: err?.message || 'Failed to load company.' }));
@@ -207,12 +213,18 @@ const Settings = () => {
   // ——— Load users
   useEffect(() => {
     if (!isReady || !roleData?.View_Other_Users) return;
+    console.log("Loading users for company ID:", currentCompanyId)
     const loadUsers = async () => {
       setLoading((s) => ({ ...s, users: true }));
       setError((e) => ({ ...e, users: '' }));
       try {
-        const res = await getTable('User_Data', 'company_id', currentCompanyId);
-        setUsers(res || []);
+        const {data, error} = await supabase.from('User_Data').select('*').eq('company_id', currentCompanyId);
+        if (error) {
+          console.error('Error fetching users:', error);
+          return
+        }
+        console.log("Fetched users:", data)
+        setUsers(data || []);
       } catch (err) {
         console.error('Users load error', err);
         setError((e) => ({ ...e, users: err?.message || 'Failed to load users.' }));
@@ -221,7 +233,7 @@ const Settings = () => {
       }
     };
     loadUsers();
-  }, [isReady, roleData?.View_Other_Users, currentCompanyId]);
+  }, [isReady, roleData, currentCompanyId]);
 
   // ——— Resolve user role names
   useEffect(() => {
@@ -275,7 +287,11 @@ const Settings = () => {
       setLoading((s) => ({ ...s, roles: true }));
       setError((e) => ({ ...e, roles: '' }));
       try {
-        const res = await getTable('Roles', 'company_id', currentCompanyId);
+        console.log("Current Company ID:", currentCompanyId)
+        const {data: res, error} = await supabase.from('Roles').select('*').eq('company_id', currentCompanyId);
+        if (error) {
+          console.error('Error fetching roles:', error);
+        }
         setRoles(res || []);
       } catch (err) {
         console.error('Roles load error', err);

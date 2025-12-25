@@ -71,6 +71,19 @@ const RequestAccess = () => {
     let cancelled = false;
     const getTestimonies = async () => {
       const { data, error } = await supabase.from("Testimonials").select("*");
+      console.log("Fetched testimonials:", { data, error });
+      if(error)
+      {
+        console.error("Error fetching testimonials:", error);
+        setTestimonial(null);
+        return;
+      }
+      if(data.length === 0)
+      {
+        console.log("No testimonials found.");
+        setTestimonial(null);
+        return;
+      }
       if (!cancelled && !error && Array.isArray(data) && data.length) {
         const num = Math.floor(Math.random() * data.length);
         setTestimonial(data[num]);
@@ -352,6 +365,7 @@ const RequestAccess = () => {
           </section>
 
           {/* ------------------ Right: Testimonial ------------------ */}
+          {testimonial && (
           <aside className="order-1 flex items-stretch lg:order-2">
             <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-6 sm:p-8">
               {/* Accent gradient */}
@@ -377,6 +391,7 @@ const RequestAccess = () => {
               )}
             </div>
           </aside>
+          )}
         </div>
       </main>
     </>

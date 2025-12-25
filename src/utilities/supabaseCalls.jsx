@@ -6,6 +6,7 @@ export const getTable = async (tableName, column_name, match_id) => {
         console.error("Error Fetching from", tableName)
         return null;
     }
+    console.log("Data from", tableName, data)
     return data;
 }
 export const getTableIdList = async (tableName, column_name, IdList) => {
