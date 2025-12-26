@@ -1,6 +1,6 @@
 // src/pages/TenantPage.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "../supabaseClient";
@@ -159,10 +159,13 @@ const EmptyState = ({ title, hint }) => (
 const TenantPage = () => {
   const { session, roleData } = useAuth();
   const { tenant_id } = useParams();
+  const [searchParams] = useSearchParams();
+  const unit_id = searchParams.get('unit_id');
   const navigate = useNavigate();
 
   const [tenant, setTenant] = useState(null);
   const [unitsIds, setUnitsIds] = useState([]);
+  const [selectedUnit, setSelectedUnit] = useState([]);
   const [contacts, setContacts] = useState([]);
 
   const [leaseSummary, setLeaseSummary] = useState([]);
@@ -242,7 +245,19 @@ const TenantPage = () => {
       isCancelled = true;
     };
   }, [session, tenant_id]);
-
+  useEffect(() => {
+    console.log("Unit_Id", unit_id)
+    if (!unit_id) return;
+    const getUnit = async () => {
+      const { data, error } = await supabase.from("Units").select("*").eq("unit_id", unit_id);
+      if (error) {
+        console.error("Error Fetching Units", error);
+        return;
+      }
+      setSelectedUnit(data || []);
+    }
+    getUnit();
+  }, [unit_id]);
   /** ---------- Load extracted terms ---------- */
   useEffect(() => {
     if (!tenant_id) return;
@@ -251,7 +266,15 @@ const TenantPage = () => {
 
     const loadLeases = async () => {
       try {
-        const leases = await getTenantLeaseInfo(tenant_id);
+        let leases
+        if (!unit_id)
+        {
+         leases = await getTenantLeaseInfo(tenant_id);
+        }
+        else 
+        {
+          leases = await getTenantLeaseInfo(tenant_id, unit_id)
+        }
         if (isCancelled || !leases) return;
 
         setLeaseSummary(leases.lease_summary || []);
@@ -403,6 +426,13 @@ const TenantPage = () => {
       </div>
     );
   }
+  const tenantTerms = () => {
+    if(unit_id)
+    {
+      navigate(`/terms/${tenant_id}?unit_id=${unit_id}`)
+    }
+    else navigate(`/terms/${tenant_id}`)
+  }
 
   /** ---------- Render (view-only) ---------- */
   return (
@@ -418,7 +448,7 @@ const TenantPage = () => {
         </button>
 
         <button
-          onClick={() => navigate(`/terms/${tenant_id}`)}
+          onClick={() => tenantTerms()}
           className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
         >
           View All Terms
@@ -444,7 +474,7 @@ const TenantPage = () => {
                 return data || [];
               }}
               getRelatedFilePath={(unit) => unit?.photo_file_path}
-              getRelatedLabel={(unit) => unit?.address}
+              getRelatedLabel={(unit) => `${unit?.Suite} - ${unit?.address}`}
               RelatedTitle="Unit(s)"
               getRelatedEntityId={(unit) => unit?.unit_id}
               Title="Tenant"
@@ -452,6 +482,7 @@ const TenantPage = () => {
               edit_Entity={roleData?.Edit_Tenants}
               delete_Entity={roleData?.Can_Delete_Tenants}
               className="w-full max-w-2xl"
+              selectedUnit={selectedUnit[0] ? selectedUnit[0] : null}
             />
           </div>
         )}

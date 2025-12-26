@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArchiveEntity, UnarchiveEntity } from '../utilities/Generic';
 import ConfirmPopUp from './Confirm';
 import { nav } from 'framer-motion/client';
+import Dropdown from './dropdown';
 
 const Profile = ({
   entity,
@@ -22,7 +23,8 @@ const Profile = ({
   className = '',
   Title = '',
   edit_Entity = false,
-  delete_Entity = false
+  delete_Entity = false,
+  selectedUnit = null
 }) => {
   const [image, setImage] = useState('');
   const [entityId, setEntityId] = useState('');
@@ -30,6 +32,7 @@ const Profile = ({
   const [relatedImages, setRelatedImages] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
   const [confirmData, setConfirmData] = useState(null);
+  const [searchableUnits, setSearchableUnits] = useState(false);
   const navigate = useNavigate();
 
   const relatedRouteBase = useMemo(() => {
@@ -103,6 +106,9 @@ const Profile = ({
       }
     };
     fetchRelated();
+    if (getRelatedEntity.length >= 5) {
+      setSearchableUnits(true);
+    }
     return () => { cancelled = true; };
   }, [entity, getRelatedEntity, getRelatedFilePath, session]);
 
@@ -166,7 +172,7 @@ const Profile = ({
 
   const loadChat = (tenant) => {
 
-    if(!entityId ) return;
+    if (!entityId) return;
     localStorage.setItem("chat_session_id", crypto.randomUUID());
     localStorage.setItem('entity_id', entityId);
     localStorage.setItem('entity_type', Title.toLowerCase());
@@ -287,38 +293,57 @@ const Profile = ({
               {loadingRelated ? (
                 <div className="text-white/80 text-sm">Loading…</div>
               ) : (
-                relatedEntities.map((rel, i) => {
-                  const keyCandidate =
-                    (getRelatedEntityId && getRelatedEntityId(rel)) ||
-                    `${getRelatedLabel?.(rel) || 'related'}-${i}`;
-                  const imgUrl = relatedImages[i];
+                <div>
+                  {relatedEntities.length <= 1 && (
+                    relatedEntities.map((rel, i) => {
+                      const keyCandidate =
+                        (getRelatedEntityId && getRelatedEntityId(rel)) ||
+                        `${getRelatedLabel?.(rel) || 'related'}-${i}`;
+                      const imgUrl = relatedImages[i];
 
-                  return (
-                    <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                      {imgUrl && (
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
-                          <img
-                            src={imgUrl}
-                            alt={`${getRelatedLabel?.(rel) || 'Related'} image`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
+                      return (
+                        <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          {imgUrl && (
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
+                              <img
+                                src={imgUrl}
+                                alt={`${getRelatedLabel?.(rel) || 'Related'} image`}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </div>
+                          )}
+
+                          <button
+                            className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
+                            onClick={() => handleRelatedClick(rel)}
+                            title={getRelatedLabel?.(rel) || 'Unnamed'} // nice tooltip for full text
+                          >
+                            <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
+                              {getRelatedLabel?.(rel) || 'Unnamed'}
+                            </span>
+                          </button>
                         </div>
-                      )}
-
-                      <button
-                        className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
-                        onClick={() => handleRelatedClick(rel)}
-                        title={getRelatedLabel?.(rel) || 'Unnamed'} // nice tooltip for full text
-                      >
-                        <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
-                          {getRelatedLabel?.(rel) || 'Unnamed'}
-                        </span>
-                      </button>
+                      );
+                    })
+                  )}
+                  {Title === 'Tenant' && relatedEntities.length > 1 && (
+                    <div>
+                      <Dropdown
+                        options={relatedEntities}
+                        getOptionTitle={getRelatedLabel}
+                        getOptionId={getRelatedEntityId}
+                        placeholder={selectedUnit ? `${selectedUnit?.Suite} - ${selectedUnit.address}` : "Select Unit"}
+                        onSelect={(option) => {
+                          navigate(`/tenant/${entityId}?unit_id=${getRelatedEntityId(option)}`)
+                          window.location.reload();
+                        }}
+                        searchable={searchableUnits}
+                      />
                     </div>
-                  );
-                })
+                  )}
+                </div>
               )}
             </div>
 
@@ -354,7 +379,7 @@ const Profile = ({
                 >
                   New Chat
                 </button>
-                
+
               </div>
             )}
           </div>

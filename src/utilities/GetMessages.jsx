@@ -51,40 +51,147 @@ const toNumber = (v) => {
  *  - the original value if unrecognized format
  */
 const getNextRentEscalation = (rawValue, today = new Date()) => {
-    const parsed = tryParseJSON(rawValue);
+  const parsed = tryParseJSON(rawValue);
 
-    // Not an array? Return the original value unchanged.
-    if (!Array.isArray(parsed)) return rawValue;
+  if (!Array.isArray(parsed)) return rawValue;
 
-    // Normalize to ensure valid dates
-    const normalized = parsed
-        .map((row) => {
-            if (!row || typeof row !== "object" || !row.period) return null;
-            const [start, end] = String(row.period).split("-").map((x) => x.trim());
-            if (!start || !end) return null;
-            const startDate = parseUSDate(start);
-            const endDate = parseUSDate(end);
-            if (isNaN(startDate) || isNaN(endDate)) return null;
-            return { ...row, startDate, endDate };
-        })
-        .filter(Boolean);
+  // Key aliases
+  const RANGE_KEYS = ["period", "date_range", "dateRange", "range", "term", "dates"];
+  const DATE_KEYS  = ["date", "start_date", "startDate", "effective_date", "effectiveDate", "as_of", "asOf"];
 
-    if (!normalized.length) return rawValue;
+  const MONTHLY_KEYS = ["monthly", "monthly_rent", "monthlyRent", "rent_monthly", "base_rent_monthly", "amount_monthly"];
+  const ANNUAL_KEYS  = ["annual_rent", "annualRent", "annual", "yearly_rent", "yearlyRent", "rent_annual", "base_rent_annual"];
+  const AMOUNT_KEYS  = ["amount", "rent", "rate"]; // generic bucket people use inconsistently
+  const PSF_KEYS     = ["psf", "rent_psf", "rate_psf", "psf_rate", "per_sf", "per_sqft", "per_square_foot"];
 
-    // Normalize "today" to midnight for inclusive comparison
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const getFirst = (obj, keys) => {
+    for (const k of keys) {
+      if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+    }
+    return null;
+  };
 
-    // Next escalation = first with start >= today
-    const future = normalized
-        .filter((e) => e.startDate >= startOfToday)
-        .sort((a, b) => a.startDate - b.startDate);
+  const toNumber = (v) => {
+    if (v == null) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
 
-    if (future.length === 0) return "No further rent escalation";
+  // Parses:
+  // - "7/1/2024" (US)
+  // - "2013/08/01" or "2013-08-01" (YMD)
+  const parseFlexibleDate = (s) => {
+    if (!s) return NaN;
+    const str = String(s).trim();
 
-    const next = future[0];
-    const displayAmount = fmtCurrency(next.amount);
-    return `${next.period} — ${displayAmount}`;
+    // Y/M/D or Y-M-D
+    const ymd = str.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+    if (ymd) {
+      const y = Number(ymd[1]);
+      const m = Number(ymd[2]) - 1;
+      const d = Number(ymd[3]);
+      return new Date(y, m, d);
+    }
+
+    // fallback to your existing US parser
+    return parseUSDate(str);
+  };
+
+  const parseRange = (rangeStr) => {
+    if (!rangeStr) return null;
+    const s = String(rangeStr).trim();
+
+    const parts = s.includes(" to ")
+      ? s.split(" to ")
+      : s.split(" - ").length === 2
+        ? s.split(" - ")
+        : s.split("-"); // handles "7/1/2024-6/30/2025"
+
+    if (!parts || parts.length < 2) return null;
+
+    const start = String(parts[0]).trim();
+    const end = String(parts[1]).trim();
+    if (!start || !end) return null;
+
+    const startDate = parseFlexibleDate(start);
+    const endDate = parseFlexibleDate(end);
+    if (isNaN(startDate) || isNaN(endDate)) return null;
+
+    return { startDate, endDate, period: `${start} - ${end}` };
+  };
+
+  const normalizeRowDates = (row) => {
+    // 1) Try range-like field (period/date_range/etc.)
+    const rangeRaw = getFirst(row, RANGE_KEYS);
+    const range = parseRange(rangeRaw);
+    if (range) return range;
+
+    // 2) Try single date field
+    const dateRaw = getFirst(row, DATE_KEYS);
+    if (dateRaw) {
+      const d = parseFlexibleDate(dateRaw);
+      if (!isNaN(d)) {
+        const label = String(dateRaw).trim();
+        return { startDate: d, endDate: d, period: label };
+      }
+    }
+
+    // 3) No parseable date => cannot schedule this escalation
+    return null;
+  };
+
+  const normalized = parsed
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+
+      const dates = normalizeRowDates(row);
+      if (!dates) return null;
+
+      const monthly = toNumber(getFirst(row, MONTHLY_KEYS));
+      const annual  = toNumber(getFirst(row, ANNUAL_KEYS));
+      const amount  = toNumber(getFirst(row, AMOUNT_KEYS));
+      const psf     = toNumber(getFirst(row, PSF_KEYS));
+
+      // Prefer display: monthly > annual > amount > psf
+      // (Your latest example has both amount + monthly; monthly is usually what you want.)
+      const display =
+        monthly != null ? { kind: "monthly", value: monthly } :
+        annual  != null ? { kind: "annual",  value: annual  } :
+        amount  != null ? { kind: "amount",  value: amount  } :
+        psf     != null ? { kind: "psf",     value: psf     } :
+        null;
+
+      return { ...row, ...dates, monthly, annual, amount, psf, display };
+    })
+    .filter(Boolean);
+
+  if (!normalized.length) {
+    // If we couldn't parse any dates, it's usually because entries were relative (e.g. "first anniversary")
+    // Return original so you can still show it somewhere.
+    return rawValue;
+  }
+
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const future = normalized
+    .filter((e) => e.startDate >= startOfToday)
+    .sort((a, b) => a.startDate - b.startDate);
+
+  if (future.length === 0) return "No further rent escalation";
+
+  const next = future[0];
+
+  let displayAmount = "Amount not specified";
+  if (next.display?.kind === "monthly") displayAmount = `${fmtCurrency(next.display.value)}/mo`;
+  else if (next.display?.kind === "annual") displayAmount = `${fmtCurrency(next.display.value)}/yr`;
+  else if (next.display?.kind === "amount") displayAmount = fmtCurrency(next.display.value);
+  else if (next.display?.kind === "psf") displayAmount = `${next.display.value} PSF`;
+
+  return `${next.period} — ${displayAmount}`;
 };
+
+
 
 /* ---------------------------- Supabase fetchers ---------------------------- */
 
@@ -122,52 +229,69 @@ export const getCompanyPreviousChats = async (company_id, session, setChats) => 
     }
 };
 
-const getLeaseInfo = async (tenant_id) => {
-    const { data, error } = await supabase
-        .from("lease_documents")
-        .select("*")
-        .eq("tenant_id", tenant_id);
+const getLeaseInfo = async (tenant_id, unit_id = null) => {
+    if (!unit_id) {
+        const { data, error } = await supabase
+            .from("lease_documents")
+            .select("*")
+            .eq("tenant_id", tenant_id);
 
-    if (error) {
-        console.error("No Tenant Docs", error);
-        return [];
+
+        if (error) {
+            console.error("No Tenant Docs", error);
+            return [];
+        }
+        return Array.isArray(data) ? data : [];
     }
-    return Array.isArray(data) ? data : [];
+    else {
+        const { data, error } = await supabase
+            .from("lease_documents")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .eq('unit_id', unit_id);
+
+
+        if (error) {
+            console.error("No Tenant Docs", error);
+            return [];
+        }
+        return Array.isArray(data) ? data : [];
+    }
 };
 const getMostRecentField = (fieldname, data) => {
-  if (!data || data.length === 0) return null;
+    if (!data || data.length === 0) return null;
 
-  let value;
-  if (data.length > 1) {
-    const getSortDate = (lease) => {
-      if (lease.lease_commencement_date) return lease.lease_commencement_date
-      if (lease.lease_execution_date) return lease.lease_execution_date
-      return null
-    };
-    const byDate = (a, b) => new Date(getSortDate(b)) - new Date(getSortDate(a));
-    value =
-      data
-        .filter((lease) => getSortDate(lease) && lease[fieldname] != null)
-        .sort(byDate)[0]?.[fieldname] ?? null;
-  } else {
-    value = data[0]?.[fieldname] ?? null;
-  }
+    let value;
+    if (data.length > 1) {
+        const getSortDate = (lease) => {
+            if (lease.lease_commencement_date) return lease.lease_commencement_date
+            if (lease.lease_execution_date) return lease.lease_execution_date
+            return null
+        };
+        const byDate = (a, b) => new Date(getSortDate(b)) - new Date(getSortDate(a));
+        value =
+            data
+                .filter((lease) => getSortDate(lease) && lease[fieldname] != null)
+                .sort(byDate)[0]?.[fieldname] ?? null;
+    } else {
+        value = data[0]?.[fieldname] ?? null;
+    }
 
-  if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
-    value = value
-      .slice(1, -1)
-      .split(",")
-      .map((item) => item.trim())
-      .join("\n");
-  }
-  console.log(value)
-  return value;
+    if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
+        value = value
+            .slice(1, -1)
+            .split(",")
+            .map((item) => item.trim())
+            .join("\n");
+    }
+    console.log(value)
+    return value;
 };
 /* ------------------------------- getLeaseDocs ------------------------------ */
 
-export const getLeaseDocs = async (tenant_id) => {
-    const data = await getLeaseInfo(tenant_id);
-    
+export const getLeaseDocs = async (tenant_id, unit_id = null) => {
+    const data = await getLeaseInfo(tenant_id, unit_id);
+
 
     const basic_lease = [
         { "Lease Execution Date": getMostRecentField("lease_execution_date", data) },
@@ -261,8 +385,8 @@ export const getLeaseDocs = async (tenant_id) => {
 
 /* ---------------------------- getTenantLeaseInfo --------------------------- */
 
-export const getTenantLeaseInfo = async (tenant_id) => {
-    const data = await getLeaseInfo(tenant_id);
+export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
+    const data = await getLeaseInfo(tenant_id, unit_id);
 
     const lease_summary = [
         { "Lease Commencement Date": getMostRecentField("lease_commencement_date", data) },

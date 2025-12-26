@@ -1,6 +1,6 @@
 // src/pages/ChatPage.jsx
 import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import ChatSidebar from "../components/ChatSidebar";
 import Spinner from "../components/Spinner";
@@ -10,7 +10,8 @@ import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
 import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
 import { GTMChat, GTMChatEntity, GTMChatResponse } from "../components/gtag";
-import {ShowModal, EmailModal} from "../components/Modal"
+import { ShowModal, EmailModal } from "../components/Modal"
+import Dropdown from "../components/dropdown";
 
 /* ---------- stable, memoized input to avoid remounts on re-render ---------- */
 const ComposerInput = memo(function ComposerInput({
@@ -44,7 +45,19 @@ const ComposerInput = memo(function ComposerInput({
   );
 });
 // ------------------------- render helpers ------------------------
-const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen }) {
+const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen, units = null }) {
+  let searchable = false
+  const Suite = localStorage.getItem('selectedUnitSuite')
+  const address = localStorage.getItem('selectedUnitAddress')
+  const ALL_UNITS_OPTION = {
+    unit_id: null,
+    SUITE: "All Units",
+    address: "",
+    isALL: true
+  }
+  const unitsWithAll = [ALL_UNITS_OPTION, ...(units ?? [])]
+  const selectedUnitId = localStorage.getItem('selectedUnitId')
+  if(units.length > 5 ) searchable = true
   return (
     <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
@@ -83,7 +96,32 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
             data-no-autofocus
           />
         </div>
+        {units.length > 1 && (
+          <div className="w-1/4 pl-4">
+          <Dropdown
+            options={unitsWithAll}
+            getOptionTitle={(unit) => unit?.unit_id ? `${unit?.Suite} - ${unit?.address}`: "All Units"}
 
+            getOptionId={(unit) => unit.unit_id ?? "All_UNITS"}
+            placeholder={selectedUnitId ? (Suite && address) ? `${Suite} - ${address}` : "Select Unit": "All Units"}
+            onSelect={(option) => {
+              if(!option.unit_id)
+              {
+                localStorage.removeItem("selectedUnitSuite");
+                localStorage.removeItem("selectedUnitAddress");
+                localStorage.removeItem("selectedUnitId"); // <-- treat missing as "all units"
+                return;
+              }
+
+              localStorage.setItem("selectedUnitSuite", option?.Suite)
+              localStorage.setItem("selectedUnitAddress", option?.address)
+              localStorage.setItem("selectedUnitId", option.unit_id)
+            }}
+            searchable={searchable}
+            
+          />
+          </div>
+        )}
         {/* Sidebar toggle on mobile */}
         <button
           type="button"
@@ -173,6 +211,7 @@ const ChatPage = () => {
   const [entitySelected, setSelectedEntity] = useState(false);
   const [entity_image, setEntityImage] = useState("");
   const [entity_name, setEntityName] = useState("");
+  const [units, setUnits] = useState([])
 
   // ------------------------- chat state ----------------------------
   const [messages, setMessages] = useState([]);
@@ -209,14 +248,15 @@ const ChatPage = () => {
 
   // env + auth
   //switch to import.meta.env.VITE_SERVER_URL
-  const server_url = "https://leaselink.onrender.com";
-  const { session, loading, userData, loadingUserData, baseAccess } = useAuth();
+  //const server_url = "http://localhost:8000";
+  const server_url = import.meta.env.VITE_SERVER_URL;
+  const { session, userData, loadingUserData, baseAccess } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
 
   // router
-  const location = useLocation();
+  const navigate = useNavigate();
 
   // ------------------------- detect if this is a page refresh ----------
   const [isPageRefresh, setIsPageRefresh] = useState(false);
@@ -246,6 +286,23 @@ const ChatPage = () => {
       el.removeEventListener('focus', onFocus);
     };
   }, []);
+  useEffect(() => {
+    if (!entitySelected || !entity_type) return
+    if (entity_type === "tenant") {
+      const getUnits = async () => {
+        const { data, error } = await supabase.from("Units").select('*').eq('tenant_id', entity_id)
+        if (error) {
+          console.error("Error Fetching Units", error)
+          return
+        }
+        if (data.length > 1) {
+          setUnits(data)
+        }
+      }
+      getUnits()
+    }
+  })
+
   // ------------------------- initialize chat session ------------------
   // 2) Initialize only after we KNOW the refresh state
   useEffect(() => {
@@ -410,10 +467,17 @@ const ChatPage = () => {
     })();
     return () => { cancelled = true; };
   }, [entity_type, entity_id]);
+  useEffect(() => {
+    console.log("Loading", loadingUserData)
+    if (!baseAccess && !loadingUserData) {
+      alert("Subscribe to LeaseLink Basic to enable Chat functionality.")
+      console.log("No Access Granted")
+      navigate('/dashboard')
+    }
+  }, [baseAccess, loadingUserData])
 
   // ------------------------- data helpers --------------------------
   const getMessages = async (sessionId) => {
-    console.log(sessionId)
     const { data, error } = await supabase
       .from("entity_questions")
       .select("*")
@@ -484,11 +548,6 @@ const ChatPage = () => {
 
   const selectEntity = async (entityId, entityType) => {
     // fully reset thread state
-    if(!baseAccess)
-    {
-      console.log("No Access Granted")
-      return;
-    }
     setMessages([]);
     setSources([]);
     setSelectedSource(null);
@@ -526,12 +585,11 @@ const ChatPage = () => {
     for (let i = 0; i < retries; i++) {
       const msgs = await getMessages(session_id);
       const newAssistantMessages = msgs.filter((m) => m.role === "assistant");
-  
+
       if (newAssistantMessages.length > existingAssistantCount) {
         setMessages(msgs);
-        
+
         const last = msgs[msgs.length - 1];
-        console.log(last)
         if (last?.sources) setSources(last.sources);
         console.log("Last.sources", last?.sources)
         if (last?.email_sources) {
@@ -547,11 +605,11 @@ const ChatPage = () => {
       { role: "assistant", text: "⚠️ No response received. Please try again later." },
     ]);
   };
-
+  const unit_id = localStorage.getItem('selectedUnitId')
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    if(!baseAccess) {
+    if (!baseAccess) {
       console.log("Access Not Granted")
       return;
     }
@@ -561,8 +619,10 @@ const ChatPage = () => {
       { role: "assistant", text: "...", loading: true },
     ]);
     setInput("");
-
-    const payload = {
+    let payload;
+    if(unit_id === null)
+    {
+     payload = {
       entity_id,
       company_id,
       message: trimmed,
@@ -570,7 +630,18 @@ const ChatPage = () => {
       auth_id,
       entity_type,
     };
-
+  }
+  else {
+    payload = {
+      entity_id,
+      company_id,
+      message: trimmed,
+      session_id,
+      auth_id,
+      entity_type,
+      unit_id
+    }
+  }
     try {
       GTMChat()
       const res = await fetch(`${server_url}/entity_questions`, {
@@ -597,8 +668,8 @@ const ChatPage = () => {
       const assistantCount = current.filter((m) => m.role === "assistant").length;
       pollForNextAssistantResponse(assistantCount);
       GTMChatResponse(true)
-      if(!userData.First_Value) {
-        const {data, error} = await supabase.from('User_Data').update({"First_Value": true}).eq('auth_id', session.user.id)
+      if (!userData.First_Value) {
+        const { data, error } = await supabase.from('User_Data').update({ "First_Value": true }).eq('auth_id', session.user.id)
         if (error) {
           console.error("Error Updating User", error)
         }
@@ -621,19 +692,20 @@ const ChatPage = () => {
 
 
   // ------------------------- main render ---------------------------
-  if (loading || loadingUserData) return <div className="p-6 text-white">Loading…</div>;
+  if (loadingUserData) return <div className="p-6 text-white">Loading…</div>;
   if (!userData) return <div className="p-6 text-white">User record not found</div>;
 
   return (
     <div className="flex min-h-screen md:h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
-      <Header 
-      entitySelected={entitySelected}
-      entity_name={entity_name}
-      entity_type={entity_type}
-      entity_image={entity_image}
-      access_token={access_token}
-      selectEntity={(id, type) => selectEntity(id, type)}
-      setSidebarOpen={setSidebarOpen}
+      <Header
+        entitySelected={entitySelected}
+        entity_name={entity_name}
+        entity_type={entity_type}
+        entity_image={entity_image}
+        access_token={access_token}
+        selectEntity={(id, type) => selectEntity(id, type)}
+        setSidebarOpen={setSidebarOpen}
+        units={units}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -652,12 +724,12 @@ const ChatPage = () => {
               ))}
               <div ref={messagesEndRef} />
               <div className="h-2 sm:h-3" />
-              <Composer 
-              entitySelected={entitySelected}
-              input={input}
-              setInput={setInput}
-              handleSend={handleSend}
-              composerInputRef={composerInputRef}
+              <Composer
+                entitySelected={entitySelected}
+                input={input}
+                setInput={setInput}
+                handleSend={handleSend}
+                composerInputRef={composerInputRef}
               />
             </div>
           </div>
@@ -734,7 +806,7 @@ const ChatPage = () => {
                   setSidebarOpen(false);
                 }}
                 termsRent={terms}
-                emailSources = {emailSources}
+                emailSources={emailSources}
                 onEmailClick={(email) => {
                   console.log("Clicked")
                   setSelectedEmail(email);
@@ -749,15 +821,15 @@ const ChatPage = () => {
 
       {/* Source modal */}
       {showModal && selectedSource && (
-       <ShowModal OnClose={() => setShowModal(false)} selectedSource={selectedSource}/>
+        <ShowModal OnClose={() => setShowModal(false)} selectedSource={selectedSource} />
       )}
-      {showEmailModal && selectedEmail &&  (
+      {showEmailModal && selectedEmail && (
         <div>
 
-        <EmailModal 
-        Email={selectedEmail}
-        OnClose={() => setEmailModal(false)} />
-          </div>
+          <EmailModal
+            Email={selectedEmail}
+            OnClose={() => setEmailModal(false)} />
+        </div>
       )}
 
       {popUp && (

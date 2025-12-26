@@ -43,6 +43,8 @@ const UploadLeases = () => {
   const [submittingFiles, setSubmittingFiles] = useState(false);
   const [completed, setCompleted] = useState(false); // 🔐 lock after a run
 
+  const [multipleUnits, setMultipleUnits] = useState(false);
+
   // Per-file status map: { [id]: { name, step, progress, message, error, done } }
   const [fileStatuses, setFileStatuses] = useState({});
 
@@ -91,6 +93,7 @@ const UploadLeases = () => {
       cancelled = true;
     };
   }, [session, company_id]);
+
 
   // ----------------- When a tenant is selected, fetch linked units + properties -----------------
   const tenantSelected = useCallback(
@@ -363,7 +366,7 @@ const UploadLeases = () => {
                 onSelect={setSelectedUnit}
                 placeholder={selectedUnit?.Suite || "Select Unit"}
                 getOptionId={(u) => u?.unit_id}
-                getOptionTitle={(u) => u?.address}
+                getOptionTitle={(u) => `${u?.Suite} - ${u?.address}`}
               />
             ) : units.length === 1 ? (
               <div className="text-sm text-gray-200 bg-gray-800 rounded-xl px-3 py-2 inline-block">

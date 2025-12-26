@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { getLeaseDocs } from "../utilities/GetMessages";
 import DisplayBox from "../components/DisplayBox";
 import { getTable } from "../utilities/supabaseCalls";
@@ -155,6 +155,8 @@ const FieldRow = React.memo(function FieldRow({ label, value, hasOverride, onCli
 
 const TenantTerms = () => {
   const { tenant_id } = useParams();
+  const [searchParams] = useSearchParams();
+  const unit_id = searchParams.get('unit_id');
   const { session } = useAuth();
 
   const [tenantName, setTenantName] = useState("");
@@ -192,7 +194,9 @@ const TenantTerms = () => {
       setErrorMsg("");
 
       try {
-        const doc = await getLeaseDocs(tenant_id);
+        let doc
+        if(!unit_id) doc = await getLeaseDocs(tenant_id);
+        else doc = await getLeaseDocs(tenant_id, unit_id)
         if (!cancelled && doc) {
           setBasicLease(doc.basic_lease ?? []);
           setRent(doc.rent ?? []);

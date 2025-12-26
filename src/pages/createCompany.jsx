@@ -65,14 +65,106 @@ const CreateCompanies = () => {
         customer_engagement_elavator: engagement.trim() || null,
         // optional: store notes in a text column if you have one, else remove
         notes: notes.trim() || null,
+        Base_Function: true,
+        Email_Function: false,
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("Property_Management_Companies")
-        .insert(payload);
+        .insert(payload).select().single();
+      const company = data;
 
       if (error) throw error;
-      
+      const {data: {user}} = await supabase.auth.getUser();
+
+      console.log("UID", user?.id)
+      const { error: rError } = await supabase.from('Roles').insert({
+        Role_Name: "Company Admin",
+        Create_Users: true,
+        Create_Properties: true,
+        Create_Tenants: true,
+        Ask_Questions: true,
+        View_Other_Users: true,
+        Edit_Users: true,
+        Create_Contact: true,
+        Create_Owner: true,
+        Create_Unit: true,
+        Edit_Owner: true,
+        View_All_Owner: true,
+        Edit_Contact: true,
+        View_All_Contacts: true,
+        View_Previous_Questions: true,
+        Create_Lease_Documents: true,
+        View_Lease_Docs: true,
+        Edit_Properties: true,
+        View_All_Properties: true,
+        Edit_Tenants: true,
+        View_All_Tenants: true,
+        Edit_Units: true,
+        View_All_Units: true,
+        Can_Delete_Users: true,
+        Can_Delete_Properties: true,
+        Can_Delete_Tenants: true,
+        Can_Delete_Contact: true,
+        Can_Delete_Units: true,
+        Can_Delete_Owners: true,
+        company_id: company.company_id,
+        Delete_Leases: true,
+        Edit_Roles: true,
+        Create_Roles: true,
+        View_All_Roles: true,
+        Access_Settings: true,
+        Edit_Company: true,
+        Edit_Subscription: false,
+        Create_Company: false,
+        Is_LeaseLink_Admin: false
+      })
+
+      if (rError) throw rError;
+      const { error: pmError } = await supabase.from("Roles").insert({
+        Role_Name: "Property Manager",
+        Create_Users: false,
+        Create_Properties: false,
+        Create_Tenants: true,
+        Ask_Questions: true,
+        View_Other_Users: false,
+        Edit_Users: false,
+        Create_Contact: true,
+        Create_Owner: true,
+        Create_Unit: true,
+        Edit_Owner: true,
+        View_All_Owner: false,
+        Edit_Contact: true,
+        View_All_Contacts: false,
+        View_Previous_Questions: true,
+        Create_Lease_Documents: true,
+        View_Lease_Docs: false,
+        Edit_Properties: false,
+        View_All_Properties: false,
+        Edit_Tenants: true,
+        View_All_Tenants: false,
+        Edit_Units: true,
+        View_All_Units: false,
+        Can_Delete_Users: false,
+        Can_Delete_Properties: false,
+        Can_Delete_Tenants: false,
+        Can_Delete_Contact: false,
+        Can_Delete_Units: false,
+        Can_Delete_Owners: false,
+        company_id: company.company_id,
+        Delete_Leases: false,
+        Edit_Roles: false,
+        Create_Roles: false,
+        View_All_Roles: false,
+        Access_Settings: false,
+        Edit_Company: false,
+        Edit_Subscription: false,
+        Create_Company: false,
+        Is_LeaseLink_Admin: false
+      });
+      if (pmError) throw pmError;
+
+
       GTMCreate('Create Company', 'Company', companyName)
       // Success → return to dashboard (or navigate to the new company if you have that route)
       navigate("/dashboard");
