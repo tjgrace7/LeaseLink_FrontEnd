@@ -19,7 +19,7 @@ import { putWithProgress } from "../utilities/Generic";
  *  3) Processing
  *  4) Done / Error
  */
-  // XHR PUT to get upload progress (fetch has no native upload progress)
+// XHR PUT to get upload progress (fetch has no native upload progress)
 const UploadLeases = () => {
   const { session, userData } = useAuth();
   const navigate = useNavigate();
@@ -53,7 +53,6 @@ const UploadLeases = () => {
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const company_id = localStorage.getItem('activeCompanyId')
-  console.log(company_id)
   // A stable ID per file (good enough for the session)
   const fileId = (f) => `${f.name}-${f.size}-${f.lastModified}`;
 
@@ -199,7 +198,6 @@ const UploadLeases = () => {
 
     try {
       const groupId = crypto.randomUUID()
-      console.log(groupId)
       const { error } = await supabase.from('upload_groups').insert({
         id: groupId,
         company_id: company_id,
@@ -238,7 +236,7 @@ const UploadLeases = () => {
             throw new Error(`Failed to get signed URL (${res.status}): ${errText}`);
           }
           GTMUpload()
-          const { signed_url, lease_file_path, bucket, job_id, error: fxError } = await res.json();
+          const { lease_id, signed_url, lease_file_path, bucket, job_id, error: fxError } = await res.json();
           if (fxError) throw new Error(fxError);
           if (!signed_url || !lease_file_path || !bucket) {
             throw new Error("Edge function did not return expected fields.");
@@ -246,12 +244,73 @@ const UploadLeases = () => {
 
           // Step 2: Upload with progress
           setStatus(id, { step: "Uploading", message: "Uploading to storage…", progress: 0 });
-          await putWithProgress(
-            signed_url,
-            file,
-            file.type || "application/octet-stream",
-            (pct) => setStatus(id, { progress: pct })
-          );
+          try {
+            await putWithProgress(
+              signed_url,
+              file,
+              file.type || "application/octet-stream",
+              (pct) => setStatus(id, { progress: pct })
+            );
+          } catch (uploadErr) {
+            console.error("Upload Error", uploadErr);
+            setStatus(id, {
+              step: "Error",
+              message: err?.message || "Unknown error",
+              error: true,
+            });
+            alert(`Upload failed for file ${file.name}: ${uploadErr.message}`);
+            continue; // skip to next file
+          }
+
+          //Remove for Production. Used for Testing to bypass CRON SERVICE
+          const serverurl = "http://localhost:8000";
+          const lease_request = {
+            user_id: session.user.id,
+            property_id: selectedProperty.prop_id,
+            unit_id: selectedUnit.unit_id,
+            tenant_id: selectedTenant.tenant_id,
+            file_path: lease_file_path,
+            lease_document_id: lease_id,
+            bucket: bucket,
+            company_id: userData.company_id
+          }
+          try {
+
+            const serverRes = await fetch(`${serverurl}/firstLease`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                auth_id: session.user.id,
+                lease_data: lease_request,
+                job_id: job_id,
+                group_id: groupId
+              }),
+            });
+            // If FastAPI raised HTTPException or an unhandled error → !ok
+            console.log("serverRes", serverRes);
+            if (!serverRes.ok) {
+              const errorBody = await serverRes.json().catch(() => null);
+
+              const message =
+                errorBody?.detail ||          // from HTTPException(detail="...")
+                errorBody?.error ||           // from JSONResponse({"error": ...})
+                `Request failed with status ${serverRes.status}`;
+
+              throw new Error(message);
+            }
+
+            const data = await serverRes.json(); // success path
+            console.log("Success:", data);
+          } catch (err) {
+            console.error("firstLease error:", err);
+
+            // Show toast, set error state, etc.
+            // setError(err.message);
+          }
+
 
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
@@ -269,7 +328,7 @@ const UploadLeases = () => {
           });
         }
       }
- 
+
       // After the whole run, lock + clear input/queues
       setCompleted(true);           // 🔐 lock UI to prevent accidental re-run
       setFileList([]);              // clear queue
@@ -409,10 +468,10 @@ const UploadLeases = () => {
                           <div className="font-medium break-all">{s.name || file.name}</div>
                           <div
                             className={`text-xs px-2 py-1 rounded ${s.step === "Done"
-                                ? "bg-green-600/30 text-green-300"
-                                : s.step === "Error"
-                                  ? "bg-red-600/30 text-red-300"
-                                  : "bg-blue-600/30 text-blue-200"
+                              ? "bg-green-600/30 text-green-300"
+                              : s.step === "Error"
+                                ? "bg-red-600/30 text-red-300"
+                                : "bg-blue-600/30 text-blue-200"
                               }`}
                           >
                             {s.step || "Ready"}

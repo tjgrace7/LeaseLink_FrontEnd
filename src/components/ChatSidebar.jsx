@@ -23,6 +23,15 @@ const ChatSidebar = ({
   emailSources = [],
   onEmailClick,
 }) => {
+  const getSourceText = (source) => {
+    if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
+      return `Page ${source.pageNumber}: ${truncateText(source.highlight_text, 80)}`;
+    }
+    else {
+      const sourceName = source?.source_doc.split('/').pop();
+      return `Document: ${sourceName ?? 'Unknown Document'}`;
+    }
+  }
   return (
     <aside className="w-full min-w-[16rem] bg-[#2c2c2e] text-white flex flex-col p-4 border-r border-gray-700 overflow-y-auto">
       {/* Sources */}
@@ -42,8 +51,7 @@ const ChatSidebar = ({
             onClick={() => onSourceClick?.(source)}
             className="text-left text-blue-500 hover:underline w-full break-words"
           >
-            Page {source?.pageNumber}:{' '}
-            {truncateText?.(source?.highlight_text ?? '', 80)}
+            {getSourceText(source)}
           </button>
         </li>
       ))}

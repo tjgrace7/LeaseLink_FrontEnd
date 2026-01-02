@@ -53,6 +53,7 @@ const CreateUnitProperty = () => {
     city: "",
     state: "",
     zip: "",
+    commonarea: 0,
   });
 
   const [initialData, setInitialData] = useState({});
@@ -118,6 +119,7 @@ const CreateUnitProperty = () => {
             city: item.City || "",
             state: item.State || "",
             zip: item.Zip_Code || "",
+            common_area: item.interior_common_area || 0,
           };
           setEntity(payload);
           setInitialData({ ...payload, image });
@@ -378,6 +380,15 @@ const hasChanged = useCallback(() => {
                           name="zip"
                           placeholder="Enter ZIP"
                           value={Entity.zip}
+                          onChange={handleChange}
+                        />
+                      </Field>
+                      <Field label="Interior Common Area Square Footage" htmlFor="common_area" >
+                        <Input
+                          id="common_area"
+                          name="common_area"
+                          placeholder="Enter interior common area square footage"
+                          value={Entity.common_area}
                           onChange={handleChange}
                         />
                       </Field>

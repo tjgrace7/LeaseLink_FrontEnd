@@ -39,11 +39,12 @@ const LoadPreviousMessages = ({
   const loadChat = (chat) => {
     if (!chat?.session_id) return;
     localStorage.setItem("chat_session_id", chat.session_id);
-    localStorage.setItem("entity_id", entityId);
-    console.log(entityType)
-    localStorage.setItem("entity_type", entityType);
+    localStorage.setItem("entity_id", chat.entity_id);
+    console.log("Chat", chat)
+    localStorage.setItem("entity_type", chat.entity);
     localStorage.setItem("entity_selected", "true");
     localStorage.setItem('isOldMessage', "true")
+
     if (chat.entity_name) localStorage.setItem("entity_name", chat.entity_name);
     localStorage.removeItem(`chat_thread_${chat.session_id}`);
     navigate("/chat");

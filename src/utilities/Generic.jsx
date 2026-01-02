@@ -209,7 +209,7 @@ export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || ""}`));
+        else return reject(new Error(`Upload failed with status ${xhr.status}`));
       };
       xhr.onerror = () => reject(new Error("Network error during upload"));
       xhr.send(file);

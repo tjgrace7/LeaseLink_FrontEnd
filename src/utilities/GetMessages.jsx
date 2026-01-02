@@ -56,8 +56,8 @@ const getNextRentEscalation = (rawValue, today = new Date()) => {
   if (!Array.isArray(parsed)) return rawValue;
 
   // Key aliases
-  const RANGE_KEYS = ["period", "date_range", "dateRange", "range", "term", "dates"];
-  const DATE_KEYS  = ["date", "start_date", "startDate", "effective_date", "effectiveDate", "as_of", "asOf"];
+  const RANGE_KEYS = ["period", "date_range", "dateRange", "range", "term", "dates", 'months'];
+  const DATE_KEYS  = ["date", "start_date", "startDate", "effective_date", "effectiveDate", "as_of", "asOf", 'months'];
 
   const MONTHLY_KEYS = ["monthly", "monthly_rent", "monthlyRent", "rent_monthly", "base_rent_monthly", "amount_monthly"];
   const ANNUAL_KEYS  = ["annual_rent", "annualRent", "annual", "yearly_rent", "yearlyRent", "rent_annual", "base_rent_annual"];
@@ -299,14 +299,10 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Delivery/Possession Date": getMostRecentField("delivery_posession_date", data) },
         { "Lease Expiration Date": getMostRecentField("lease_expiration_date", data) },
         { "Lease Term": getMostRecentField("lease_term", data) },
-        { "Suite Identifier": getMostRecentField("suite_identifier", data) },
-        { "Property Address": getMostRecentField("Property_Address", data) },
         { "Premises Description": getMostRecentField("premises_description", data) },
         { "Permitted Use": getMostRecentField("permitted_use", data) },
         { "Rentable Square Footage": getMostRecentField("rentable_square_footage", data) },
-        { "Usable Square Footage": getMostRecentField("usable_square_footage", data) },
         { "Parking Allocation": getMostRecentField("parking_allocation", data) },
-        { "Storage/Additional Space": getMostRecentField("storage_additional_space", data) },
     ];
 
     const rawRentEsc = getMostRecentField("rent_escalation", data);

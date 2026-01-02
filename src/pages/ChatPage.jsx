@@ -45,7 +45,7 @@ const ComposerInput = memo(function ComposerInput({
   );
 });
 // ------------------------- render helpers ------------------------
-const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen, units = null }) {
+const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen, searchQuery, units = null }) {
   let searchable = false
   const Suite = localStorage.getItem('selectedUnitSuite')
   const address = localStorage.getItem('selectedUnitAddress')
@@ -90,7 +90,7 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
             placeholder="Search Entities"
             access_token={access_token}
             selectEntity={(id, type) => selectEntity(id, type)}
-            type="tenants"
+            type={searchQuery}
             entityDisplay={true}
             noAutoFocus
             data-no-autofocus
@@ -230,6 +230,7 @@ const ChatPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showEmailModal, setEmailModal] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("tenants")
 
   // lease terms quick-view
   const [terms, setTerms] = useState([]);
@@ -248,9 +249,9 @@ const ChatPage = () => {
 
   // env + auth
   //switch to import.meta.env.VITE_SERVER_URL
-  //const server_url = "http://localhost:8000";
-  const server_url = import.meta.env.VITE_SERVER_URL;
-  const { session, userData, loadingUserData, baseAccess } = useAuth();
+  const server_url = "http://localhost:8000";
+  //const server_url = import.meta.env.VITE_SERVER_URL;
+  const { session, userData, loadingUserData, baseAccess, propertyChat } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
@@ -320,6 +321,7 @@ const ChatPage = () => {
         const storedEntityId = localStorage.getItem("entity_id");
         const storedEntityType = localStorage.getItem("entity_type");
         const storedEntitySelected = localStorage.getItem("entity_selected");
+        console.log("Selected Entity", storedEntityId, storedEntityType, storedEntitySelected)
 
         console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
         if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
@@ -468,6 +470,11 @@ const ChatPage = () => {
     return () => { cancelled = true; };
   }, [entity_type, entity_id]);
   useEffect(() => {
+    console.log("Property Chat Access:", propertyChat)
+    if(propertyChat) setSearchQuery("tenants_properties")
+  }, [propertyChat, loadingUserData])
+  // ------------------------- access control ------------------------
+  useEffect(() => {
     console.log("Loading", loadingUserData)
     if (!baseAccess && !loadingUserData) {
       alert("Subscribe to LeaseLink Basic to enable Chat functionality.")
@@ -580,7 +587,7 @@ const ChatPage = () => {
   const pollForNextAssistantResponse = async (
     existingAssistantCount,
     retries = 20,
-    delay = 3000
+    delay = 5000
   ) => {
     for (let i = 0; i < retries; i++) {
       const msgs = await getMessages(session_id);
@@ -605,6 +612,7 @@ const ChatPage = () => {
       { role: "assistant", text: "⚠️ No response received. Please try again later." },
     ]);
   };
+
   const unit_id = localStorage.getItem('selectedUnitId')
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -666,7 +674,11 @@ const ChatPage = () => {
 
       const current = await getMessages(session_id);
       const assistantCount = current.filter((m) => m.role === "assistant").length;
-      pollForNextAssistantResponse(assistantCount);
+      let delay = 3000;
+      if (entity_type === "property") {
+        delay = 10000;
+      }
+      pollForNextAssistantResponse(assistantCount, 20, delay);
       GTMChatResponse(true)
       if (!userData.First_Value) {
         const { data, error } = await supabase.from('User_Data').update({ "First_Value": true }).eq('auth_id', session.user.id)
@@ -705,6 +717,7 @@ const ChatPage = () => {
         access_token={access_token}
         selectEntity={(id, type) => selectEntity(id, type)}
         setSidebarOpen={setSidebarOpen}
+        searchQuery={searchQuery}
         units={units}
       />
 

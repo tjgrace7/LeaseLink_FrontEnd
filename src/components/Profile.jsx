@@ -24,7 +24,7 @@ const Profile = ({
   Title = '',
   edit_Entity = false,
   delete_Entity = false,
-  selectedUnit = null
+  selectedUnit = null, 
 }) => {
   const [image, setImage] = useState('');
   const [entityId, setEntityId] = useState('');
@@ -262,6 +262,7 @@ const Profile = ({
           <h1 className="max-w-full line-clamp-2 break-words [overflow-wrap:anywhere] text-xl sm:text-2xl font-bold underline underline-offset-4 decoration-white/30">
             {Title}
           </h1>
+    
         )}
 
         {image && (
@@ -275,7 +276,7 @@ const Profile = ({
         )}
 
         <div className="mt-2 text-lg sm:text-xl font-semibold">
-          <span className="block w-full line-clamp-2 break-words [overflow-wrap:anywhere]">{getLabel?.(entity) || 'Unnamed Entity'}</span>
+          <span className="block w-full line-clamp-2 break-words [overflow-wrap:anywhere]">{getLabel?.(entity)|| 'Unnamed Entity'}</span>
         </div>
       </div>
 
