@@ -249,8 +249,8 @@ const ChatPage = () => {
 
   // env + auth
   //switch to import.meta.env.VITE_SERVER_URL
-  const server_url = "http://localhost:8000";
-  //const server_url = import.meta.env.VITE_SERVER_URL;
+  //const server_url = "http://localhost:8000";
+  const server_url = import.meta.env.VITE_SERVER_URL;
   const { session, userData, loadingUserData, baseAccess, propertyChat } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;

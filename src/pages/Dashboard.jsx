@@ -203,9 +203,9 @@ const Dashboard = () => {
 
         {/* Properties + Previous Messages */}
         <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 max-h-80">
             {/* Left: Properties */}
-            <div className="min-h-0">
+            <div>
               {loading.properties ? (
                 <div className="animate-pulse">
                   <div className="h-24 rounded-2xl bg-white/10" />
@@ -246,7 +246,7 @@ const Dashboard = () => {
                     session={session}
                     entityType="company"
                     autoSize={true}             // default; can omit
-                    maxRowsBeforeScroll={8}     // tweak if you want earlier/later scroll
+                    maxRowsBeforeScroll={8}   // tweak if you want earlier/later scroll
                   // listHeight not passed → auto-size kicks in
                   />
                 </div>

@@ -176,7 +176,7 @@ const EntityListBox = ({
       </div>
 
       {/* Entity List */}
-      <ul className="max-h-80 overflow-y-auto space-y-2 pr-1">
+      <ul className="overflow-y-auto space-y-2 pr-1">
         {filteredEntities.map((entity) => {
           const id = getEntityId?.(entity);
           const entityLabel = getEntityLabel?.(entity);
