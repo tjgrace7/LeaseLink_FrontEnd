@@ -263,7 +263,7 @@ const UploadLeases = () => {
           }
 
           //Remove for Production. Used for Testing to bypass CRON SERVICE
-          const serverurl = "http://localhost:8000";
+         /* const serverurl = "http://localhost:8000";
           const lease_request = {
             user_id: session.user.id,
             property_id: selectedProperty.prop_id,
@@ -311,7 +311,7 @@ const UploadLeases = () => {
             // setError(err.message);
           }
 
-
+            */
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
 
