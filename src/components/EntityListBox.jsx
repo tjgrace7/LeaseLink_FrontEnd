@@ -3,24 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
 
-/**
- * EntityListBox
- * Displays a labeled list of entities with a search bar.
- *
- * Props:
- * - type: string — entity type for SearchBar (e.g., 'tenants', 'properties')
- * - selectEntity: (id: string|number, kind?: string) => void
- * - entities: array of entity objects
- * - getEntityLabel: (entity) => string
- * - getEntityId: (entity) => string|number
- * - Label: section title string (e.g., "Tenants"); if falsy, renders null
- * - placeholder: string for SearchBar
- * - boxType: string passed back to selectEntity when no related entity is used
- * - getSQ: optional (entity) => number|string  (square footage)
- * - getSuite: optional (entity) => string|number
- * - getRelatedEntity: optional async (entity) => object (e.g., current tenant)
- * - renderRelatedLabel: optional (related) => string|ReactNode
- */
 const EntityListBox = ({
   type,
   selectEntity,
@@ -34,13 +16,12 @@ const EntityListBox = ({
   getSuite,
   getRelatedEntity,
   renderRelatedLabel,
+  className = "", // NEW (optional): allow parent styling
 }) => {
   if (!Label) return null;
 
-  // Show/hide archived toggle
   const [showArchived, setShowArchived] = useState(false);
 
-  // Helper to normalize various truthy/falsey representations
   const isArchived = (row) => {
     const v = row?.archived;
     if (typeof v === "string") {
@@ -50,10 +31,6 @@ const EntityListBox = ({
     return Boolean(v);
   };
 
-  /**
-   * Related entity fetcher as a tiny sub-component
-   * Isolated to ensure each list row handles its own related lookup and cancels safely.
-   */
   const RelatedEntityInfo = ({ entity }) => {
     const [related, setRelated] = useState(null);
 
@@ -81,16 +58,11 @@ const EntityListBox = ({
     return <span className="text-white text-sm sm:text-base">{renderRelatedLabel(related)}</span>;
   };
 
-  /**
-   * Sorting:
-   * - If both items have suites, sort by suite (numeric-aware).
-   * - If only one has suite, suite-first.
-   * - Else sort by label.
-   */
   const sortedEntities = useMemo(() => {
     const safe = Array.isArray(entities) ? [...entities] : [];
     const safeText = (v) => (v == null ? "" : String(v));
-    const hasSuite = (e) => (typeof getSuite === "function" ? getSuite(e) != null && getSuite(e) !== "" : false);
+    const hasSuite = (e) =>
+      typeof getSuite === "function" ? getSuite(e) != null && getSuite(e) !== "" : false;
 
     return safe.sort((a, b) => {
       const aHas = hasSuite(a);
@@ -110,7 +82,6 @@ const EntityListBox = ({
     });
   }, [entities, getEntityLabel, getSuite]);
 
-  // Apply archived filter after sorting (so order is stable whether shown or hidden)
   const filteredEntities = useMemo(() => {
     if (showArchived) return sortedEntities;
     return sortedEntities.filter((e) => !isArchived(e));
@@ -138,16 +109,15 @@ const EntityListBox = ({
   };
 
   return (
-    <section className="bg-lease-gradient text-white p-4 sm:p-5 rounded-lg">
-      {/* Header row: Search (left) • Centered Title • Actions (right) */}
-      <div className="relative flex items-center pb-6">
+    // Key: section stretches to parent height; flex column enables scroll region sizing
+    <section className={`bg-lease-gradient text-white p-4 sm:p-5 rounded-lg w-full h-full min-h-0 flex flex-col ${className}`}>
+      {/* Header row stays natural height */}
+      <div className="relative flex items-center pb-6 shrink-0">
         <div className="z-10">
           <SearchBar
             placeholder={`Search ${placeholder || Label}`}
             selectEntity={selectEntity}
             type={type}
-            // NOTE: SearchBar likely queries the API that already excludes archived;
-            // if you later wire it to include archived, pass a prop here and handle upstream.
           />
         </div>
 
@@ -158,7 +128,6 @@ const EntityListBox = ({
           {Label}
         </h1>
 
-        {/* Right-aligned actions */}
         <div className="ml-auto z-10">
           <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer">
             <input
@@ -175,8 +144,8 @@ const EntityListBox = ({
         </div>
       </div>
 
-      {/* Entity List */}
-      <ul className="overflow-y-auto space-y-2 pr-1">
+      {/* Scroll region: fills remaining height and scrolls internally */}
+      <ul className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
         {filteredEntities.map((entity) => {
           const id = getEntityId?.(entity);
           const entityLabel = getEntityLabel?.(entity);
@@ -184,7 +153,6 @@ const EntityListBox = ({
           const suite = typeof getSuite === "function" ? getSuite(entity) : null;
           const archived = isArchived(entity);
 
-          // Visual treatment for archived rows
           const rowClasses = archived
             ? "border-rose-500/50 bg-rose-900/20 hover:border-rose-400/60"
             : "border-gray-600 hover:border-gray-400";
@@ -193,11 +161,10 @@ const EntityListBox = ({
             <li key={String(id)}>
               <button
                 onClick={() => handleClick(entity)}
-                className={`w-full h-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
+                className={`w-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
                 aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}${archived ? " (archived)" : ""}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  {/* Left cluster: Suite (if any) + Label */}
                   <div className="flex items-start gap-4">
                     {suite != null && suite !== "" && (
                       <span className="text-sm sm:text-base text-white flex flex-col min-w-[4.5rem]">
@@ -212,7 +179,6 @@ const EntityListBox = ({
                     </span>
                   </div>
 
-                  {/* Right cluster: SQFT + Related (e.g., current tenant) + Archived pill */}
                   <div className="flex items-start gap-6">
                     {sq != null && sq !== "" && (
                       <span className="text-sm sm:text-base text-white">

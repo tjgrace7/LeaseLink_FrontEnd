@@ -16,7 +16,18 @@ import { useNavigate } from 'react-router-dom';
  * 4) Fewer re-renders (stable callbacks/memos) and safe effects with guards.
  * 5) Consistent styling via Tailwind.
  */
+function CardShell({ title, children, className = "" }) {
+  return (
+    <div className={`rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full min-h-0 flex flex-col ${className}`}>
+      {title ? <div className="mb-3 font-semibold shrink-0">{title}</div> : null}
 
+      {/* Let children control scrolling; this just provides the height context */}
+      <div className="flex-1 min-h-0">
+        {children}
+      </div>
+    </div>
+  );
+}
 const Dashboard = () => {
   const navigate = useNavigate();
   const { session, userData} = useAuth();
@@ -203,7 +214,7 @@ const Dashboard = () => {
 
         {/* Properties + Previous Messages */}
         <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 max-h-80">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 auto-rows-fr h-[70dvh] min-h-0">
             {/* Left: Properties */}
             <div>
               {loading.properties ? (
@@ -216,9 +227,9 @@ const Dashboard = () => {
                   <p className="text-sm opacity-70 mt-1">Create a property to see it here.</p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
+                <CardShell>
                   <EntityListBox
-                  className
+                    className='h-full'
                     type="units_properties_tenants"
                     entities={properties}
                     selectEntity={navigateEntity}
@@ -229,7 +240,7 @@ const Dashboard = () => {
                     placeholder="Properties"
                     boxType="property"
                   />
-                </div>
+                </CardShell>
               )}
               {error.properties && (
                 <p className="text-red-300 text-sm mt-3" role="alert">{error.properties}</p>
@@ -239,17 +250,18 @@ const Dashboard = () => {
             {/* Right: Previous Messages (fluid + scroll) */}
             <div className="min-h-0">
               {activeCompanyId && (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 h-full">
+                <CardShell>
                   <LoadPreviousMessages
-                    className="w-full h-full"
+                    className="h-full"
                     entityId={activeCompanyId}
                     session={session}
+                    listHeight='h-full'
                     entityType="company"
                     autoSize={true}             // default; can omit
                     maxRowsBeforeScroll={8}   // tweak if you want earlier/later scroll
                   // listHeight not passed → auto-size kicks in
                   />
-                </div>
+                </CardShell>
               )}
 
             </div>
