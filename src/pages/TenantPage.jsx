@@ -118,7 +118,7 @@ const EntryRow = ({ item }) => {
   ) {
     try {
       display = JSON.stringify(JSON.parse(display), null, 2);
-    } catch {}
+    } catch { }
   }
 
   return (
@@ -157,7 +157,7 @@ const EmptyState = ({ title, hint }) => (
 
 /** ---------- Page (view-only) ---------- */
 const TenantPage = () => {
-  const { session, roleData } = useAuth();
+  const { session, roleData, extraction } = useAuth();
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
   const unit_id = searchParams.get('unit_id');
@@ -267,12 +267,10 @@ const TenantPage = () => {
     const loadLeases = async () => {
       try {
         let leases
-        if (!unit_id)
-        {
-         leases = await getTenantLeaseInfo(tenant_id);
+        if (!unit_id) {
+          leases = await getTenantLeaseInfo(tenant_id);
         }
-        else 
-        {
+        else {
           leases = await getTenantLeaseInfo(tenant_id, unit_id)
         }
         if (isCancelled || !leases) return;
@@ -412,10 +410,10 @@ const TenantPage = () => {
   /** ---------- Derived ---------- */
   const hasAnyTerms =
     (leaseSummary?.length ?? 0) +
-      (financial?.length ?? 0) +
-      (responsibility?.length ?? 0) +
-      (keyDates?.length ?? 0) +
-      (rights?.length ?? 0) >
+    (financial?.length ?? 0) +
+    (responsibility?.length ?? 0) +
+    (keyDates?.length ?? 0) +
+    (rights?.length ?? 0) >
     0;
 
   /** ---------- Loading / guard ---------- */
@@ -427,8 +425,7 @@ const TenantPage = () => {
     );
   }
   const tenantTerms = () => {
-    if(unit_id)
-    {
+    if (unit_id) {
       navigate(`/terms/${tenant_id}?unit_id=${unit_id}`)
     }
     else navigate(`/terms/${tenant_id}`)
@@ -446,17 +443,18 @@ const TenantPage = () => {
         >
           ← Back
         </button>
-
+        {extraction &&(
         <button
           onClick={() => tenantTerms()}
           className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
         >
           View All Terms
         </button>
+        )}
       </div>
 
       {/* Top: Profile & Messages (stack on mobile, side-by-side on lg) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 h-80">
         {roleData && (
           <div className="flex justify-center">
             <Profile
@@ -489,152 +487,154 @@ const TenantPage = () => {
 
         <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
       </div>
+      {extraction && (
+      <div>
+        {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <SectionCard title="Lease Summary">
+            {console.log("Lease Summary", leaseSummary)}
+            {leaseSummary?.length ? (
+              applyOverridesToList(leaseSummary).map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
+            )}
+          </SectionCard>
 
-      {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <SectionCard title="Lease Summary">
-          {console.log("Lease Summary", leaseSummary)}
-          {leaseSummary?.length ? (
-            applyOverridesToList(leaseSummary).map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Contact Info">
-          {contacts?.length ? (
-            <div className="flex flex-col gap-3">
-              {contacts.map((contact) => (
-                <button
-                  key={contact?.contact_id}
-                  className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  onClick={() => navigate(`/contact/${contact?.contact_id}`)}
-                >
-                  <EntryRow item={{ Name: contact?.Contact_Name }} />
-                  <EntryRow item={{ Type: contact?.Contact_Type }} />
-                  <EntryRow item={{ Phone: contact?.Phone }} />
-                  <EntryRow item={{ Email: contact?.Email }} />
-                  <EntryRow item={{ Address: contact?.Address }} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="No contacts found." />
-          )}
-        </SectionCard>
-      </div>
-
-      {/* ---------- Row 2: Financial Snapshot | Responsibility ---------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <SectionCard title="Financial Snapshot">
-          {financial?.length ? (
-            applyOverridesToList(financial).map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Responsibility">
-          {responsibility?.length ? (
-            applyOverridesToList(responsibility).map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* ---------- Row 3: Key Dates | Critical Rights & Options ---------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <SectionCard title="Key Dates">
-          {keyDates?.length ? (
-            applyOverridesToList(keyDates).map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Critical Rights and Options">
-          {rights?.length ? (
-            applyOverridesToList(rights).map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* ---------- Row 4: Lease Documents (full width) ---------- */}
-      <div className="mb-6">
-        <SectionCard title="Lease Documents">
-          {leaseDocs?.length ? (
-            <div className="flex flex-col gap-3">
-              {leaseDocs.map((lease) => {
-                const title = (lease?.lease_file_path || "").split("/").pop();
-                const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
-
-                return (
-                  <div
-                    key={lease?.lease_id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
+          <SectionCard title="Contact Info">
+            {contacts?.length ? (
+              <div className="flex flex-col gap-3">
+                {contacts.map((contact) => (
+                  <button
+                    key={contact?.contact_id}
+                    className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    onClick={() => navigate(`/contact/${contact?.contact_id}`)}
                   >
-                    <button
-                      className="text-left underline hover:text-gray-200"
-                      onClick={async () => {
-                        const signedUrl = await getSignedUrl(lease?.lease_file_path);
-                        if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
-                      }}
+                    <EntryRow item={{ Name: contact?.Contact_Name }} />
+                    <EntryRow item={{ Type: contact?.Contact_Type }} />
+                    <EntryRow item={{ Phone: contact?.Phone }} />
+                    <EntryRow item={{ Email: contact?.Email }} />
+                    <EntryRow item={{ Address: contact?.Address }} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No contacts found." />
+            )}
+          </SectionCard>
+        </div>
+
+        {/* ---------- Row 2: Financial Snapshot | Responsibility ---------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <SectionCard title="Financial Snapshot">
+            {financial?.length ? (
+              applyOverridesToList(financial).map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Responsibility">
+            {responsibility?.length ? (
+              applyOverridesToList(responsibility).map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
+            )}
+          </SectionCard>
+        </div>
+
+        {/* ---------- Row 3: Key Dates | Critical Rights & Options ---------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <SectionCard title="Key Dates">
+            {keyDates?.length ? (
+              applyOverridesToList(keyDates).map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Critical Rights and Options">
+            {rights?.length ? (
+              applyOverridesToList(rights).map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
+            )}
+          </SectionCard>
+        </div>
+        </div>
+      )}
+        {/* ---------- Row 4: Lease Documents (full width) ---------- */}
+        <div className="mb-6">
+          <SectionCard title="Lease Documents">
+            {leaseDocs?.length ? (
+              <div className="flex flex-col gap-3">
+                {leaseDocs.map((lease) => {
+                  const title = (lease?.lease_file_path || "").split("/").pop();
+                  const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
+
+                  return (
+                    <div
+                      key={lease?.lease_id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
                     >
-                      {title || "Lease Document"}
-                    </button>
+                      <button
+                        className="text-left underline hover:text-gray-200"
+                        onClick={async () => {
+                          const signedUrl = await getSignedUrl(lease?.lease_file_path);
+                          if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        {title || "Lease Document"}
+                      </button>
 
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="opacity-75">Status:</span>
-                      <span className="font-medium">
-                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
-                      </span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="opacity-75">Status:</span>
+                        <span className="font-medium">
+                          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
+                        </span>
 
-                      {status === "error" && (
-                        <>
-                          <span className="opacity-50">•</span>
-                          <button
-                            className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
-                            onClick={async () => {
-                              // 1) Check if file still exists in Storage
-                              const exists = await fileExistsInStorage(lease?.lease_file_path);
-                              if (!exists) {
-                                // If missing, send them to upload flow for this tenant
-                                navigate(`/upload_docs?tenant_id=${tenant_id}`);
-                                return;
-                              }
-                              const group_id = crypto.randomUUID();
-                              await supabase.from("upload_groups").insert({
-                                id: group_id,
-                                company_id: tenant.property_management_id,
-                                total_jobs: 1,
-                                tenantId: tenant.tenant_id,
-                              });
-                              // 2) Requeue the job
-                              await supabase.from("Upload_Job_Status").insert({
-                                lease_id: lease?.lease_id,
-                                job_info: { error: null, status: "queued", results: null },
-                                group_id: group_id,
-                              });
-                              loadJobStatuses();
-                            }}
-                          >
-                            Reupload
-                          </button>
-                        </>
-                      )}
+                        {status === "error" && (
+                          <>
+                            <span className="opacity-50">•</span>
+                            <button
+                              className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
+                              onClick={async () => {
+                                // 1) Check if file still exists in Storage
+                                const exists = await fileExistsInStorage(lease?.lease_file_path);
+                                if (!exists) {
+                                  // If missing, send them to upload flow for this tenant
+                                  navigate(`/upload_docs?tenant_id=${tenant_id}`);
+                                  return;
+                                }
+                                const group_id = crypto.randomUUID();
+                                await supabase.from("upload_groups").insert({
+                                  id: group_id,
+                                  company_id: tenant.property_management_id,
+                                  total_jobs: 1,
+                                  tenantId: tenant.tenant_id,
+                                });
+                                // 2) Requeue the job
+                                await supabase.from("Upload_Job_Status").insert({
+                                  lease_id: lease?.lease_id,
+                                  job_info: { error: null, status: "queued", results: null },
+                                  group_id: group_id,
+                                });
+                                loadJobStatuses();
+                              }}
+                            >
+                              Reupload
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
-          )}
-        </SectionCard>
-      </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
+            )}
+          </SectionCard>
+        </div>
 
       {/* Absolute nothing state */}
       {!hasAnyTerms && leaseDocs?.length === 0 && (
