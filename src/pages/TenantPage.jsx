@@ -9,42 +9,13 @@ import Spinner from "../components/Spinner";
 import Profile from "../components/Profile";
 import DisplayBox from "../components/DisplayBox";
 import LoadPreviousMessages from "../components/PreviousMessages";
-import { getTenantLeaseInfo } from "../utilities/GetMessages";
+import { getTenantLeaseInfo, getSignedUrl, parseUSDate, FIELD_KEYS, saveOverride } from "../utilities/GetMessages";
 import { getTableIdList, fileExistsInStorage } from "../utilities/supabaseCalls";
 import { getTenantTermOverrides } from "../utilities/supabaseCalls.jsx";
+import { ExtractionModal } from "../components/Modal.jsx";
 
 /** ---------- Field mapping (Display Label → canonical key used for overrides) ---------- */
-const FIELD_KEYS = {
-  // Dates (examples)
-  "Lease Execution Date": "lease_execution_date",
-  "Lease Commencement Date": "lease_commencement_date",
-  "Delivery/Possession Date": "delivery_possession_date",
-  "Lease Expiration Date": "lease_expiration_date",
-  "Rent Commencement Date": "rent_commencement_date",
-  "CAM Start Date": "cam_start_date",
 
-  // Financial (examples)
-  "Base Rent Monthly": "base_rent_monthly",
-  "Base Rent Annually": "base_rent_annually",
-  "Base Rent PSF": "base_rent_psf",
-  "Operating Expenses CAM Monthly": "operating_expenses_cam_monthly",
-  "Operating Expenses CAM PSF": "operating_expenses_cam_psf",
-
-  // Responsibility / rights / other (extend as needed)
-  "Property Taxes": "property_taxes",
-  "Insurance Cost": "insurance_cost",
-  "Tenant Reimbursement": "tenant_reimbursement",
-  "Utility Responsibility": "utility_responsibility",
-  "HVAC Responsibilities": "hvac_responsibilities",
-  "Tenant Maintenance Responsibilities": "tenant_maintenance_responsibilities",
-  "Landlord Maintenance Responsibilities": "landlord_maintenance_responsibilities",
-  "Renewal Options": "renewal_options",
-  "Option Exercise Deadlines": "option_exercise_deadlines",
-  "Holdover Terms": "holdover_terms",
-  "ROFR/ROFO Clauses": "rofr_rofo_clauses",
-  "Purchase Options": "purchase_options",
-  "Termination Rights": "termination_rights",
-};
 
 /** Limit the date-based rule to these keys (recommended) */
 const DATE_KEYS = new Set([
@@ -76,62 +47,56 @@ function parseDateLoose(input) {
 }
 
 /** ---------- Shared UI bits (match TenantTerms style) ---------- */
-const EntryRow = ({ item }) => {
+function EntryRow({ item, onValueClick }) {
   if (!item || typeof item !== "object") return null;
 
-  const entries = Object.entries(item);
-  if (entries.length === 0) return null;
+  const [[label, data]] = Object.entries(item);
+  let rawValue = data?.value ?? "";
+  const DATE_LABELS = new Set([
+    "Lease Commencement Date",
+    "Lease Expiration Date",
+    "Rent Commencement Date",
+    "Rent Abatement End",
+  ]);
 
-  const [label, rawValue] = entries[0];
-  if (rawValue == null) return null;
-
-  let display = String(rawValue).trim();
-  if (!display) return null;
-
-  // 🔹 Special case: Rent Escalation
-  if (label === "Rent Escalation") {
-    // Remove surrounding [] if present
-    if (display.startsWith("[") && display.endsWith("]")) {
-      display = display.slice(1, -1);
-    }
-
-    // Try to pretty-print JSON-like content
-    try {
-      const parsed = JSON.parse(`[${display}]`);
-      display = parsed
-        .map(
-          (r) =>
-            `${r.period}\n` +
-            `• Base Rent: $${r.monthly_base_rent.toLocaleString()}\n` +
-            `• CAM: $${r.monthly_cam.toLocaleString()}\n` +
-            `• Total: $${r.total_monthly_rent.toLocaleString()}`
-        )
-        .join("\n\n");
-    } catch {
-      // fallback: just show cleaned text
-    }
+  let extraClass = ""
+  if (data && data.manual_review && !data.is_manual_change) {
+    extraClass = 'bg bg-red-500'
   }
-  // 🔹 Generic JSON fallback (other fields)
-  else if (
-    (display.startsWith("{") && display.endsWith("}")) ||
-    (display.startsWith("[") && display.endsWith("]"))
-  ) {
-    try {
-      display = JSON.stringify(JSON.parse(display), null, 2);
-    } catch { }
+  if (DATE_LABELS.has(label) && rawValue) {
+    rawValue = parseUSDate(rawValue);
   }
+  const lines = typeof rawValue === "string"
+    ? rawValue.split(/\s*;\s*/).filter(Boolean)
+    : [];
 
   return (
-    <div className="border-b border-muted/30 py-2 last:border-b-0 overflow-hidden">
-      <dt className="text-sm font-medium text-muted-foreground mb-1">
+    <button
+      type="button"
+      onClick={() => onValueClick()}
+      className={`
+        w-full text-left rounded-md py-2
+        transition-colors
+        hover:bg-muted/50
+        focus:outline-none focus:ring-2 focus:ring-ring
+        disabled:opacity-50 disabled:cursor-not-allowed
+        ${extraClass}
+    `}>
+      <div className="text-sm font-medium underline underline-offset-4">
         {label}
-      </dt>
-      <dd className="text-sm leading-relaxed whitespace-pre-wrap break-all">
-        {display}
-      </dd>
-    </div>
+      </div>
+
+      <div className="mt-1 text-sm text-muted-foreground space-y-1">
+        {lines.length
+          ? lines.map((line, idx) => (
+            <div key={idx}>{line}</div>
+          ))
+          : "—"}
+      </div>
+    </button>
   );
-};
+}
+
 
 
 
@@ -158,9 +123,12 @@ const EmptyState = ({ title, hint }) => (
 /** ---------- Page (view-only) ---------- */
 const TenantPage = () => {
   const { session, roleData, extraction } = useAuth();
+  const access_token = session?.access_token
+  const company_id = localStorage.getItem("activeCompanyId");
+  
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
-  const unit_id = searchParams.get('unit_id');
+  const [unit_id, setUnitId] = useState(searchParams.get('unit_id'), "");
   const navigate = useNavigate();
 
   const [tenant, setTenant] = useState(null);
@@ -176,11 +144,23 @@ const TenantPage = () => {
   const [leaseDocs, setLeaseDocs] = useState([]);
   const [leaseStatus, setLeaseStatus] = useState({});
 
+
   // Overrides come in as { key: { value, modified_at } }
   const [overrides, setOverrides] = useState({});
 
   const [isLoading, setIsLoading] = useState(true);
 
+  const [activeExtraction, setActiveExtraction] = useState(null);
+  const [activeLabel, setActiveLabel] = useState(null)
+  const [signedUrl, setSignedUrl] = useState(null)
+  const safeExtraction = activeExtraction ?? {
+    label: activeLabel ?? "Manual Entry",
+    value: null,
+    future_value: null,
+    confidence_score: null,
+    reason: null,
+    manual_review: false,
+  };
   /** ---------- Load core tenant + related ---------- */
   useEffect(() => {
     if (!session || !tenant_id) return;
@@ -246,15 +226,26 @@ const TenantPage = () => {
     };
   }, [session, tenant_id]);
   useEffect(() => {
-    console.log("Unit_Id", unit_id)
-    if (!unit_id) return;
+    if (!unit_id) {
+      const getUnitId = async () => {
+        const { data, error } = await supabase.from("Tenant_Unit").select("*").eq('tenant_id', tenant_id).single()
+        if (error) {
+          return
+        }
+        setUnitId(data.unit_id)
+        lease_docs(tenant_id, data.unit_id)
+      }
+      getUnitId()
+      return
+    };
     const getUnit = async () => {
-      const { data, error } = await supabase.from("Units").select("*").eq("unit_id", unit_id);
+      const { data, error } = await supabase.from("Units").select("*").eq("unit_id", unit_id).single();
       if (error) {
         console.error("Error Fetching Units", error);
         return;
       }
       setSelectedUnit(data || []);
+      lease_docs(tenant_id, data.unit_id)
     }
     getUnit();
   }, [unit_id]);
@@ -266,13 +257,10 @@ const TenantPage = () => {
 
     const loadLeases = async () => {
       try {
-        let leases
-        if (!unit_id) {
-          leases = await getTenantLeaseInfo(tenant_id);
-        }
-        else {
-          leases = await getTenantLeaseInfo(tenant_id, unit_id)
-        }
+
+
+        const leases = await getTenantLeaseInfo(tenant_id, unit_id)
+
         if (isCancelled || !leases) return;
 
         setLeaseSummary(leases.lease_summary || []);
@@ -280,7 +268,6 @@ const TenantPage = () => {
         setResponsibility(leases.responsibility || []);
         setKeyDates(leases.keyDates || []); // note: key may be 'keyDates' in your result
         setRights(leases.rights || []);
-        setLeaseDocs(leases.lease_docs || []);
       } catch (err) {
         console.error("Error loading lease terms", err);
       }
@@ -321,7 +308,14 @@ const TenantPage = () => {
       isCancelled = true;
     };
   }, [tenant_id]);
-
+  const lease_docs = async (tenant_id, unit_id) => {
+    const { data, error } = await supabase.from('lease_documents').select('*').eq('tenant_id', tenant_id).eq('unit_id', unit_id)
+    if (error) {
+      console.error("Error Fetching Lease Documents")
+      return
+    }
+    setLeaseDocs(data)
+  }
   /** ---------- Job status per lease ---------- */
   const loadJobStatuses = useCallback(
     async (isCancelled = false) => {
@@ -360,52 +354,59 @@ const TenantPage = () => {
     };
   }, [leaseDocs, loadJobStatuses]);
 
-  /** ---------- Signed URL ---------- */
-  const getSignedUrl = useCallback(async (filePath) => {
-    if (!filePath) return null;
-    const { data, error } = await supabase.storage.from("lease-docs").createSignedUrl(filePath, 600);
-    if (error) {
-      console.error("Error Generating Signed URL", error);
-      return null;
-    }
-    return data?.signedUrl ?? null;
-  }, []);
 
   /** ---------- Override application ---------- */
   const applyOverridesToList = useCallback(
     (list) => {
-      if (!Array.isArray(list) || list.length === 0) return list;
+      if (!Array.isArray(list)) return list;
       const now = new Date();
 
       return list.map((item) => {
         if (!item || typeof item !== "object") return item;
-        const entries = Object.entries(item);
-        if (entries.length === 0) return item;
 
-        const [label, raw] = entries[0];
+        const entries = Object.entries(item);
+        if (!entries.length) return item;
+
+        const [label, rawObj] = entries[0];
+        if (!rawObj || typeof rawObj !== "object") return item;
+
         const key = FIELD_KEYS[label];
         if (!key) return item;
 
-        const ov = overrides[key]; // { value, modified_at }
+        const ov = overrides[key];
         if (!ov) return item;
 
-        // Only apply the date rule to specific date keys (recommended)
+        let shouldApplyOverride = true;
+
         if (DATE_KEYS.has(key)) {
-          const rawDate = parseDateLoose(raw);
+          const rawDate = parseDateLoose(rawObj.value);
           const ovEditedAt = ov.modified_at ? new Date(ov.modified_at) : null;
 
-          // If raw (amendment) is newer than the edit and already effective, prefer raw
-          if (rawDate && ovEditedAt && rawDate > ovEditedAt && now >= rawDate) {
-            return item; // keep raw (amendment)
+          if (
+            rawDate &&
+            ovEditedAt &&
+            rawDate > ovEditedAt &&
+            now >= rawDate
+          ) {
+            shouldApplyOverride = false;
           }
         }
 
-        // Otherwise show override value
-        return { [label]: ov.value ?? "" };
+        if (!shouldApplyOverride) return item;
+
+        return {
+          [label]: {
+            ...rawObj,                // 🔒 preserve metadata
+            value: ov.value ?? "",
+            is_manual_change: true,
+          },
+        };
       });
     },
     [overrides]
   );
+
+
 
   /** ---------- Derived ---------- */
   const hasAnyTerms =
@@ -430,6 +431,21 @@ const TenantPage = () => {
     }
     else navigate(`/terms/${tenant_id}`)
   }
+  const handleOpenExtraction = async (payload) => {
+
+    const label = Object.keys(payload)[0]
+    const term = Object.values(payload)[0]
+    setActiveExtraction(term);
+    setActiveLabel(label)
+
+    if (term != null) {
+      const url = await getSignedUrl(term.source_doc);
+      console.log(url)
+      setSignedUrl(`${url}#page=${term.page}`);
+    }
+  };
+
+
 
   /** ---------- Render (view-only) ---------- */
   return (
@@ -443,13 +459,13 @@ const TenantPage = () => {
         >
           ← Back
         </button>
-        {extraction &&(
-        <button
-          onClick={() => tenantTerms()}
-          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
-        >
-          View All Terms
-        </button>
+        {extraction && (
+          <button
+            onClick={() => tenantTerms()}
+            className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 underline"
+          >
+            View All Terms
+          </button>
         )}
       </div>
 
@@ -488,153 +504,201 @@ const TenantPage = () => {
         <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
       </div>
       {extraction && (
-      <div>
-        {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <SectionCard title="Lease Summary">
-            {console.log("Lease Summary", leaseSummary)}
-            {leaseSummary?.length ? (
-              applyOverridesToList(leaseSummary).map((item, idx) => <EntryRow key={`summary-${idx}`} item={item} />)
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
-            )}
-          </SectionCard>
+        <div>
+          {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <SectionCard title="Lease Summary">
+              {leaseSummary?.length ? (
+                applyOverridesToList(leaseSummary).map((item, idx) =>
 
-          <SectionCard title="Contact Info">
-            {contacts?.length ? (
-              <div className="flex flex-col gap-3">
-                {contacts.map((contact) => (
-                  <button
-                    key={contact?.contact_id}
-                    className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    onClick={() => navigate(`/contact/${contact?.contact_id}`)}
-                  >
-                    <EntryRow item={{ Name: contact?.Contact_Name }} />
-                    <EntryRow item={{ Type: contact?.Contact_Type }} />
-                    <EntryRow item={{ Phone: contact?.Phone }} />
-                    <EntryRow item={{ Email: contact?.Email }} />
-                    <EntryRow item={{ Address: contact?.Address }} />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="No contacts found." />
-            )}
-          </SectionCard>
-        </div>
+                  <EntryRow key={`summary-${idx}`} item={item}
+                    onValueClick={() => {
 
-        {/* ---------- Row 2: Financial Snapshot | Responsibility ---------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <SectionCard title="Financial Snapshot">
-            {financial?.length ? (
-              applyOverridesToList(financial).map((item, idx) => <EntryRow key={`fin-${idx}`} item={item} />)
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
-            )}
-          </SectionCard>
+                      handleOpenExtraction(item); // or however you fetch it
+                    }}
+                  />)
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No summary found.</p>
+              )}
+            </SectionCard>
 
-          <SectionCard title="Responsibility">
-            {responsibility?.length ? (
-              applyOverridesToList(responsibility).map((item, idx) => <EntryRow key={`resp-${idx}`} item={item} />)
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
-            )}
-          </SectionCard>
-        </div>
+            <SectionCard title="Contact Info">
+              {contacts?.length ? (
+                <div className="flex flex-col gap-3">
+                  {contacts.map((contact) => (
+                    <button
+                      key={contact?.contact_id}
+                      className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      onClick={() => navigate(`/contact/${contact?.contact_id}`)}
+                    >
+                      <EntryRow item={{ Name: contact?.Contact_Name }} />
+                      <EntryRow item={{ Type: contact?.Contact_Type }} />
+                      <EntryRow item={{ Phone: contact?.Phone }} />
+                      <EntryRow item={{ Email: contact?.Email }} />
+                      <EntryRow item={{ Address: contact?.Address }} />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="No contacts found." />
+              )}
+            </SectionCard>
+          </div>
 
-        {/* ---------- Row 3: Key Dates | Critical Rights & Options ---------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <SectionCard title="Key Dates">
-            {keyDates?.length ? (
-              applyOverridesToList(keyDates).map((item, idx) => <EntryRow key={`date-${idx}`} item={item} />)
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
-            )}
-          </SectionCard>
+          {/* ---------- Row 2: Financial Snapshot | Responsibility ---------- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <SectionCard title="Financial Snapshot">
+              {financial?.length ? (
+                applyOverridesToList(financial).map((item, idx) => <EntryRow key={`fin-${idx}`} item={item}
+                  onValueClick={() => {
 
-          <SectionCard title="Critical Rights and Options">
-            {rights?.length ? (
-              applyOverridesToList(rights).map((item, idx) => <EntryRow key={`rights-${idx}`} item={item} />)
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
-            )}
-          </SectionCard>
-        </div>
+                    handleOpenExtraction(item); // or however you fetch it
+                  }} />)
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No financial terms found.</p>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Responsibility">
+              {responsibility?.length ? (
+                applyOverridesToList(responsibility).map((item, idx) => <EntryRow key={`resp-${idx}`} item={item}
+                  onValueClick={() => {
+
+                    handleOpenExtraction(item); // or however you fetch it
+                  }} />)
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No responsibilities found.</p>
+              )}
+            </SectionCard>
+          </div>
+
+          {/* ---------- Row 3: Key Dates | Critical Rights & Options ---------- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <SectionCard title="Key Dates">
+              {keyDates?.length ? (
+                applyOverridesToList(keyDates).map((item, idx) => <EntryRow key={`date-${idx}`} item={item}
+                  onValueClick={() => {
+
+                    handleOpenExtraction(item); // or however you fetch it
+                  }} />)
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No key dates found.</p>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Critical Rights and Options">
+              {rights?.length ? (
+                applyOverridesToList(rights).map((item, idx) => <EntryRow key={`rights-${idx}`} item={item}
+                  onValueClick={() => {
+                    handleOpenExtraction(item); // or however you fetch it
+                  }} />)
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No rights or options found.</p>
+              )}
+            </SectionCard>
+          </div>
         </div>
       )}
-        {/* ---------- Row 4: Lease Documents (full width) ---------- */}
-        <div className="mb-6">
-          <SectionCard title="Lease Documents">
-            {leaseDocs?.length ? (
-              <div className="flex flex-col gap-3">
-                {leaseDocs.map((lease) => {
-                  const title = (lease?.lease_file_path || "").split("/").pop();
-                  const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
+      {/* ---------- Row 4: Lease Documents (full width) ---------- */}
+      <div className="mb-6">
+        <SectionCard title="Lease Documents">
+          {leaseDocs?.length ? (
+            <div className="flex flex-col gap-3">
+              {leaseDocs.map((lease) => {
+                const title = (lease?.lease_file_path || "").split("/").pop();
+                const status = leaseStatus?.[lease?.lease_id]?.job_info?.status;
 
-                  return (
-                    <div
-                      key={lease?.lease_id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
+                return (
+                  <div
+                    key={lease?.lease_id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl bg-gray-800/60"
+                  >
+                    <button
+                      className="text-left underline hover:text-gray-200"
+                      onClick={async () => {
+                        const signedUrl = await getSignedUrl(lease?.lease_file_path);
+                        if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
+                      }}
                     >
-                      <button
-                        className="text-left underline hover:text-gray-200"
-                        onClick={async () => {
-                          const signedUrl = await getSignedUrl(lease?.lease_file_path);
-                          if (signedUrl) window.open(signedUrl, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        {title || "Lease Document"}
-                      </button>
+                      {title || "Lease Document"}
+                    </button>
 
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="opacity-75">Status:</span>
-                        <span className="font-medium">
-                          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
-                        </span>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="opacity-75">Status:</span>
+                      <span className="font-medium">
+                        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown"}
+                      </span>
 
-                        {status === "error" && (
-                          <>
-                            <span className="opacity-50">•</span>
-                            <button
-                              className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
-                              onClick={async () => {
-                                // 1) Check if file still exists in Storage
-                                const exists = await fileExistsInStorage(lease?.lease_file_path);
-                                if (!exists) {
-                                  // If missing, send them to upload flow for this tenant
-                                  navigate(`/upload_docs?tenant_id=${tenant_id}`);
-                                  return;
-                                }
-                                const group_id = crypto.randomUUID();
-                                await supabase.from("upload_groups").insert({
-                                  id: group_id,
-                                  company_id: tenant.property_management_id,
-                                  total_jobs: 1,
-                                  tenantId: tenant.tenant_id,
-                                });
-                                // 2) Requeue the job
-                                await supabase.from("Upload_Job_Status").insert({
-                                  lease_id: lease?.lease_id,
-                                  job_info: { error: null, status: "queued", results: null },
-                                  group_id: group_id,
-                                });
-                                loadJobStatuses();
-                              }}
-                            >
-                              Reupload
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {status === "error" && (
+                        <>
+                          <span className="opacity-50">•</span>
+                          <button
+                            className="px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-500"
+                            onClick={async () => {
+                              // 1) Check if file still exists in Storage
+                              const exists = await fileExistsInStorage(lease?.lease_file_path);
+                              if (!exists) {
+                                // If missing, send them to upload flow for this tenant
+                                navigate(`/upload_docs?tenant_id=${tenant_id}`);
+                                return;
+                              }
+                              const group_id = crypto.randomUUID();
+                              await supabase.from("upload_groups").insert({
+                                id: group_id,
+                                company_id: tenant.property_management_id,
+                                total_jobs: 1,
+                                tenantId: tenant.tenant_id,
+                              });
+                              // 2) Requeue the job
+                              await supabase.from("Upload_Job_Status").insert({
+                                lease_id: lease?.lease_id,
+                                job_info: { error: null, status: "queued", results: null },
+                                group_id: group_id,
+                              });
+                              loadJobStatuses();
+                            }}
+                          >
+                            Reupload
+                          </button>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
-            )}
-          </SectionCard>
-        </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState title="No lease documents found." hint="Upload lease files to see them listed here." />
+          )}
+        </SectionCard>
+      </div>
+      {activeLabel && (
+        <ExtractionModal
+          label={safeExtraction.label}
+          aiValue={safeExtraction.value}
+          aiFuture={safeExtraction.future_value}
+          aiConfidence={safeExtraction.confidence_score}
+          aiReason={safeExtraction.reason}
+          requiresReview={safeExtraction.manual_review}
+          signedUrl={signedUrl}
+          onClose={() => {
+            setActiveLabel(null)
+            setActiveExtraction(null);
+            setSignedUrl(null);
+            
+          }}
+          onSave={(finalValue, meta) => {
+
+            // Example override write
+            saveOverride(activeLabel, finalValue, meta, tenant_id, unit_id, company_id, session);
+            setActiveLabel(null)
+            setActiveExtraction(null);
+            setSignedUrl(null);
+          }}
+          tenant_id={tenant_id}
+        />
+      )}
+
 
       {/* Absolute nothing state */}
       {!hasAnyTerms && leaseDocs?.length === 0 && (

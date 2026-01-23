@@ -1,43 +1,54 @@
 import { supabase } from "../supabaseClient";
+import { ExtractionModal } from "../components/Modal";
+import { ExternalLink } from "lucide-react";
 
 const supabase_url = import.meta.env.VITE_SUPABASE_URL;
 
 /* --------------------------------- Helpers --------------------------------- */
 
-const parseUSDate = (s) => {
-    // supports "MM/DD/YY" or "MM/DD/YYYY"
-    if (!s || typeof s !== "string") return new Date(NaN);
-    const [mRaw, dRaw, yRaw] = s.split("/").map((x) => x.trim());
-    let m = Number(mRaw);
-    let d = Number(dRaw);
-    let y = Number(yRaw);
-    if (!Number.isFinite(m) || !Number.isFinite(d) || !Number.isFinite(y)) {
-        return new Date(NaN);
+export const parseUSDate = (s) => {
+    if (!s || typeof s !== "string") return "";
+
+    const str = s.trim();
+
+    let year, month, day;
+
+    // ISO format: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, d] = str.split("-");
+        year = Number(y);
+        month = Number(m);
+        day = Number(d);
     }
-    if (y < 100) y += 2000; // assume 20xx
-    return new Date(y, m - 1, d); // (year, monthIndex, day)
-};
-
-const tryParseJSON = (value) => {
-    if (typeof value !== "string") return value;
-    try {
-        return JSON.parse(value);
-    } catch {
-        return value;
+    // US format: MM/DD/YYYY or MM/DD/YY
+    else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(str)) {
+        const [m, d, yRaw] = str.split("/").map((x) => x.trim());
+        year = Number(yRaw);
+        month = Number(m);
+        day = Number(d);
+        if (year < 100) year += 2000;
+    } else {
+        // Unknown format → return original
+        return s;
     }
+
+    if (
+        !Number.isFinite(year) ||
+        !Number.isFinite(month) ||
+        !Number.isFinite(day)
+    ) {
+        return s;
+    }
+
+    // Zero-pad for display
+    const mm = String(month).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+
+    return `${mm}/${dd}/${year}`;
 };
 
-const fmtCurrency = (n) => {
-    const num = typeof n === "string" ? Number(n.replace(/[$,]/g, "")) : Number(n);
-    if (!Number.isFinite(num)) return n; // fall back to raw if not numeric
-    return num.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-};
 
-const toNumber = (v) => {
-    if (v == null) return null;
-    const n = parseFloat(String(v).replace(/[$,]/g, ""));
-    return Number.isFinite(n) ? n : null;
-};
+
 
 /**
  * Accepts a rent_escalation value that may be:
@@ -50,147 +61,6 @@ const toNumber = (v) => {
  *  - "No further rent escalation" if none remain
  *  - the original value if unrecognized format
  */
-const getNextRentEscalation = (rawValue, today = new Date()) => {
-  const parsed = tryParseJSON(rawValue);
-
-  if (!Array.isArray(parsed)) return rawValue;
-
-  // Key aliases
-  const RANGE_KEYS = ["period", "date_range", "dateRange", "range", "term", "dates", 'months'];
-  const DATE_KEYS  = ["date", "start_date", "startDate", "effective_date", "effectiveDate", "as_of", "asOf", 'months'];
-
-  const MONTHLY_KEYS = ["monthly", "monthly_rent", "monthlyRent", "rent_monthly", "base_rent_monthly", "amount_monthly"];
-  const ANNUAL_KEYS  = ["annual_rent", "annualRent", "annual", "yearly_rent", "yearlyRent", "rent_annual", "base_rent_annual"];
-  const AMOUNT_KEYS  = ["amount", "rent", "rate"]; // generic bucket people use inconsistently
-  const PSF_KEYS     = ["psf", "rent_psf", "rate_psf", "psf_rate", "per_sf", "per_sqft", "per_square_foot"];
-
-  const getFirst = (obj, keys) => {
-    for (const k of keys) {
-      if (obj && obj[k] != null && obj[k] !== "") return obj[k];
-    }
-    return null;
-  };
-
-  const toNumber = (v) => {
-    if (v == null) return null;
-    if (typeof v === "number") return Number.isFinite(v) ? v : null;
-    const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
-    return Number.isFinite(n) ? n : null;
-  };
-
-  // Parses:
-  // - "7/1/2024" (US)
-  // - "2013/08/01" or "2013-08-01" (YMD)
-  const parseFlexibleDate = (s) => {
-    if (!s) return NaN;
-    const str = String(s).trim();
-
-    // Y/M/D or Y-M-D
-    const ymd = str.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
-    if (ymd) {
-      const y = Number(ymd[1]);
-      const m = Number(ymd[2]) - 1;
-      const d = Number(ymd[3]);
-      return new Date(y, m, d);
-    }
-
-    // fallback to your existing US parser
-    return parseUSDate(str);
-  };
-
-  const parseRange = (rangeStr) => {
-    if (!rangeStr) return null;
-    const s = String(rangeStr).trim();
-
-    const parts = s.includes(" to ")
-      ? s.split(" to ")
-      : s.split(" - ").length === 2
-        ? s.split(" - ")
-        : s.split("-"); // handles "7/1/2024-6/30/2025"
-
-    if (!parts || parts.length < 2) return null;
-
-    const start = String(parts[0]).trim();
-    const end = String(parts[1]).trim();
-    if (!start || !end) return null;
-
-    const startDate = parseFlexibleDate(start);
-    const endDate = parseFlexibleDate(end);
-    if (isNaN(startDate) || isNaN(endDate)) return null;
-
-    return { startDate, endDate, period: `${start} - ${end}` };
-  };
-
-  const normalizeRowDates = (row) => {
-    // 1) Try range-like field (period/date_range/etc.)
-    const rangeRaw = getFirst(row, RANGE_KEYS);
-    const range = parseRange(rangeRaw);
-    if (range) return range;
-
-    // 2) Try single date field
-    const dateRaw = getFirst(row, DATE_KEYS);
-    if (dateRaw) {
-      const d = parseFlexibleDate(dateRaw);
-      if (!isNaN(d)) {
-        const label = String(dateRaw).trim();
-        return { startDate: d, endDate: d, period: label };
-      }
-    }
-
-    // 3) No parseable date => cannot schedule this escalation
-    return null;
-  };
-
-  const normalized = parsed
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-
-      const dates = normalizeRowDates(row);
-      if (!dates) return null;
-
-      const monthly = toNumber(getFirst(row, MONTHLY_KEYS));
-      const annual  = toNumber(getFirst(row, ANNUAL_KEYS));
-      const amount  = toNumber(getFirst(row, AMOUNT_KEYS));
-      const psf     = toNumber(getFirst(row, PSF_KEYS));
-
-      // Prefer display: monthly > annual > amount > psf
-      // (Your latest example has both amount + monthly; monthly is usually what you want.)
-      const display =
-        monthly != null ? { kind: "monthly", value: monthly } :
-        annual  != null ? { kind: "annual",  value: annual  } :
-        amount  != null ? { kind: "amount",  value: amount  } :
-        psf     != null ? { kind: "psf",     value: psf     } :
-        null;
-
-      return { ...row, ...dates, monthly, annual, amount, psf, display };
-    })
-    .filter(Boolean);
-
-  if (!normalized.length) {
-    // If we couldn't parse any dates, it's usually because entries were relative (e.g. "first anniversary")
-    // Return original so you can still show it somewhere.
-    return rawValue;
-  }
-
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  const future = normalized
-    .filter((e) => e.startDate >= startOfToday)
-    .sort((a, b) => a.startDate - b.startDate);
-
-  if (future.length === 0) return "No further rent escalation";
-
-  const next = future[0];
-
-  let displayAmount = "Amount not specified";
-  if (next.display?.kind === "monthly") displayAmount = `${fmtCurrency(next.display.value)}/mo`;
-  else if (next.display?.kind === "annual") displayAmount = `${fmtCurrency(next.display.value)}/yr`;
-  else if (next.display?.kind === "amount") displayAmount = fmtCurrency(next.display.value);
-  else if (next.display?.kind === "psf") displayAmount = `${next.display.value} PSF`;
-
-  return `${next.period} — ${displayAmount}`;
-};
-
 
 
 /* ---------------------------- Supabase fetchers ---------------------------- */
@@ -232,151 +102,159 @@ export const getCompanyPreviousChats = async (company_id, session, setChats) => 
 const getLeaseInfo = async (tenant_id, unit_id = null) => {
     if (!unit_id) {
         const { data, error } = await supabase
-            .from("lease_documents")
+            .from("Lease_Extractions")
             .select("*")
-            .eq("tenant_id", tenant_id);
+            .eq("tenant_id", tenant_id)
+            .eq('Is_Current', true).single();
 
 
         if (error) {
             console.error("No Tenant Docs", error);
             return [];
         }
-        return Array.isArray(data) ? data : [];
+        return data
     }
     else {
         const { data, error } = await supabase
-            .from("lease_documents")
+            .from("Lease_Extractions")
             .select("*")
             .eq("tenant_id", tenant_id)
-            .eq('unit_id', unit_id);
+            .eq('unit_id', unit_id)
+            .eq('Is_Current', true);
 
 
         if (error) {
             console.error("No Tenant Docs", error);
             return [];
         }
-        return Array.isArray(data) ? data : [];
+        return data
     }
 };
-const getMostRecentField = (fieldname, data) => {
-    if (!data || data.length === 0) return null;
-
-    let value;
-    if (data.length > 1) {
-        const getSortDate = (lease) => {
-            if (lease.lease_commencement_date) return lease.lease_commencement_date
-            if (lease.lease_execution_date) return lease.lease_execution_date
-            return null
-        };
-        const byDate = (a, b) => new Date(getSortDate(b)) - new Date(getSortDate(a));
-        value =
-            data
-                .filter((lease) => getSortDate(lease) && lease[fieldname] != null)
-                .sort(byDate)[0]?.[fieldname] ?? null;
-    } else {
-        value = data[0]?.[fieldname] ?? null;
-    }
-
-    if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
-        value = value
-            .slice(1, -1)
-            .split(",")
-            .map((item) => item.trim())
-            .join("\n");
-    }
-    console.log(value)
-    return value;
+const moneyToNumber = (s) => {
+    if (!s || typeof s !== "string") return null;
+    const negative = s.includes("(") && s.includes(")");
+    const cleaned = s.replace(/[^0-9.]+/g, "");
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? (negative ? -n : n) : null;
 };
-/* ------------------------------- getLeaseDocs ------------------------------ */
+
+
+export const parseFutureRents = (futureValue) => {
+    if (!futureValue || typeof futureValue !== "string") return [];
+
+    return futureValue
+        .split(";")
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .map((chunk) => {
+            // supports "YYYY-MM-DD: $2,438.73"
+            const [datePart, moneyPart] = chunk.split(":").map((x) => x.trim());
+            const monthly = moneyToNumber(moneyPart);
+            const annual = monthly != null ? monthly * 12 : null;
+
+            return {
+                effective_date: datePart || null,
+                monthly_rent: monthly,
+                annual_rent: annual,
+                raw: chunk,
+            };
+        })
+        .filter((x) => x.effective_date && x.monthly_rent != null);
+};
+/*------------------------------ getLeaseDocs ------------------------------ */
+export const formatFutureAnnual = (futureValue) =>
+    parseFutureRents(futureValue)
+        .map((r) => `${r.effective_date}: $${r.annual_rent.toFixed(2)}/yr`)
+        .join("; ");
 
 export const getLeaseDocs = async (tenant_id, unit_id = null) => {
-    const data = await getLeaseInfo(tenant_id, unit_id);
+    const res = await getLeaseInfo(tenant_id, unit_id);
+    const data = res[0]
 
-
-    const basic_lease = [
-        { "Lease Execution Date": getMostRecentField("lease_execution_date", data) },
-        { "Lease Commencement Date": getMostRecentField("lease_commencement_date", data) },
-        { "Delivery/Possession Date": getMostRecentField("delivery_posession_date", data) },
-        { "Lease Expiration Date": getMostRecentField("lease_expiration_date", data) },
-        { "Lease Term": getMostRecentField("lease_term", data) },
-        { "Premises Description": getMostRecentField("premises_description", data) },
-        { "Permitted Use": getMostRecentField("permitted_use", data) },
-        { "Rentable Square Footage": getMostRecentField("rentable_square_footage", data) },
-        { "Parking Allocation": getMostRecentField("parking_allocation", data) },
-    ];
-
-    const rawRentEsc = getMostRecentField("rent_escalation", data);
-    const rentEscalationDisplay = getNextRentEscalation(rawRentEsc);
-
-    const rent = [
-        { "Base Rent Monthly": getMostRecentField("base_rent_monthly", data) },
-        { "Base Rent Annually": getMostRecentField("base_rent_annually", data) },
-        { "Base Rent PSF": getMostRecentField("base_rent_psf", data) },
-        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly", data) },
-        { "Operating Expenses CAM PSF": getMostRecentField("operating_expenses_CAM_psf", data) },
-        { "CAM Start Date": getMostRecentField("CAM_start_date", data) },
-        { "CAM Summary": getMostRecentField("CAM_Summary", data) },
-        // Use the computed next escalation here:
-        { "Rent Escalation": rentEscalationDisplay },
-        { "Rent Commencement Date": getMostRecentField("rent_commmencement_date", data) },
-        { "Rent Abatement End": getMostRecentField("rent_abatement_end", data) },
-        { "Security Deposit Amount": getMostRecentField("security_deposit_amount", data) },
-        { "Security Deposit Term": getMostRecentField("security_deposit_term", data) },
-        { "Tenant Improvement Allowance": getMostRecentField("tenant_improvement_allowance", data) },
-    ];
-
-    // Backfill Annual if missing but Monthly exists
-    const monthly = toNumber(rent.find((r) => "Base Rent Monthly" in r)?.["Base Rent Monthly"]);
-    const idxAnnual = rent.findIndex((r) => "Base Rent Annually" in r);
-    if (idxAnnual !== -1 && !rent[idxAnnual]["Base Rent Annually"] && monthly != null) {
-        rent[idxAnnual]["Base Rent Annually"] = fmtCurrency(monthly * 12);
+    const { data: unitdata, error: unitError } = await supabase.from('Units').select('square_footage').eq('unit_id', unit_id).single()
+    if (unitError) {
+        console.error("Error Fetching Unit Data")
     }
+    const square_footage = unitdata.square_footage
+    const basic_lease = [
+        { "Lease Signed Date": data.lease_signed_date },
+        { "Latest Modification Date": data.latest_lease_modification_signed_date },
+        { "Lease Commencement Date": data.lease_commencement_date },
 
-    const expense = [
-        { "Property Taxes": getMostRecentField("property_taxes", data) },
-        { "Insurance Cost": getMostRecentField("insurance_cost", data) },
-        { "Tenant Reimbursement": getMostRecentField("tenant_reimbursement", data) },
-        { "Utility Responsibility": getMostRecentField("utility_responsibility", data) },
-        { "HVAC Responsibilities": getMostRecentField("hvac_responsibilities", data) },
-        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities", data) },
-        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities", data) },
+        { "Possession Date": data.possession_date },
+        { "Lease Expiration Date": data.lease_expiration_date },
+        { "Lease Term (Months)": data.lease_term_months },
+
+    ];
+    let Annual_Rent = {}
+    let Base_Rent_PSF = {}
+    if (data.base_rent_amount_current) {
+        Annual_Rent = {
+            'page': data.base_rent_amount_current.page,
+            'value': `$${moneyToNumber(data.base_rent_amount_current.value) * 12}`,
+            'reason': "Calculated from Base Rent",
+            'source_doc': data.base_rent_amount_current.source_doc,
+            'future_value': null,
+            'future_value_effective_date': null,
+            'is_manual_change': data.base_rent_amount_current.is_manual_change,
+            'manual_review': false,
+        }
+
+        Base_Rent_PSF =
+        {
+
+            'page': data.base_rent_amount_current.page,
+            'value': `$${((moneyToNumber(data.base_rent_amount_current.value) * 12) / square_footage).toFixed(2)}`,
+            'reason': "Calculated from Base Rent",
+            'source_doc': data.base_rent_amount_current.source_doc,
+            'future_value': null,
+            'future_value_effective_date': null,
+            'is_manual_change': data.base_rent_amount_current.is_manual_change,
+            'manual_review': false,
+
+        }
+    }
+    const rent = [
+        { "Current Base Rent (Periodic)": data.base_rent_amount_current },
+        { "Base Rent Frequency": data.base_rent_frequency },
+        { "Base Rent Payment Timing": data.base_rent_payment_timing },
+        { "Base Rent Due Day": data.base_rent_due_day },
+        { "Current Rent Effective Date": data.base_rent_effective_date },
+        { "Base Rent Annually": Annual_Rent },
+        { "Base Rent PSF (Annualized)": Base_Rent_PSF },
+        { "Additional Rent Componants": data.additional_rent_components },
+        { "Additional Rent Billing Method": data.additional_rent_billing_method },
+        { "Additional Rent Limitations": data.additional_rent_limitations },
+        // Use the computed next escalation here:
+        { "Base Rent Schedule": data.base_rent_schedule },
+        { "Rent Commencement Date": data.rent_commencement_date },
+        { "Additional Rent Commencement Date": data.additional_rent_commencement_date },
+        { "Rent Abatement End": data.rent_abatement_end_date },
+        { "Security Deposit Amount": data.security_deposit_amount },
+        { "Security Deposit Type": data.security_deposit_type },
     ];
 
-    const legal = [
-        { "Indemnity Clauses": getMostRecentField("indemnity_clauses", data) },
-        { "Insurance Requirements": getMostRecentField("insurance_requirements", data) },
-        { "Property Insurance": getMostRecentField("property_insurance", data) },
-        { "Default and Remedies": getMostRecentField("default_and_remedies", data) },
-        { "Force Majeure": getMostRecentField("force_majeure", data) },
-        { "Estoppel Certificate Required": getMostRecentField("estoppel_certificate_required", data) },
-        { "Assignment and Subletting": getMostRecentField("assignment_and_subletting", data) },
-        { "Guarantor Information": getMostRecentField("guarantor_information", data) },
-        { "Security Access Rights": getMostRecentField("security_access_rights", data) },
+    const premises = [
+        { "Premises Description": data.premises_description },
+        { "Permitted Use": data.permitted_use },
+        { "Parking Allocation": data.parking_allocation },
+        { "Utility Responsibility": data.utility_responsibilities },
+        { "HVAC Responsibilities": data.hvac_responsibilities },
+        { "Tenant Maintenance Responsibilities": data.tenant_maintenance_responsibilities },
+        { "Landlord Maintenance Responsibilities": data.landlord_maintenance_responsibilities },
     ];
 
-    const options = [
-        { "Renewal Options": getMostRecentField("renewal_options", data) },
-        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines", data) },
-        { "Holdover Terms": getMostRecentField("holdover_terms", data) },
-        { "ROFR/ROFO Clauses": getMostRecentField("ROFR_ROFO_clauses", data) },
-        { "Purchase Options": getMostRecentField("purchase_options", data) },
+
+
+    const rights = [
+        { "Rights Index": data.rights_index },
+        { "Renewal Options Summary": data.renewal_options_summary },
+        { "Renwal Notice Requirements": data.renewal_notice_requirements_summary },
     ];
 
-    const special = [
-        { "Exclusivity Rights": getMostRecentField("exclusivity_rights", data) },
-        { "Exclusive Use Clause": getMostRecentField("exclusive_use_clause", data) },
-        { "Signage Rights": getMostRecentField("signage_rights", data) },
-        { "Co-Tenancy Clauses": getMostRecentField("co_tenancy_clauses", data) },
-        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights", data) },
-        { "Termination Rights": getMostRecentField("termination_rights", data) },
-    ];
 
-    const landlord = [
-        { "Landlord Work": getMostRecentField("landlord_work", data) },
-        { "Tenant Work": getMostRecentField("Tenant_work", data) },
-    ];
-
-    return { 'basic_lease': basic_lease, 'rent': rent || "", 'expense': expense || "", legal: legal || "", 'options': options, 'special': special, landlord: landlord || "" }
+    return { 'basic_lease': basic_lease, 'rent': rent || "", 'premises': premises || "", 'rights': rights, }
 };
 
 /* ---------------------------- getTenantLeaseInfo --------------------------- */
@@ -384,44 +262,36 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
 export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
     const data = await getLeaseInfo(tenant_id, unit_id);
 
+
+
     const lease_summary = [
-        { "Lease Commencement Date": getMostRecentField("lease_commencement_date", data) },
-        { "Lease Expiration Date": getMostRecentField("lease_expiration_date", data) },
-        { "Lease Term": getMostRecentField("lease_term", data) },
-        { "Suite Identifier": getMostRecentField("suite_identifier", data) },
-        { "Property Address": getMostRecentField("Property_Address", data) },
+        { "Lease Commencement Date": data.lease_commencement_date },
+        { "Lease Expiration Date": data.lease_expiration_date },
+        { "Lease Term (Months)": data.lease_term_months },
     ];
 
-    // Special handling for rent escalation here too
-    const rawRentEsc = getMostRecentField("rent_escalation", data);
-    const rentEscalationDisplay = getNextRentEscalation(rawRentEsc);
 
     const financial_snapshot = [
-        { "Base Rent Monthly": getMostRecentField("base_rent_monthly", data) },
-        { "Operating Expenses CAM Monthly": getMostRecentField("operating_expenses_CAM_monthly", data) },
-        { "Rent Escalation": rentEscalationDisplay },
-        { "Security Deposit Amount": getMostRecentField("security_deposit_amount", data) },
+        { "Current Base Rent (Periodic)": data.base_rent_amount_current },
+        { "Additional Rent Componants": data.additional_rent_components },
+        { "Base Rent Schedule": data.base_rent_schedule },
+        { "Security Deposit Amount": data.security_deposit_amount },
     ];
 
     const responsibility = [
-        { "Tenant Maintenance Responsibilities": getMostRecentField("tenant_maintenance_responsibilities", data) },
-        { "Landlord Maintenance Responsibilities": getMostRecentField("landlord_maintenance_responsibilities", data) },
-        { "Property Taxes": getMostRecentField("property_taxes", data) },
-        { "Insurance Requirements": getMostRecentField("insurance_requirements", data) },
-        { "Property Insurance": getMostRecentField("property_insurance", data) },
+        { "Tenant Maintenance Responsibilities": data.tenant_maintenance_responsibilities },
+        { "Landlord Maintenance Responsibilities": data.landlord_maintenance_responsibilities },
     ];
 
     const keyDates = [
-        { "Rent Commencement Date": getMostRecentField("rent_commencement_date", data) },
-        { "Rent Abatement End": getMostRecentField("rent_abatement_end", data) },
-        { "Option Exercise Deadlines": getMostRecentField("option_exercise_deadlines", data) },
+        { "Rent Commencement Date": data.rent_commencement_date },
+        { "Rent Abatement End": data.rent_abatement_end_date },
+        { "Renewal Options Notice Requirements": data.renewal_notice_requirements_summary },
     ];
 
     const rights = [
-        { "Renewal Options": getMostRecentField("renewal_options", data) },
-        { "Termination Rights": getMostRecentField("termination_rights", data) },
-        { "Exclusivity Rights": getMostRecentField("exclusivity_rights", data) },
-        { "Expansion/Contraction Rights": getMostRecentField("expansion_contraction_rights", data) },
+        { "Renewal Options Summary": data.renewal_options_summary },
+        { "Rights Index": data.rights_index },
     ];
 
     const lease_docs = data;
@@ -429,3 +299,139 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
 
 };
 
+
+export const getSignedUrl = async (filePath) => {
+    if (!filePath) return null;
+    const { data, error } = await supabase.storage.from("lease-docs").createSignedUrl(filePath, 600);
+    if (error) {
+        console.error("Error Generating Signed URL", error);
+        return null;
+    }
+    console.log(data)
+    return data?.signedUrl ?? null;
+};
+
+export const FIELD_KEYS = {
+    // Basic Lease
+
+    "Lease Signed Date": "lease_signed_date",
+    "Latest Modification Date": 'latest_lease_modification_signed_date',
+    "Base Rent Frequency": 'base_rent_frequency',
+    "Base Rent Payment Timing": 'base_rent_payment_timing',
+    "Base Rent Due Day": 'base_rent_due_day',
+    "Current Rent Effective Date": 'base_rent_effective_date',
+
+    "Lease Commencement Date": "lease_commencement_date",
+    "Possession Date": "possession_date",
+    "Lease Expiration Date": "lease_expiration_date",
+    "Lease Term (Months)": "lease_term_months",
+
+    "Premises Description": "premises_description",
+    "Permitted Use": "permitted_use",
+    "Parking Allocation": "parking_allocation",
+
+    // Rent
+    "Current Base Rent (Periodic)": "base_rent_amount_current",
+    "Annual Base Rent (Current)": "base_rent_annualized_current",
+    "Base Rent PSF (Annualized)": "base_rent_psf_annualized_current",
+    "Base Rent Schedule": "base_rent_schedule",
+    "Rent Commencement Date": "rent_commencement_date",
+    "Rent Abatement End Date": "rent_abatement_end_date",
+    "Additional Rent Componants": "additional_rent_components",
+    "Additional Rent Billing Method": "additional_rent_billing_method",
+    "Additional Rent Commencement Date": "additional_rent_commencement_date",
+    "Additional Rent Limitations": "additional_rent_limitations",
+    "Security Deposit Amount": "security_deposit_amount",
+    "Security Deposit Type": "security_type",
+
+
+    // Expense
+    "Utility Responsibility": "utility_responsibility",
+    "HVAC Responsibilities": "hvac_responsibilities",
+    "Tenant Maintenance Responsibilities": "tenant_maintenance_responsibilities",
+    "Landlord Maintenance Responsibilities": "landlord_maintenance_responsibilities",
+
+
+    // Options
+    "Renewal Options Summary": "renewal_options_summary",
+    "Rights Index": "rights_index",
+    "Renewal Notice Requirements": 'renewal_notice_requirements_summary'
+
+
+};
+export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id, company_id, session) => {
+    const server_url = "http://localhost:8000";
+  //const server_url = import.meta.env.VITE_SERVER_URL;
+    const decision = meta?.decision; // "approve" | "edit" | "create"
+    const approvedAI = !!meta?.approved_ai;
+    const access_token = session?.access_token
+    //Will be null unless decision === create
+    const metaSourceDoc = meta?.source_doc
+    const patch =
+      decision === "approve" && approvedAI
+        ? {
+          manual_review: false,      // reviewed/approved, no longer needs review
+          is_manual_change: false,
+          // they didn't change the value
+          // value unchanged (optional: set value = aiValue if you want)
+        }
+        : {
+          value: newValue ?? "",
+          manual_review: false,
+          is_manual_change: true,
+        };
+    // <-- add this (or your real column)
+    const columnLabel = FIELD_KEYS[termLabel]
+
+    if (decision != 'create') {
+      const { data, error } = await supabase.rpc("update_lease_extraction_term", {
+        p_patch: patch,
+        p_tenant_id: tenant_id,
+        p_term_key: columnLabel,
+        p_unit_id: unit_id,
+      })
+      if (error) {
+        console.error("saveOverride error:", error);
+        return { ok: false, error };
+      }
+    }
+    else {
+      const {data, error} = await supabase.from('Lease_Extractions').update({[columnLabel]: {
+        'page': 0,
+        'value': newValue,
+        'reason': "Manual Human Adjustment",
+        'source_doc': metaSourceDoc,
+        'manual_review': false,
+        'is_manual_change': true,
+        'confidence_score': 1,
+        'future_value': null,
+        'future_effective_date': null
+      }}).eq('tenant_id', tenant_id).eq('unit_id', unit_id).eq("Is_Current", true)
+      if (error) {
+        console.error("Error Updating Column", error)
+        return {ok: false, error}
+      }
+    }
+    if (columnLabel === 'lease_commencement_date' && decision != "approve") {
+      const payload = {
+        auth_id: session?.user?.id,
+        tenant_id: tenant_id,
+        unit_id: unit_id,
+        company_id: company_id
+      }
+      const res = await fetch(`${server_url}/refresh_tenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        console.error("Server Error:", error);
+      }
+    }
+    window.location.reload();
+    return { ok: true }
+  };
