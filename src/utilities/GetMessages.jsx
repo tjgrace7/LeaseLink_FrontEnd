@@ -360,8 +360,8 @@ export const FIELD_KEYS = {
 
 };
 export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id, company_id, session) => {
-    const server_url = "http://localhost:8000";
-  //const server_url = import.meta.env.VITE_SERVER_URL;
+    //const server_url = "http://localhost:8000";
+    const server_url = import.meta.env.VITE_SERVER_URL;
     const decision = meta?.decision; // "approve" | "edit" | "create"
     const approvedAI = !!meta?.approved_ai;
     const access_token = session?.access_token
