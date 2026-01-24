@@ -229,7 +229,7 @@ const TenantTerms = () => {
     setActiveExtraction(term);
     console.log("Term", term)
     setActiveLabel(label)
-    if(term != null && term.trim() != "")
+    if(term != null && term != "")
     {
       console.log("Term Not Null")
       const url = await getSignedUrl(term.source_doc);
