@@ -47,6 +47,44 @@ export const parseUSDate = (s) => {
     return `${mm}/${dd}/${year}`;
 };
 
+const rightsIndex = (rightsIndex) => {
+    if (rightsIndex === "" || rightsIndex === null || rightsIndex == undefined) return rightsIndex
+    const KEYS = {
+        renewal_option: "Option(s) to Renew",
+        expansion_rights: "Expansion Rights",
+        termination_option: "Termination Rights",
+        contraction_rights: "Contraction Rights",
+        rofr: "ROFR",
+        rofo: "ROFO",
+        purchase_option: "Purchase Option",
+        co_tenancy: "Co-Tenancy Clause",
+        assignment_subletting_restrictions: "Assignment/Subletting Restrictions",
+    };
+
+    let parsedValue = rightsIndex.value;
+
+    // 👇 handle JSON string vs object
+    if (typeof parsedValue === "string") {
+        try {
+            parsedValue = JSON.parse(parsedValue);
+        } catch (e) {
+            console.error("Invalid rightsIndex JSON", rightsIndex.value);
+            parsedValue = {};
+        }
+    }
+
+    const values = [];
+
+    Object.entries(parsedValue).forEach(([key, enabled]) => {
+    if (enabled && KEYS[key]) {
+      values.push(KEYS[key]);
+    }
+  });
+
+    rightsIndex.value = values.join("\n");
+    return rightsIndex;
+};
+
 
 
 
@@ -171,7 +209,6 @@ export const formatFutureAnnual = (futureValue) =>
 export const getLeaseDocs = async (tenant_id, unit_id = null) => {
     const res = await getLeaseInfo(tenant_id, unit_id);
     const data = res[0]
-
     const { data: unitdata, error: unitError } = await supabase.from('Units').select('square_footage').eq('unit_id', unit_id).single()
     if (unitError) {
         console.error("Error Fetching Unit Data")
@@ -187,12 +224,19 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Lease Term (Months)": data.lease_term_months },
 
     ];
+    const multiplier = {
+        monthly: 12,
+        quarterly: 4,
+        semi_annual: 2,
+        annual: 1,
+
+    }
     let Annual_Rent = {}
     let Base_Rent_PSF = {}
     if (data.base_rent_amount_current) {
         Annual_Rent = {
             'page': data.base_rent_amount_current.page,
-            'value': `$${moneyToNumber(data.base_rent_amount_current.value) * 12}`,
+            'value': `$${moneyToNumber(data.base_rent_amount_current.value) * multiplier[data.base_rent_frequency.value]}`,
             'reason': "Calculated from Base Rent",
             'source_doc': data.base_rent_amount_current.source_doc,
             'future_value': null,
@@ -246,9 +290,9 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
     ];
 
 
-
+    const rightList = rightsIndex(data.rights_index)
     const rights = [
-        { "Rights Index": data.rights_index },
+        { "Rights Index": rightList },
         { "Renewal Options Summary": data.renewal_options_summary },
         { "Renwal Notice Requirements": data.renewal_notice_requirements_summary },
     ];
@@ -260,8 +304,8 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
 /* ---------------------------- getTenantLeaseInfo --------------------------- */
 
 export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
-    const data = await getLeaseInfo(tenant_id, unit_id);
-
+    const res = await getLeaseInfo(tenant_id, unit_id);
+    const data = res[0]
 
 
     const lease_summary = [
@@ -288,10 +332,10 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
         { "Rent Abatement End": data.rent_abatement_end_date },
         { "Renewal Options Notice Requirements": data.renewal_notice_requirements_summary },
     ];
-
+    const rightList = rightsIndex(data.rights_index)
     const rights = [
         { "Renewal Options Summary": data.renewal_options_summary },
-        { "Rights Index": data.rights_index },
+        { "Rights Index": rightList },
     ];
 
     const lease_docs = data;
@@ -368,70 +412,72 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
     //Will be null unless decision === create
     const metaSourceDoc = meta?.source_doc
     const patch =
-      decision === "approve" && approvedAI
-        ? {
-          manual_review: false,      // reviewed/approved, no longer needs review
-          is_manual_change: false,
-          // they didn't change the value
-          // value unchanged (optional: set value = aiValue if you want)
-        }
-        : {
-          value: newValue ?? "",
-          manual_review: false,
-          is_manual_change: true,
-        };
+        decision === "approve" && approvedAI
+            ? {
+                manual_review: false,      // reviewed/approved, no longer needs review
+                is_manual_change: false,
+                // they didn't change the value
+                // value unchanged (optional: set value = aiValue if you want)
+            }
+            : {
+                value: newValue ?? "",
+                manual_review: false,
+                is_manual_change: true,
+            };
     // <-- add this (or your real column)
     const columnLabel = FIELD_KEYS[termLabel]
 
     if (decision != 'create') {
-      const { data, error } = await supabase.rpc("update_lease_extraction_term", {
-        p_patch: patch,
-        p_tenant_id: tenant_id,
-        p_term_key: columnLabel,
-        p_unit_id: unit_id,
-      })
-      if (error) {
-        console.error("saveOverride error:", error);
-        return { ok: false, error };
-      }
+        const { data, error } = await supabase.rpc("update_lease_extraction_term", {
+            p_patch: patch,
+            p_tenant_id: tenant_id,
+            p_term_key: columnLabel,
+            p_unit_id: unit_id,
+        })
+        if (error) {
+            console.error("saveOverride error:", error);
+            return { ok: false, error };
+        }
     }
     else {
-      const {data, error} = await supabase.from('Lease_Extractions').update({[columnLabel]: {
-        'page': 0,
-        'value': newValue,
-        'reason': "Manual Human Adjustment",
-        'source_doc': metaSourceDoc,
-        'manual_review': false,
-        'is_manual_change': true,
-        'confidence_score': 1,
-        'future_value': null,
-        'future_effective_date': null
-      }}).eq('tenant_id', tenant_id).eq('unit_id', unit_id).eq("Is_Current", true)
-      if (error) {
-        console.error("Error Updating Column", error)
-        return {ok: false, error}
-      }
+        const { data, error } = await supabase.from('Lease_Extractions').update({
+            [columnLabel]: {
+                'page': 0,
+                'value': newValue,
+                'reason': "Manual Human Adjustment",
+                'source_doc': metaSourceDoc,
+                'manual_review': false,
+                'is_manual_change': true,
+                'confidence_score': 1,
+                'future_value': null,
+                'future_effective_date': null
+            }
+        }).eq('tenant_id', tenant_id).eq('unit_id', unit_id).eq("Is_Current", true)
+        if (error) {
+            console.error("Error Updating Column", error)
+            return { ok: false, error }
+        }
     }
     if (columnLabel === 'lease_commencement_date' && decision != "approve") {
-      const payload = {
-        auth_id: session?.user?.id,
-        tenant_id: tenant_id,
-        unit_id: unit_id,
-        company_id: company_id
-      }
-      const res = await fetch(`${server_url}/refresh_tenant`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${access_token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        console.error("Server Error:", error);
-      }
+        const payload = {
+            auth_id: session?.user?.id,
+            tenant_id: tenant_id,
+            unit_id: unit_id,
+            company_id: company_id
+        }
+        const res = await fetch(`${server_url}/refresh_tenant`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${access_token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            console.error("Server Error:", error);
+        }
     }
     window.location.reload();
     return { ok: true }
-  };
+};

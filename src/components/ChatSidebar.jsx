@@ -74,29 +74,37 @@ const ChatSidebar = ({
     </>
   )}
 </ul>
-
       {/* Terms & Rent */}
-      {termsRent.length > 0 && (
-        <div className="mb-6">
-          <SectionTitle>Terms and Rent</SectionTitle>
-          <ul className="space-y-2">
-            {termsRent.map((item, index) => {
-              const entries = Object.entries(item || {});
-              if (entries.length === 0) return null;
+{termsRent.length > 0 && (
+  <div className="mb-6">
+    <SectionTitle>Terms and Rent</SectionTitle>
 
-              const [key, value] = entries[0];
-              if (!value || value === "N/A") return null;
+    <ul className="space-y-2">
+      {termsRent.map((item, index) => {
+        const entries = Object.entries(item || {});
+        if (!entries.length) return null;
 
-              return (
-                <li key={`term-${index}`} className="text-sm flex flex-wrap">
-                  <span className="mr-2 font-medium">{key}:</span>
-                  <span>{value}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+        const [label, extraction] = entries[0];
+
+        // ✅ get the actual string value
+        const displayValue =
+          extraction?.value ??
+          extraction?.future_value ??
+          "";
+
+        if (!displayValue || displayValue === "N/A" || displayValue === "Null") return null;
+
+        return (
+          <li key={`term-${index}`} className="text-sm flex flex-wrap">
+            <span className="mr-2 font-medium">{label}:</span>
+            <span>{displayValue}</span>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+)}
+
 
       {/* Previous Chats */}
       <SectionTitle>Previous Chats</SectionTitle>

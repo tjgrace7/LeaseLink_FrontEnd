@@ -329,7 +329,7 @@ const Profile = ({
                       );
                     })
                   )}
-                  {Title === 'Tenant' && relatedEntities.length > 1 && (
+                  {Title === 'Tenant' && relatedEntities.length > 1 && !selectedUnit && (
                     <div>
                       <Dropdown
                         options={relatedEntities}

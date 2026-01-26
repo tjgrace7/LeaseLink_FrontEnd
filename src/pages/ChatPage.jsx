@@ -45,7 +45,7 @@ const ComposerInput = memo(function ComposerInput({
   );
 });
 // ------------------------- render helpers ------------------------
-const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen, searchQuery, units = null }) {
+const Header = memo(function Header({ entitySelected, entity_name, entity_type, entity_image, access_token, selectEntity, setSidebarOpen, searchQuery, setSelectedUnit, units = null }) {
   let searchable = false
   const Suite = localStorage.getItem('selectedUnitSuite')
   const address = localStorage.getItem('selectedUnitAddress')
@@ -116,9 +116,10 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
               localStorage.setItem("selectedUnitSuite", option?.Suite)
               localStorage.setItem("selectedUnitAddress", option?.address)
               localStorage.setItem("selectedUnitId", option.unit_id)
+              setSelectedUnit(option)
             }}
             searchable={searchable}
-            
+            set
           />
           </div>
         )}
@@ -212,6 +213,7 @@ const ChatPage = () => {
   const [entity_image, setEntityImage] = useState("");
   const [entity_name, setEntityName] = useState("");
   const [units, setUnits] = useState([])
+  const [unit, setUnit] = useState([])
 
   // ------------------------- chat state ----------------------------
   const [messages, setMessages] = useState([]);
@@ -249,13 +251,13 @@ const ChatPage = () => {
 
   // env + auth
   //switch to import.meta.env.VITE_SERVER_URL
-  const server_url = "http://localhost:8000";
-  //const server_url = import.meta.env.VITE_SERVER_URL;
+  //const server_url = "http://localhost:8000";
+  const server_url = import.meta.env.VITE_SERVER_URL;
   const { session, userData, loadingUserData, baseAccess, propertyChat } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
-
+  const unit_id = localStorage.getItem('selectedUnitId')
   // router
   const navigate = useNavigate();
 
@@ -272,6 +274,8 @@ const ChatPage = () => {
       performance.navigation?.type === 1; // legacy
     setIsPageRefresh(Boolean(isReload));
   }, []);
+
+
 
   useEffect(() => {
     const el = composerInputRef.current;
@@ -297,7 +301,11 @@ const ChatPage = () => {
           return
         }
         if (data.length > 1) {
+          console.log(data.length)
           setUnits(data)
+        }
+        else {
+          setUnit(data[0])
         }
       }
       getUnits()
@@ -459,16 +467,20 @@ const ChatPage = () => {
 
   // ------------------------- fetch tenant terms --------------------
   useEffect(() => {
-    if (entity_type !== "tenant" || !entity_id) return;
+
+    if (entity_type !== "tenant" || !entity_id || unit.length < 1) return;
     let cancelled = false;
     (async () => {
       try {
-        const leases = await getLeaseDocs(entity_id);
-        if (!cancelled) setTerms(leases?.basic_lease ?? []);
-      } catch (_e) { }
+        const leases = await getLeaseDocs(entity_id, unit.unit_id)
+        setTerms(leases?.basic_lease ?? []);
+      } catch (_e) { console.error("Caughts", _e)}
     })();
     return () => { cancelled = true; };
-  }, [entity_type, entity_id]);
+  }, [entity_type, entity_id, unit]);
+
+
+
   useEffect(() => {
     console.log("Property Chat Access:", propertyChat)
     if(propertyChat) setSearchQuery("tenants_properties")
@@ -613,7 +625,7 @@ const ChatPage = () => {
     ]);
   };
 
-  const unit_id = localStorage.getItem('selectedUnitId')
+  
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -719,6 +731,7 @@ const ChatPage = () => {
         setSidebarOpen={setSidebarOpen}
         searchQuery={searchQuery}
         units={units}
+        setSelectedUnit={(unit)=> setUnit(unit) }
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

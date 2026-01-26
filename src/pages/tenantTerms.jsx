@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getLeaseDocs, parseUSDate, getSignedUrl, FIELD_KEYS, saveOverride } from "../utilities/GetMessages";
 import DisplayBox from "../components/DisplayBox";
 import { getTable } from "../utilities/supabaseCalls";
@@ -9,6 +9,7 @@ import {
   upsertTenantTermOverrides,
 } from "../utilities/supabaseCalls.jsx";
 import { ExtractionModal } from "../components/Modal.jsx";
+import { supabase } from "../supabaseClient.js";
 
 function parseDateLoose(input) {
   if (!input) return null;
@@ -98,6 +99,7 @@ const TenantTerms = () => {
   const [searchParams] = useSearchParams();
   const unit_id = searchParams.get('unit_id');
   const company_id = localStorage.getItem("activeCompanyId");
+  const navigate = useNavigate();
   const { session } = useAuth();
   const [tenantName, setTenantName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +119,7 @@ const TenantTerms = () => {
   const [activeExtraction, setActiveExtraction] = useState(null);
   const [activeLabel, setActiveLabel] = useState(null)
   const [signedUrl, setSignedUrl] = useState(null)
+  const [unit, setUnit] = useState({})
   const safeExtraction = activeExtraction ?? {
     label: activeLabel ?? "Manual Entry",
     value: null,
@@ -126,7 +129,19 @@ const TenantTerms = () => {
     manual_review: false,
   };
 
-
+  useEffect(() => {
+    if(!unit_id) return;
+    const getUnit = async () => {
+      const unit_res = await supabase.from('Units').select('*').eq('unit_id', unit_id).single()
+      if(unit_res.error)
+      {
+        console.error("Error Fetching Unit", unit_res)
+      }
+      const unit = unit_res.data
+      setUnit(unit)
+    }
+    getUnit()
+  })
 
   useEffect(() => {
     if (!tenant_id) return;
@@ -229,30 +244,38 @@ const TenantTerms = () => {
     setActiveExtraction(term);
     console.log("Term", term)
     setActiveLabel(label)
-    if(term != null && term != "")
-    {
+    if (term != null && term != "") {
       console.log("Term Not Null")
       const url = await getSignedUrl(term.source_doc);
       setSignedUrl(`${url}#page=${term.page}`)
     }
-    
+
   }
-  
+
 
   return (
     <main className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-end md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-end md:gap-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-sm sm:text-base px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600"
+          aria-label="Go back"
+        >
+          ← Back
+        </button>
+
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            {tenantName || "Tenant Terms"}
+            {`${tenantName} - ${unit.address}, Suite: ${unit.Suite}`|| "Tenant Terms"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Key terms extracted from lease documents and organized for quick review. LeaseLink can
-            make mistakes—review source documents for critical decisions.
+            Key terms extracted from lease documents and organized for quick review.
+            LeaseLink can make mistakes—review source documents for critical decisions.
           </p>
         </div>
       </div>
+
 
 
 
@@ -318,7 +341,7 @@ const TenantTerms = () => {
             setActiveLabel(null)
             setActiveExtraction(null);
             setSignedUrl(null);
-            
+
           }}
           onSave={(finalValue, meta) => {
 

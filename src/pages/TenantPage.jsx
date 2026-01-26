@@ -125,15 +125,15 @@ const TenantPage = () => {
   const { session, roleData, extraction } = useAuth();
   const access_token = session?.access_token
   const company_id = localStorage.getItem("activeCompanyId");
-  
+
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
-  const [unit_id, setUnitId] = useState(searchParams.get('unit_id'), "");
+  const [unit_id, setUnitId] = useState(searchParams.get("unit_id") ?? "");
   const navigate = useNavigate();
 
   const [tenant, setTenant] = useState(null);
   const [unitsIds, setUnitsIds] = useState([]);
-  const [selectedUnit, setSelectedUnit] = useState([]);
+  const [selectedUnit, setSelectedUnit] = useState({});
   const [contacts, setContacts] = useState([]);
 
   const [leaseSummary, setLeaseSummary] = useState([]);
@@ -198,7 +198,11 @@ const TenantPage = () => {
 
         if (!isCancelled) {
           setTenant(tenantData || null);
-          setUnitsIds(Array.isArray(unitLinks) ? unitLinks.map((row) => row.unit_id) : []);
+          if (!unit_id) {
+            setUnitsIds(Array.isArray(unitLinks) ? unitLinks.map((row) => row.unit_id) : []);
+          } else {
+            setUnitsIds([unit_id]); // force into array
+          }
         }
 
         // Contacts
@@ -226,10 +230,13 @@ const TenantPage = () => {
     };
   }, [session, tenant_id]);
   useEffect(() => {
+    if (!unitsIds || unitsIds.length > 1) return
     if (!unit_id) {
+
       const getUnitId = async () => {
         const { data, error } = await supabase.from("Tenant_Unit").select("*").eq('tenant_id', tenant_id).single()
         if (error) {
+          console.error("Error Fetching Unit", error)
           return
         }
         setUnitId(data.unit_id)
@@ -245,13 +252,14 @@ const TenantPage = () => {
         return;
       }
       setSelectedUnit(data || []);
+
       lease_docs(tenant_id, data.unit_id)
     }
     getUnit();
-  }, [unit_id]);
+  }, [unit_id, unitsIds]);
   /** ---------- Load extracted terms ---------- */
   useEffect(() => {
-    if (!tenant_id) return;
+    if (!tenant_id || !selectedUnit) return;
 
     let isCancelled = false;
 
@@ -503,7 +511,7 @@ const TenantPage = () => {
 
         <LoadPreviousMessages entityId={tenant_id} session={session} entityType="tenant" />
       </div>
-      {extraction && (
+      {extraction && selectedUnit != [] && (
         <div>
           {/* ---------- Row 1: Lease Summary | Contact Info ---------- */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -685,7 +693,7 @@ const TenantPage = () => {
             setActiveLabel(null)
             setActiveExtraction(null);
             setSignedUrl(null);
-            
+
           }}
           onSave={(finalValue, meta) => {
 
