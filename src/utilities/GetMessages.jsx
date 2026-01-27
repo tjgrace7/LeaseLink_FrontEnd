@@ -224,19 +224,13 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Lease Term (Months)": data.lease_term_months },
 
     ];
-    const multiplier = {
-        monthly: 12,
-        quarterly: 4,
-        semi_annual: 2,
-        annual: 1,
 
-    }
     let Annual_Rent = {}
     let Base_Rent_PSF = {}
     if (data.base_rent_amount_current) {
         Annual_Rent = {
             'page': data.base_rent_amount_current.page,
-            'value': `$${moneyToNumber(data.base_rent_amount_current.value) * multiplier[data.base_rent_frequency.value]}`,
+            'value': `$${moneyToNumber(data.base_rent_amount_current.value) * 12}`,
             'reason': "Calculated from Base Rent",
             'source_doc': data.base_rent_amount_current.source_doc,
             'future_value': null,

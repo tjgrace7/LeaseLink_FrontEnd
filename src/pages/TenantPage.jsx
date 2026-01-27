@@ -230,9 +230,10 @@ const TenantPage = () => {
     };
   }, [session, tenant_id]);
   useEffect(() => {
-    if (!unitsIds || unitsIds.length > 1) return
+    console.log("unit ids", unitsIds)
+    if (unitsIds.length > 1) return
     if (!unit_id) {
-
+      console.log("Unit Id", unit_id)
       const getUnitId = async () => {
         const { data, error } = await supabase.from("Tenant_Unit").select("*").eq('tenant_id', tenant_id).single()
         if (error) {
@@ -260,7 +261,7 @@ const TenantPage = () => {
   /** ---------- Load extracted terms ---------- */
   useEffect(() => {
     if (!tenant_id || !selectedUnit) return;
-
+    
     let isCancelled = false;
 
     const loadLeases = async () => {
@@ -285,7 +286,7 @@ const TenantPage = () => {
     return () => {
       isCancelled = true;
     };
-  }, [tenant_id]);
+  }, [tenant_id, selectedUnit]);
 
   /** ---------- Load overrides (with modified_at) ---------- */
   useEffect(() => {
