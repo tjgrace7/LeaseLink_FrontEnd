@@ -693,7 +693,7 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
         {/* Users */}
         {tab === 'Users' && (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between gap-2 mb-3">
               <h2 className="text-xl sm:text-2xl font-semibold">Users</h2>
 
               {/* Show archived toggle */}

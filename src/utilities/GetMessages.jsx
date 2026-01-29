@@ -374,7 +374,7 @@ export const FIELD_KEYS = {
     "Base Rent PSF (Annualized)": "base_rent_psf_annualized_current",
     "Base Rent Schedule": "base_rent_schedule",
     "Rent Commencement Date": "rent_commencement_date",
-    "Rent Abatement End Date": "rent_abatement_end_date",
+    "Rent Abatement End": "rent_abatement_end_date",
     "Additional Rent Componants": "additional_rent_components",
     "Additional Rent Billing Method": "additional_rent_billing_method",
     "Additional Rent Commencement Date": "additional_rent_commencement_date",
@@ -419,9 +419,11 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
                 is_manual_change: true,
             };
     // <-- add this (or your real column)
+    console.log("Term Label", termLabel)
     const columnLabel = FIELD_KEYS[termLabel]
 
     if (decision != 'create') {
+        console.log("Column Label", columnLabel)
         const { data, error } = await supabase.rpc("update_lease_extraction_term", {
             p_patch: patch,
             p_tenant_id: tenant_id,
@@ -434,6 +436,7 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
         }
     }
     else {
+        
         const { data, error } = await supabase.from('Lease_Extractions').update({
             [columnLabel]: {
                 'page': 0,

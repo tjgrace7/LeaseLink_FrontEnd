@@ -112,37 +112,52 @@ const EntityListBox = ({
     // Key: section stretches to parent height; flex column enables scroll region sizing
     <section className={`bg-lease-gradient text-white p-4 sm:p-5 rounded-lg w-full h-full min-h-0 flex flex-col ${className}`}>
       {/* Header row stays natural height */}
-      <div className="relative flex items-center pb-6 shrink-0">
-        <div className="z-10">
-          <SearchBar
-            placeholder={`Search ${placeholder || Label}`}
-            selectEntity={selectEntity}
-            type={type}
-          />
-        </div>
+<div className="pb-6 shrink-0">
+  <div className="
+    grid items-center gap-3
+    grid-cols-1
+    sm:grid-cols-[20rem_1fr_auto]
+  ">
+    {/* Search */}
+    <div className="w-60">
+      <SearchBar
+        placeholder={`Search ${placeholder || Label}`}
+        selectEntity={selectEntity}
+        type={type}
+      />
+    </div>
 
-        <h1
-          className="text-xl sm:text-2xl font-bold absolute left-1/2 -translate-x-1/2"
-          aria-label={`${Label} list`}
-        >
-          {Label}
-        </h1>
+    {/* Title */}
+    <h1
+      className="
+        text-xl sm:text-2xl font-bold
+        text-left sm:text-center
+        order-first sm:order-none
+        truncate
+      "
+      aria-label={`${Label} list`}
+      title={Label}
+    >
+      {Label}
+    </h1>
 
-        <div className="ml-auto z-10">
-          <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-rose-500"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              aria-label="Toggle showing archived items"
-            />
-            <span className="opacity-90">
-              Show archived{archivedCount ? ` (${archivedCount})` : ""}
-            </span>
-          </label>
-        </div>
-      </div>
+    {/* Toggle */}
+    <div className="sm:justify-self-end">
+      <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer whitespace-nowrap">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-rose-500"
+          checked={showArchived}
+          onChange={(e) => setShowArchived(e.target.checked)}
+          aria-label="Toggle showing archived items"
+        />
+        <span className="opacity-90">
+          Show archived{archivedCount ? ` (${archivedCount})` : ""}
+        </span>
+      </label>
+    </div>
+  </div>
+</div>
 
       {/* Scroll region: fills remaining height and scrolls internally */}
       <ul className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
