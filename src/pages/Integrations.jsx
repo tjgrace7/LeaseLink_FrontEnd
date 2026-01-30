@@ -11,6 +11,7 @@ const IntegrationsResponsePage = () => {
   const provider = searchParams.get("provider") || "";
   const errorParam = searchParams.get("error") || "";
   const connected = searchParams.get("connected") === "1"; // query params are strings
+  const approved = searchParams.get("admin_approved") === "1";
 
   const providerLabel = useMemo(() => {
     if (provider === "microsoft") return "Microsoft 365 / Outlook";
@@ -66,6 +67,14 @@ const IntegrationsResponsePage = () => {
         title: `Connected to ${providerLabel}`,
         description:
           "Your mailbox is now linked to LeaseLink. We’re starting the initial sync in the background — It may take several hours to process depending on the quantity and size of emails. You will be notified when they are synced.",
+        tone: "success",
+      };
+    }
+    if (approved) {
+      return {
+        title: `Lease Link Approved for ${providerLabel}`,
+        description:
+          "Your admin has approved Lease Link to connect to your email provider. You can now return to the Settings page to complete the integration.",
         tone: "success",
       };
     }
