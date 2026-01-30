@@ -251,13 +251,13 @@ const ChatPage = () => {
 
   // env + auth
   //switch to import.meta.env.VITE_SERVER_URL
-  //const server_url = "http://localhost:8000";
-  const server_url = import.meta.env.VITE_SERVER_URL;
+  const server_url = "http://localhost:8000";
+  //const server_url = import.meta.env.VITE_SERVER_URL;
   const { session, userData, loadingUserData, baseAccess, propertyChat } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
-  const unit_id = localStorage.getItem('selectedUnitId')
+  const [unit_id, setUnitId] = useState(localStorage.getItem('selectedUnitId'))
   // router
   const navigate = useNavigate();
 
@@ -310,7 +310,7 @@ const ChatPage = () => {
       }
       getUnits()
     }
-  })
+  }, [entity_type, entity_id, entitySelected])
 
   // ------------------------- initialize chat session ------------------
   // 2) Initialize only after we KNOW the refresh state
@@ -569,6 +569,7 @@ const ChatPage = () => {
     // fully reset thread state
     setMessages([]);
     setSources([]);
+
     setSelectedSource(null);
     setShowModal(false);
 
@@ -576,6 +577,7 @@ const ChatPage = () => {
     localStorage.removeItem("chat_session_id");
     localStorage.removeItem("entity_id");
     localStorage.removeItem("entity_type");
+    localStorage.removeItem("unit_id");
 
     setPopUp(false);
 
@@ -583,10 +585,18 @@ const ChatPage = () => {
     setSessionId(newId);
     localStorage.setItem("chat_session_id", newId);
 
+    if(entityType === "tenant")
+    {
+      localStorage.setItem("unit_id", unit.unit_id)
+      setUnitId(unit.unit_id)
+    }
+
+
     setEntityId(entityId);
     setEntityType(entityType);
     setSelectedEntity(true);
     await getEntityNameImage(entityType, entityId);
+
 
     getPreviousChats(entityId, session, setPreviousChats);
     GTMChatEntity();
@@ -789,6 +799,7 @@ const ChatPage = () => {
                 setEmailModal(true)
                 setSidebarOpen(false)
               }}
+              entityType={entity_type}
             />
           </div>
         </div>
@@ -839,6 +850,7 @@ const ChatPage = () => {
                   setEmailModal(true);
                   setSidebarOpen(false);
                 }}
+                entityType={entity_type}
               />
             </div>
           </div>

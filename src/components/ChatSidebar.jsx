@@ -1,5 +1,4 @@
 import React from "react";
-
 /**
  * ChatSidebar
  * - Shows:
@@ -22,88 +21,149 @@ const ChatSidebar = ({
   termsRent = [],
   emailSources = [],
   onEmailClick,
+  entityType,
 }) => {
+  const sourcesByTenant = React.useMemo(() => {
+    if (entityType !== 'property') return null;
+    if (!Array.isArray(sources)) return {};
+
+    return sources.reduce((acc, s) => {
+      const name = s?.tenant_name || 'Unknown Tenant';
+      (acc[name] ||= []).push(s);
+      return acc;
+    }, {});
+
+  }, [sources, entityType]);
+  const tenantNames = React.useMemo(() => {
+    if (!sourcesByTenant) return [];
+    return Object.keys(sourcesByTenant);
+  }, [sourcesByTenant]);
+
   const getSourceText = (source) => {
-    if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
-      return `Page ${source.pageNumber}: ${truncateText(source.highlight_text, 80)}`;
-    }
-    else {
+    console.log("Source:", source);
+    console.log("Entity Type:", entityType);
+    if (entityType === "tenant") {
+      if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
+        return `Page ${source.pageNumber}: ${truncateText(source.highlight_text, 80)}`;
+      }
+      else {
+        const sourceName = source?.source_doc.split('/').pop();
+        return `Document: ${sourceName ?? 'Unknown Document'}`;
+      }
+    } else if (entityType === "property") {
       const sourceName = source?.source_doc.split('/').pop();
-      return `Document: ${sourceName ?? 'Unknown Document'}`;
+      if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
+        return `${truncateText(sourceName, 30)}; Page ${source.pageNumber}: Highlight: ${truncateText(source.highlight_text, 80)}`;
+      } else {
+        const sourceName = source?.source_doc.split('/').pop();
+        return `Document: ${sourceName ?? 'Unknown Document'}`;
+      }
     }
   }
   return (
     <aside className="w-full min-w-[16rem] bg-[#2c2c2e] text-white flex flex-col p-4 border-r border-gray-700 overflow-y-auto">
       {/* Sources */}
       <SectionTitle>Sources</SectionTitle>
-<ul className="text-sm space-y-1 mb-6">
-  {(!sources?.length && !emailSources?.length) ? (
-    <li className="text-gray-400">Ask a Question for Sources</li>
-  ) : (
-    <>
-      {Array.isArray(sources) && sources?.map((source, idx) => (
-        
-        <li
-          key={`doc-${source?.pageNumber + " " + idx ?? idx}`}
-          className="text-sm border-l-4 pl-2 border-blue-500"
-        >
-          <button
-            onClick={() => onSourceClick?.(source)}
-            className="text-left text-blue-500 hover:underline w-full break-words"
+      <ul className="text-sm space-y-1 mb-6">
+        {(!sources?.length && !emailSources?.length) ? (
+          <li className="text-gray-400">Ask a Question for Sources</li>
+        ) : (
+          <>
+
+            {entityType === 'tenant' && Array.isArray(sources) && sources?.map((source, idx) => (
+              console.log("Tenant Name", source.tenant_name),
+              <li
+                key={`doc-${source?.pageNumber + " " + idx ?? idx}`}
+                className="text-sm border-l-4 pl-2 border-blue-500"
+              >
+                <button
+                  onClick={() => onSourceClick?.(source)}
+                  className="text-left text-blue-500 hover:underline w-full break-words"
+                >
+                  {getSourceText(source)}
+                </button>
+              </li>
+
+            ))}
+          </>
+        )}
+        {entityType === "property" && sources.length > 0 && (
+            <>
+              {tenantNames.map((tenantName) => (
+                <li key={`tenant-${tenantName}`} className="mb-3">
+                  {/* Tenant header */}
+                  <div className="text-xs uppercase tracking-wide text-gray-300 mb-1">
+                    {tenantName}
+                  </div>
+
+                  <ul className="space-y-1">
+                    {sourcesByTenant[tenantName].map((source, idx) => (
+                      <li
+                        key={`doc-${tenantName}-${source?.pageNumber ?? "nopage"}-${idx}`}
+                        className="text-sm border-l-4 pl-2 border-blue-500"
+                      >
+                        <button
+                          onClick={() => onSourceClick?.(source)}
+                          className="text-left text-blue-500 hover:underline w-full break-words"
+                        >
+                          {getSourceText(source)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </>
+          )}
+        {Array.isArray(emailSources) && emailSources?.map((email, idx) => (
+          <li
+            key={`email-${email?.id ?? idx}`}
+            className="text-sm border-l-4 pl-2 border-blue-500"
           >
-            {getSourceText(source)}
-          </button>
-        </li>
-      ))}
+            <button
 
-      {Array.isArray(emailSources) && emailSources?.map((email, idx) => (
-        <li
-          key={`email-${email?.id ?? idx}`}
-          className="text-sm border-l-4 pl-2 border-blue-500"
-        >
-          <button
-            
-            onClick={() => {
-              onEmailClick?.(email)}}
-            className="text-left text-blue-500 hover:underline w-full break-words"
-          >
-            Email Subject: {email?.subject ?? '(no subject)'}
-          </button>
-        </li>
-      ))}
-    </>
-  )}
-</ul>
-      {/* Terms & Rent */}
-{termsRent.length > 0 && (
-  <div className="mb-6">
-    <SectionTitle>Terms and Rent</SectionTitle>
-
-    <ul className="space-y-2">
-      {termsRent.map((item, index) => {
-        const entries = Object.entries(item || {});
-        if (!entries.length) return null;
-
-        const [label, extraction] = entries[0];
-
-        // ✅ get the actual string value
-        const displayValue =
-          extraction?.value ??
-          extraction?.future_value ??
-          "";
-
-        if (!displayValue || displayValue === "N/A" || displayValue === "Null") return null;
-
-        return (
-          <li key={`term-${index}`} className="text-sm flex flex-wrap">
-            <span className="mr-2 font-medium">{label}:</span>
-            <span>{displayValue}</span>
+              onClick={() => {
+                onEmailClick?.(email)
+              }}
+              className="text-left text-blue-500 hover:underline w-full break-words"
+            >
+              Email Subject: {email?.subject ?? '(no subject)'}
+            </button>
           </li>
-        );
-      })}
-    </ul>
-  </div>
-)}
+        ))}
+
+      </ul>
+
+      {/* Terms & Rent */}
+      {termsRent.length > 0 && (
+        <div className="mb-6">
+          <SectionTitle>Terms and Rent</SectionTitle>
+
+          <ul className="space-y-2">
+            {termsRent.map((item, index) => {
+              const entries = Object.entries(item || {});
+              if (!entries.length) return null;
+
+              const [label, extraction] = entries[0];
+
+              // ✅ get the actual string value
+              const displayValue =
+                extraction?.value ??
+                extraction?.future_value ??
+                "";
+
+              if (!displayValue || displayValue === "N/A" || displayValue === "Null") return null;
+
+              return (
+                <li key={`term-${index}`} className="text-sm flex flex-wrap">
+                  <span className="mr-2 font-medium">{label}:</span>
+                  <span>{displayValue}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
 
       {/* Previous Chats */}
