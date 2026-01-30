@@ -96,7 +96,62 @@ function EntryRow({ item, onValueClick }) {
     </button>
   );
 }
+const ContactRow = ({ item }) => {
+  if (!item || typeof item !== "object") return null;
 
+  const entries = Object.entries(item);
+  if (entries.length === 0) return null;
+
+  const [label, rawValue] = entries[0];
+  if (rawValue == null) return null;
+
+  let display = String(rawValue).trim();
+  if (!display) return null;
+
+  // 🔹 Special case: Rent Escalation
+  if (label === "Rent Escalation") {
+    // Remove surrounding [] if present
+    if (display.startsWith("[") && display.endsWith("]")) {
+      display = display.slice(1, -1);
+    }
+
+    // Try to pretty-print JSON-like content
+    try {
+      const parsed = JSON.parse(`[${display}]`);
+      display = parsed
+        .map(
+          (r) =>
+            `${r.period}\n` +
+            `• Base Rent: $${r.monthly_base_rent.toLocaleString()}\n` +
+            `• CAM: $${r.monthly_cam.toLocaleString()}\n` +
+            `• Total: $${r.total_monthly_rent.toLocaleString()}`
+        )
+        .join("\n\n");
+    } catch {
+      // fallback: just show cleaned text
+    }
+  }
+  // 🔹 Generic JSON fallback (other fields)
+  else if (
+    (display.startsWith("{") && display.endsWith("}")) ||
+    (display.startsWith("[") && display.endsWith("]"))
+  ) {
+    try {
+      display = JSON.stringify(JSON.parse(display), null, 2);
+    } catch { }
+  }
+
+  return (
+    <div className="border-b border-muted/30 py-2 last:border-b-0 overflow-hidden">
+      <dt className="text-sm font-medium text-muted-foreground mb-1">
+        {label}
+      </dt>
+      <dd className="text-sm leading-relaxed whitespace-pre-wrap break-all">
+        {display}
+      </dd>
+    </div>
+  );
+};
 
 
 
@@ -533,18 +588,17 @@ const TenantPage = () => {
 
             <SectionCard title="Contact Info">
               {contacts?.length ? (
-                <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {contacts.map((contact) => (
                     <button
                       key={contact?.contact_id}
                       className="text-left rounded-xl p-3 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
                       onClick={() => navigate(`/contact/${contact?.contact_id}`)}
                     >
-                      <EntryRow item={{ Name: contact?.Contact_Name }} />
-                      <EntryRow item={{ Type: contact?.Contact_Type }} />
-                      <EntryRow item={{ Phone: contact?.Phone }} />
-                      <EntryRow item={{ Email: contact?.Email }} />
-                      <EntryRow item={{ Address: contact?.Address }} />
+
+                      <ContactRow item={{ Name: contact?.Contact_Name }} />
+                      <ContactRow item={{ Phone: contact?.Phone }} />
+                      <ContactRow item={{ Email: contact?.Email }} />
                     </button>
                   ))}
                 </div>

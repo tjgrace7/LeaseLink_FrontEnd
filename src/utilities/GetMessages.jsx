@@ -301,7 +301,6 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
     const res = await getLeaseInfo(tenant_id, unit_id);
     const data = res[0]
 
-
     const lease_summary = [
         { "Lease Commencement Date": data.lease_commencement_date },
         { "Lease Expiration Date": data.lease_expiration_date },

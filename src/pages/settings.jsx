@@ -93,6 +93,7 @@ const Settings = () => {
   // UI: import button state
   const [importing, setImporting] = useState(false);
   const backendURL = import.meta.env.VITE_SERVER_URL
+  //const backendURL = "http://localhost:8000";
 
   // ——— Expected fields by type (required vs optional + one-of groups)
   // NOTE: "oneOf" means at least ONE of the labels in the inner array must be mapped.

@@ -81,6 +81,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/linkedin/1' element={<LinkedInLanding/>}/>
           <Route path='/linkedin/2' element={<LinkedInLanding2/>}/>
           <Route path='/auth/invite-complete' element={<ProtectedRoute><InviteComplete/></ProtectedRoute>}/>
+          <Route path='/settings/integrations' element={<IntegrationsResponsePage/>}/>
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
@@ -102,7 +103,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
-            <Route path='/settings/integrations' element={<ProtectedRoute><IntegrationsResponsePage/></ProtectedRoute>}/>
+            
             <Route path='/special-access' element={<ProtectedRoute><SpecialAccess/></ProtectedRoute>}/>
           </Route>
         </Routes>
