@@ -12,6 +12,7 @@ import PopUp from "../components/popUp";
 import { GTMChat, GTMChatEntity, GTMChatResponse } from "../components/gtag";
 import { ShowModal, EmailModal } from "../components/Modal"
 import Dropdown from "../components/dropdown";
+import { getSignedUrl } from "../utilities/GetMessages";
 
 /* ---------- stable, memoized input to avoid remounts on re-render ---------- */
 const ComposerInput = memo(function ComposerInput({
@@ -57,7 +58,7 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
   }
   const unitsWithAll = [ALL_UNITS_OPTION, ...(units ?? [])]
   const selectedUnitId = localStorage.getItem('selectedUnitId')
-  if(units.length > 5 ) searchable = true
+  if (units.length > 5) searchable = true
   return (
     <div className="sticky top-0 z-30 border-b border-white/10 bg-[#121212]/95">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
@@ -98,29 +99,28 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
         </div>
         {units.length > 1 && (
           <div className="w-1/4 pl-4">
-          <Dropdown
-            options={unitsWithAll}
-            getOptionTitle={(unit) => unit?.unit_id ? `${unit?.Suite} - ${unit?.address}`: "All Units"}
+            <Dropdown
+              options={unitsWithAll}
+              getOptionTitle={(unit) => unit?.unit_id ? `${unit?.Suite} - ${unit?.address}` : "All Units"}
 
-            getOptionId={(unit) => unit.unit_id ?? "All_UNITS"}
-            placeholder={selectedUnitId ? (Suite && address) ? `${Suite} - ${address}` : "Select Unit": "All Units"}
-            onSelect={(option) => {
-              if(!option.unit_id)
-              {
-                localStorage.removeItem("selectedUnitSuite");
-                localStorage.removeItem("selectedUnitAddress");
-                localStorage.removeItem("selectedUnitId"); // <-- treat missing as "all units"
-                return;
-              }
+              getOptionId={(unit) => unit.unit_id ?? "All_UNITS"}
+              placeholder={selectedUnitId ? (Suite && address) ? `${Suite} - ${address}` : "Select Unit" : "All Units"}
+              onSelect={(option) => {
+                if (!option.unit_id) {
+                  localStorage.removeItem("selectedUnitSuite");
+                  localStorage.removeItem("selectedUnitAddress");
+                  localStorage.removeItem("selectedUnitId"); // <-- treat missing as "all units"
+                  return;
+                }
 
-              localStorage.setItem("selectedUnitSuite", option?.Suite)
-              localStorage.setItem("selectedUnitAddress", option?.address)
-              localStorage.setItem("selectedUnitId", option.unit_id)
-              setSelectedUnit(option)
-            }}
-            searchable={searchable}
-            set
-          />
+                localStorage.setItem("selectedUnitSuite", option?.Suite)
+                localStorage.setItem("selectedUnitAddress", option?.address)
+                localStorage.setItem("selectedUnitId", option.unit_id)
+                setSelectedUnit(option)
+              }}
+              searchable={searchable}
+              set
+            />
           </div>
         )}
         {/* Sidebar toggle on mobile */}
@@ -179,25 +179,33 @@ const Composer = memo(function Composer({ entitySelected, input, setInput, handl
     </div>
   )
 });
+const ChatBubble = memo(function ChatBubble({ message, loading, onClick }) {
+  const text = message.text || message.message;
 
-const ChatBubble = memo(function ChatBubble({ role, text, loading }) {
+  const isUser = message.role === "user";
+
   return (
-
-    <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed shadow-sm ring-1 ring-inset ring-white/10 ${role === "user" ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white"
-          }`}
+        className={[
+          "w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl",
+          "px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed",
+          "shadow-sm ring-1 ring-inset ring-white/10",
+          isUser ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white",
+          !loading && onClick ? "cursor-pointer hover:ring-white/20" : "",
+        ].join(" ")}
+        onClick={!loading && onClick ? () => onClick(message.sources, message.email_sources) : undefined}
       >
         {loading ? (
           <div className="text-white">
             <Spinner />
           </div>
         ) : (
-          <p className="break-words">{text}</p>
+          <span className="break-words text-left block">{text}</span>
         )}
       </div>
     </div>
-  )
+  );
 });
 function textToBool(str) {
 
@@ -346,6 +354,7 @@ const ChatPage = () => {
           if (cached) {
             try {
               const parsed = JSON.parse(cached);
+              console.log("Parsed Cached Messages:", parsed);
               const normalized = parsed.map((msg) => ({
                 ...msg,
                 message: msg.message || msg.text,
@@ -474,7 +483,7 @@ const ChatPage = () => {
       try {
         const leases = await getLeaseDocs(entity_id, unit.unit_id)
         setTerms(leases?.basic_lease ?? []);
-      } catch (_e) { console.error("Caughts", _e)}
+      } catch (_e) { console.error("Caughts", _e) }
     })();
     return () => { cancelled = true; };
   }, [entity_type, entity_id, unit]);
@@ -483,7 +492,7 @@ const ChatPage = () => {
 
   useEffect(() => {
     console.log("Property Chat Access:", propertyChat)
-    if(propertyChat) setSearchQuery("tenants_properties")
+    if (propertyChat) setSearchQuery("tenants_properties")
   }, [propertyChat, loadingUserData])
   // ------------------------- access control ------------------------
   useEffect(() => {
@@ -585,8 +594,7 @@ const ChatPage = () => {
     setSessionId(newId);
     localStorage.setItem("chat_session_id", newId);
 
-    if(entityType === "tenant")
-    {
+    if (entityType === "tenant") {
       localStorage.setItem("unit_id", unit.unit_id)
       setUnitId(unit.unit_id)
     }
@@ -635,7 +643,7 @@ const ChatPage = () => {
     ]);
   };
 
-  
+
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -650,28 +658,27 @@ const ChatPage = () => {
     ]);
     setInput("");
     let payload;
-    if(unit_id === null)
-    {
-     payload = {
-      entity_id,
-      company_id,
-      message: trimmed,
-      session_id,
-      auth_id,
-      entity_type,
-    };
-  }
-  else {
-    payload = {
-      entity_id,
-      company_id,
-      message: trimmed,
-      session_id,
-      auth_id,
-      entity_type,
-      unit_id
+    if (unit_id === null) {
+      payload = {
+        entity_id,
+        company_id,
+        message: trimmed,
+        session_id,
+        auth_id,
+        entity_type,
+      };
     }
-  }
+    else {
+      payload = {
+        entity_id,
+        company_id,
+        message: trimmed,
+        session_id,
+        auth_id,
+        entity_type,
+        unit_id
+      }
+    }
     try {
       GTMChat()
       const res = await fetch(`${server_url}/entity_questions`, {
@@ -741,7 +748,7 @@ const ChatPage = () => {
         setSidebarOpen={setSidebarOpen}
         searchQuery={searchQuery}
         units={units}
-        setSelectedUnit={(unit)=> setUnit(unit) }
+        setSelectedUnit={(unit) => setUnit(unit)}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -753,9 +760,27 @@ const ChatPage = () => {
               {messages.map((m, i) => (
                 <ChatBubble
                   key={i}
-                  role={m.role}
-                  text={m.message || m.text}
+                  message={m}
                   loading={m.loading}
+                  onClick={async (sources, email_sources) => {
+                    console.log("Sources clicked:", sources);
+                    const enriched = await Promise.all(
+                      (sources || []).map(async (source) => {
+                        const signedURL = await getSignedUrl(source.source_doc);
+
+                        const url = `${signedURL}#page=${encodeURIComponent(source.pageNumber ?? "")}` +
+                          `&highlight_text=${encodeURIComponent(source.highlight_text ?? "")}`;
+
+                        return {
+                          ...source,
+                          source_doc_signed_url: url,
+                        };
+                      }),
+                      setEmailSources(email_sources)
+                    );
+                    
+                    setSources(enriched);
+                  }}
                 />
               ))}
               <div ref={messagesEndRef} />
