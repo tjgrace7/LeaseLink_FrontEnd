@@ -265,7 +265,8 @@ const ChatPage = () => {
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
-  const [unit_id, setUnitId] = useState(localStorage.getItem('selectedUnitId'))
+
+  
   // router
   const navigate = useNavigate();
 
@@ -586,7 +587,7 @@ const ChatPage = () => {
     localStorage.removeItem("chat_session_id");
     localStorage.removeItem("entity_id");
     localStorage.removeItem("entity_type");
-    localStorage.removeItem("unit_id");
+
 
     setPopUp(false);
 
@@ -594,10 +595,7 @@ const ChatPage = () => {
     setSessionId(newId);
     localStorage.setItem("chat_session_id", newId);
 
-    if (entityType === "tenant") {
-      localStorage.setItem("unit_id", unit.unit_id)
-      setUnitId(unit.unit_id)
-    }
+
 
 
     setEntityId(entityId);
@@ -657,7 +655,10 @@ const ChatPage = () => {
       { role: "assistant", text: "...", loading: true },
     ]);
     setInput("");
+    
+    console.log("Unit Id:", unit.unit_id)
     let payload;
+    const unit_id = unit.unit_id
     if (unit_id === null) {
       payload = {
         entity_id,
