@@ -1,6 +1,7 @@
 import { Key } from "lucide-react"
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 export const ShowModal = ({ OnClose, selectedSource }) => {
   console.log(selectedSource)
@@ -105,9 +106,10 @@ export const ExtractionModal = ({
   onClose,
   onSave, // (finalValue, meta) => void
   tenant_id,
-}) => {
-  const initialAiValue = useMemo(() => aiValue ?? "", [aiValue]);
+  onChat
 
+}) => {
+  const initialAiValue = useMemo(() => aiValue ?? "", [aiValue])
   const isEmptyAI = useMemo(() => {
     return aiValue == null || String(aiValue).trim() === "" || aiValue === "Null";
   }, [aiValue]);
@@ -117,6 +119,7 @@ export const ExtractionModal = ({
 
   const [leases, setLeases] = useState([]);
   const [selectedLease, setSelectedLease] = useState(null);
+  const navigate = useNavigate();
 
   // reset when field changes
   useEffect(() => {
@@ -236,9 +239,8 @@ export const ExtractionModal = ({
                         <button
                           type="button"
                           onClick={handleApproveAI}
-                          className={`text-xs rounded-md px-2 py-1 border hover:bg-gray-50 ${
-                            decision === "approve" ? "border-black" : "border-gray-300"
-                          }`}
+                          className={`text-xs rounded-md px-2 py-1 border hover:bg-gray-50 ${decision === "approve" ? "border-black" : "border-gray-300"
+                            }`}
                         >
                           Approve AI value
                         </button>
@@ -260,9 +262,8 @@ export const ExtractionModal = ({
                   value={draftValue}
                   onChange={handleDraftChange}
                   rows={2}
-                  className={`w-full rounded-md border px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-ring ${
-                    requiresReview && !decision ? "bg-red-500 text-white" : "bg-gray-500 text-white"
-                  }`}
+                  className={`w-full rounded-md border px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-ring ${requiresReview && !decision ? "bg-red-500 text-white" : "bg-gray-500 text-white"
+                    }`}
                   placeholder="Enter value..."
                 />
 
@@ -308,24 +309,37 @@ export const ExtractionModal = ({
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-between">
+                {/* Left side */}
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={onChat}
                   className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
                 >
-                  Cancel
+                  Chat
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSave()}
-                  disabled={!canSave}
-                  className="rounded-md px-3 py-2 text-sm text-white bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save
-                </button>
+                {/* Right side */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={!canSave}
+                    className="rounded-md px-3 py-2 text-sm text-white bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
+
             </div>
 
             {/* PDF Viewer */}
@@ -366,11 +380,10 @@ export const ExtractionModal = ({
                         key={lease.id ?? lease.lease_id ?? lease.lease_file_path}
                         type="button"
                         onClick={() => setSelectedLease(lease)}
-                        className={`rounded-md px-3 py-2 text-sm border ${
-                          isSelected
-                            ? "bg-black text-white border-black"
-                            : "bg-white text-black border-gray-300 hover:bg-gray-50"
-                        }`}
+                        className={`rounded-md px-3 py-2 text-sm border ${isSelected
+                          ? "bg-black text-white border-black"
+                          : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                          }`}
                       >
                         {shortPath}
                       </button>

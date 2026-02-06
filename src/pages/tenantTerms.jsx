@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getLeaseDocs, parseUSDate, getSignedUrl, FIELD_KEYS, saveOverride } from "../utilities/GetMessages";
+import { getLeaseDocs, parseUSDate, getSignedUrl, FIELD_KEYS, saveOverride, loadExtractionChat } from "../utilities/GetMessages";
 import DisplayBox from "../components/DisplayBox";
 import { getTable } from "../utilities/supabaseCalls";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -241,7 +241,7 @@ const TenantTerms = () => {
 
   const handleOpenExtraction = async (label, term) => {
 
-    setActiveExtraction(term);
+    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label});
     console.log("Term", term)
     setActiveLabel(label)
     if (term != null && term != "") {
@@ -352,6 +352,11 @@ const TenantTerms = () => {
             setSignedUrl(null);
           }}
           tenant_id={tenant_id}
+          onChat={() => {
+            const chatId = crypto.randomUUID()
+            loadExtractionChat(tenant_id, safeExtraction.label, safeExtraction.value, safeExtraction.reason, company_id, tenant.Tenant_Name, session?.user?.id, chatId)
+            navigate('/chat')  
+          }}
         />
       )}
     </main>

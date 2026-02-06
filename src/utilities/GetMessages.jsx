@@ -1,6 +1,4 @@
 import { supabase } from "../supabaseClient";
-import { ExtractionModal } from "../components/Modal";
-import { ExternalLink } from "lucide-react";
 
 const supabase_url = import.meta.env.VITE_SUPABASE_URL;
 
@@ -76,10 +74,10 @@ const rightsIndex = (rightsIndex) => {
     const values = [];
 
     Object.entries(parsedValue).forEach(([key, enabled]) => {
-    if (enabled && KEYS[key]) {
-      values.push(KEYS[key]);
-    }
-  });
+        if (enabled && KEYS[key]) {
+            values.push(KEYS[key]);
+        }
+    });
 
     rightsIndex.value = values.join("\n");
     return rightsIndex;
@@ -435,7 +433,7 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
         }
     }
     else {
-        
+
         const { data, error } = await supabase.from('Lease_Extractions').update({
             [columnLabel]: {
                 'page': 0,
@@ -477,3 +475,39 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
     window.location.reload();
     return { ok: true }
 };
+
+export const loadExtractionChat = async (tenant_id, label, aiValue, aiReason, company_id, tenantName, user_id, chatId) => {
+    console.log("Company Id", company_id)
+    const Message = `This Message displays the Extration Data for ${tenantName}
+
+Extraction Term: ${label}
+
+Extraction Value: ${aiValue}
+
+AI Reasoning: ${aiReason}`
+    localStorage.setItem("chat_session_id", chatId);
+    localStorage.setItem('entity_id', tenant_id);
+    localStorage.setItem('entity_type', 'tenant');
+    localStorage.setItem('entity_selected', 'true')
+    localStorage.setItem('isNewNavigation', 'true')
+    localStorage.setItem('entity_name', tenantName)
+    const { error } = await supabase.from('entity_questions').insert({
+        session_id: chatId,
+        entity_id: tenant_id,
+        company_id: company_id,
+        message: Message,
+        role: 'assistant',
+        auth_id: user_id, 
+        message_cost: 0.0,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        entity: 'tenant'
+
+                    })
+    if (error)
+    {
+        console.error("Error Creating Message", error)
+        return;
+    }
+
+}

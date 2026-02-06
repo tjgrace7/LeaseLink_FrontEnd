@@ -9,7 +9,7 @@ import Spinner from "../components/Spinner";
 import Profile from "../components/Profile";
 import DisplayBox from "../components/DisplayBox";
 import LoadPreviousMessages from "../components/PreviousMessages";
-import { getTenantLeaseInfo, getSignedUrl, parseUSDate, FIELD_KEYS, saveOverride } from "../utilities/GetMessages";
+import { getTenantLeaseInfo, getSignedUrl, parseUSDate, FIELD_KEYS, saveOverride, loadExtractionChat } from "../utilities/GetMessages";
 import { getTableIdList, fileExistsInStorage } from "../utilities/supabaseCalls";
 import { getTenantTermOverrides } from "../utilities/supabaseCalls.jsx";
 import { ExtractionModal } from "../components/Modal.jsx";
@@ -499,8 +499,11 @@ const TenantPage = () => {
 
     const label = Object.keys(payload)[0]
     const term = Object.values(payload)[0]
-    setActiveExtraction(term);
+
+    
+
     setActiveLabel(label)
+    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label});
 
     if (term != null) {
       const url = await getSignedUrl(term.source_doc);
@@ -759,6 +762,11 @@ const TenantPage = () => {
             setSignedUrl(null);
           }}
           tenant_id={tenant_id}
+          onChat={() => {
+            const chatId = crypto.randomUUID()
+            loadExtractionChat(tenant_id, safeExtraction.label, safeExtraction.value, safeExtraction.reason, company_id, tenant.Tenant_Name, session?.user?.id, chatId)
+            navigate('/chat')   
+          }}
         />
       )}
 

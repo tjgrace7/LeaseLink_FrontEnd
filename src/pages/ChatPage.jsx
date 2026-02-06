@@ -310,7 +310,6 @@ const ChatPage = () => {
           return
         }
         if (data.length > 1) {
-          console.log(data.length)
           setUnits(data)
         }
         else {
@@ -338,9 +337,7 @@ const ChatPage = () => {
         const storedEntityId = localStorage.getItem("entity_id");
         const storedEntityType = localStorage.getItem("entity_type");
         const storedEntitySelected = localStorage.getItem("entity_selected");
-        console.log("Selected Entity", storedEntityId, storedEntityType, storedEntitySelected)
 
-        console.log("Stored Session ID: " + storedSessionId, "Stored EntityId: " + storedEntityId, "Stored Entity Type: " + storedEntityType, "Stored Entity Selected: " + storedEntitySelected)
         if (storedSessionId && storedEntityId && storedEntityType && storedEntitySelected === "true") {
           setEntityId(storedEntityId);
           setEntityType(storedEntityType);
@@ -355,7 +352,7 @@ const ChatPage = () => {
           if (cached) {
             try {
               const parsed = JSON.parse(cached);
-              console.log("Parsed Cached Messages:", parsed);
+
               const normalized = parsed.map((msg) => ({
                 ...msg,
                 message: msg.message || msg.text,
@@ -443,7 +440,6 @@ const ChatPage = () => {
   useEffect(() => {
     if (!messagesEndRef.current) return;
     if (composerInputRef.current && document.activeElement === composerInputRef.current) return;
-    console.log("Input Reference")
     messagesEndRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages]);
 
@@ -492,12 +488,12 @@ const ChatPage = () => {
 
 
   useEffect(() => {
-    console.log("Property Chat Access:", propertyChat)
+
     if (propertyChat) setSearchQuery("tenants_properties")
   }, [propertyChat, loadingUserData])
   // ------------------------- access control ------------------------
   useEffect(() => {
-    console.log("Loading", loadingUserData)
+
     if (!baseAccess && !loadingUserData) {
       alert("Subscribe to LeaseLink Basic to enable Chat functionality.")
       console.log("No Access Granted")
@@ -626,7 +622,7 @@ const ChatPage = () => {
 
         const last = msgs[msgs.length - 1];
         if (last?.sources) setSources(last.sources);
-        console.log("Last.sources", last?.sources)
+
         if (last?.email_sources) {
           setEmailSources(last.email_sources);
         }
@@ -656,7 +652,7 @@ const ChatPage = () => {
     ]);
     setInput("");
     
-    console.log("Unit Id:", unit.unit_id)
+
     let payload;
     const unit_id = unit.unit_id
     if (unit_id === null) {
@@ -764,7 +760,7 @@ const ChatPage = () => {
                   message={m}
                   loading={m.loading}
                   onClick={async (sources, email_sources) => {
-                    console.log("Sources clicked:", sources);
+
                     const enriched = await Promise.all(
                       (sources || []).map(async (source) => {
                         const signedURL = await getSignedUrl(source.source_doc);
@@ -813,14 +809,14 @@ const ChatPage = () => {
                 setMessages(oldmessages);
               }}
               onSourceClick={(source) => {
-                console.log(source)
+
                 setSelectedSource(source);
                 setShowModal(true);
               }}
               termsRent={terms}
               emailSources={emailSources}
               onEmailClick={(email) => {
-                console.log(email)
+
                 setSelectedEmail(email)
                 setEmailModal(true)
                 setSidebarOpen(false)
@@ -871,7 +867,6 @@ const ChatPage = () => {
                 termsRent={terms}
                 emailSources={emailSources}
                 onEmailClick={(email) => {
-                  console.log("Clicked")
                   setSelectedEmail(email);
                   setEmailModal(true);
                   setSidebarOpen(false);
