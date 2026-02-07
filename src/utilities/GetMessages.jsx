@@ -511,3 +511,7 @@ AI Reasoning: ${aiReason}`
     }
 
 }
+
+export const loadIndividualChat = async (tenant_id, user_id, chatId) => {
+    
+}

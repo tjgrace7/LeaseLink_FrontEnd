@@ -398,3 +398,77 @@ export const ExtractionModal = ({
     </div>
   );
 };
+
+export const LongModal = ({ OnClose, longanswer, onChat }) => {
+  // Optional: close on Escape
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") OnClose?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [OnClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Close modal backdrop"
+        onClick={OnClose}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+      />
+
+      {/* Modal */}
+      <div className="relative z-10 w-full max-w-5xl h-[88vh] sm:h-[90vh] rounded-2xl bg-white text-black shadow-2xl border border-black/10 overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 border-b border-gray-200 flex-none">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold truncate">
+              Full AI Response
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500">
+              Scroll to read the full answer.
+            </p>
+          </div>
+
+          <button
+            className="flex-none rounded-lg p-2 text-gray-500 hover:text-black hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-black/20"
+            onClick={OnClose}
+            aria-label="Close modal"
+          >
+            <span className="text-xl leading-none">✕</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 sm:p-5">
+            <p className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed text-gray-800">
+              {longanswer}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 sm:px-6 border-t border-gray-200 flex-none bg-white">
+          {/*<button
+            type="button"
+            onClick={onChat}
+            className="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white bg-black hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-black/20"
+          >
+            Chat about answer
+          </button>*/}
+
+          <button
+            type="button"
+            onClick={OnClose}
+            className="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black/20"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

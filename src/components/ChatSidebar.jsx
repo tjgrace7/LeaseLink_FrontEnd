@@ -40,8 +40,7 @@ const ChatSidebar = ({
   }, [sourcesByTenant]);
 
   const getSourceText = (source) => {
-    console.log("Source:", source);
-    console.log("Entity Type:", entityType);
+
     if (entityType === "tenant") {
       if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
         return `Page ${source.pageNumber}: ${truncateText(source.highlight_text, 80)}`;
@@ -71,7 +70,6 @@ const ChatSidebar = ({
           <>
 
             {entityType === 'tenant' && Array.isArray(sources) && sources?.map((source, idx) => (
-              console.log("Tenant Name", source.tenant_name),
               <li
                 key={`doc-${source?.pageNumber + " " + idx ?? idx}`}
                 className="text-sm border-l-4 pl-2 border-blue-500"

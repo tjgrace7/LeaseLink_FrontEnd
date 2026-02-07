@@ -10,7 +10,7 @@ import { getPreviousChats, getLeaseDocs } from "../utilities/GetMessages";
 import { get_entity_image } from "../utilities/get_entity_image";
 import PopUp from "../components/popUp";
 import { GTMChat, GTMChatEntity, GTMChatResponse } from "../components/gtag";
-import { ShowModal, EmailModal } from "../components/Modal"
+import { ShowModal, EmailModal, LongModal } from "../components/Modal"
 import Dropdown from "../components/dropdown";
 import { getSignedUrl } from "../utilities/GetMessages";
 
@@ -194,7 +194,7 @@ const ChatBubble = memo(function ChatBubble({ message, loading, onClick }) {
           isUser ? "bg-[#2f3241] text-white" : "bg-[#3a3d4a] text-white",
           !loading && onClick ? "cursor-pointer hover:ring-white/20" : "",
         ].join(" ")}
-        onClick={!loading && onClick ? () => onClick(message.sources, message.email_sources) : undefined}
+        onClick={!loading && onClick ? () => onClick(message.sources, message.email_sources, message.longAnswer || "") : undefined}
       >
         {loading ? (
           <div className="text-white">
@@ -241,6 +241,7 @@ const ChatPage = () => {
   const [showEmailModal, setEmailModal] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("tenants")
+  const [longAnswer, setLongAnswer] = useState('')
 
   // lease terms quick-view
   const [terms, setTerms] = useState([]);
@@ -352,11 +353,13 @@ const ChatPage = () => {
           if (cached) {
             try {
               const parsed = JSON.parse(cached);
-
               const normalized = parsed.map((msg) => ({
                 ...msg,
                 message: msg.message || msg.text,
                 role: msg.role,
+                longAnswer: msg.longAnswer,
+                sources: msg.sources,
+                emailSources: msg.emailSources
               }));
 
               setMessages(normalized);
@@ -375,8 +378,13 @@ const ChatPage = () => {
               const messages = stored.map((msg) => ({
                 ...msg,
                 message: msg.message,
-                role: msg.role
+                role: msg.role,
+                long_answer: msg.longAnswer,
+                sources: msg.sources,
+                emailSources: msg.email_sources,
+
               }))
+
               setMessages(messages)
             }
 
@@ -422,9 +430,14 @@ const ChatPage = () => {
   useEffect(() => {
     if (!session_id) return;
     try {
-      const trimmed = messages.slice(-50).map(({ message, text, role }) => ({
+
+      const trimmed = messages.slice(-50).map(({ message, text, role, longAnswer, sources, emailSources}) => ({
         message: message || text,
         role,
+        longAnswer,
+        sources,
+        emailSources,
+
       }));
       localStorage.setItem("chat_session_id", session_id);
       localStorage.setItem(`chat_thread_${session_id}`, JSON.stringify(trimmed));
@@ -759,8 +772,13 @@ const ChatPage = () => {
                   key={i}
                   message={m}
                   loading={m.loading}
-                  onClick={async (sources, email_sources) => {
+                  onClick={async (sources, email_sources, longAnswer) => {
 
+                    if(entity_type === "property" && longAnswer != "") {
+                      //Create Show Modal For Long Answer Here
+                      setLongAnswer(longAnswer)
+                      
+                    }
                     const enriched = await Promise.all(
                       (sources || []).map(async (source) => {
                         const signedURL = await getSignedUrl(source.source_doc);
@@ -889,6 +907,12 @@ const ChatPage = () => {
             Email={selectedEmail}
             OnClose={() => setEmailModal(false)} />
         </div>
+      )}
+      {longAnswer != "" && (
+        <LongModal
+        longanswer={longAnswer}
+        OnClose={() => setLongAnswer("")}
+/>
       )}
 
       {popUp && (
