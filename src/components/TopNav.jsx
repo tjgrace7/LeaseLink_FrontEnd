@@ -21,15 +21,30 @@ const TopNav = () => {
   const [imposter, setImposter] = useState(false)
   const [emailIntegrated, setEmailIntegrated] = useState(false)
   const [firstValue, setFirstValue] = useState(true)
+  const [imposterCompany, setImposterCompany] = useState("")
+  const company_id = localStorage.getItem("activeCompanyId");
 
   const auth_id = session?.user?.id;
   const access_token = session?.access_token;
-    //switch to import.meta.env.VITE_SERVER_URL
+  //switch to import.meta.env.VITE_SERVER_URL
   const server_url = "https://leaselink.onrender.com";
 
   useEffect(() => {
     if (!userData) return
-    if (userData.Imposter) setImposter(true)
+    if (userData.Imposter) {
+
+      setImposter(true)
+      const getCompanyName = async () => {
+        const { data, error } = await supabase.from('Property_Management_Companies').select('company_name').eq('company_id', company_id).single()
+        if (error) {
+          console.error("Error Fetching Company:", error)
+
+        }
+        setImposterCompany(data.company_name)
+      }
+      getCompanyName()
+    }
+
     setFirstValue(userData.First_Value)
   }, [userData])
 
@@ -83,162 +98,178 @@ const TopNav = () => {
   return (
     <div className="sticky top-0 z-40 bg-black/40 backdrop-blur-md border-b border-white/10 text-white">
       {firstValue && (
-      <div className="mx-auto flex max-w-full items-center justify-between px-3 py-2 md:px-4 md:py-3">
-        {/* Brand / Home */}
-        <button
-          onClick={() => navigate('dashboard')}
-          type="button"
-          aria-label="Go to dashboard"
-          className={`${linkBase} p-1.5 md:p-2 hover:bg-gray-800 transition-colors`}
-          title="Home"
-        >
-          <img
-            src={logo}
-            alt="Lease Link Logo"
-            className="h-12 md:h-10 lg:h-16 w-auto object-contain block"
-          />
-        </button>
-
-        {/* Right actions */}
-        <div className="flex items-center space-x-2 md:space-x-4">
-          {/* Chat Page (always visible) */}
-          <NavLink
-            to="/chat"
-            onClick={() => localStorage.setItem("isOldMessage", "false")}
-            aria-label="Chat Page"
-            title="Chat Page"
-            className={({ isActive }) =>
-              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : "text-white"
-              }`
-            }
+        <div className="mx-auto flex max-w-full items-center justify-between px-3 py-2 md:px-4 md:py-3">
+          {/* Brand / Home */}
+          <button
+            onClick={() => navigate('dashboard')}
+            type="button"
+            aria-label="Go to dashboard"
+            className={`${linkBase} p-1.5 md:p-2 hover:bg-gray-800 transition-colors`}
+            title="Home"
           >
-            <div className="flex flex-col items-center">
-              <img
-                src={chatIcon}
-                alt="Chat Icon"
-                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-              />
-              <p className="md:0">Chat</p>
-            </div>
-          </NavLink>
+            <img
+              src={logo}
+              alt="Lease Link Logo"
+              className="h-12 md:h-10 lg:h-16 w-auto object-contain block"
+            />
+          </button>
+
+          {/* Right actions */}
+          <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Chat Page (always visible) */}
+            <NavLink
+              to="/chat"
+              onClick={() => localStorage.setItem("isOldMessage", "false")}
+              aria-label="Chat Page"
+              title="Chat Page"
+              className={({ isActive }) =>
+                `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : "text-white"
+                }`
+              }
+            >
+              <div className="flex flex-col items-center">
+                <img
+                  src={chatIcon}
+                  alt="Chat Icon"
+                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                />
+                <p className="md:0">Chat</p>
+              </div>
+            </NavLink>
 
 
-          {/* Upload Docs (always visible) */}
-          <NavLink
-            to="/upload_docs"
-            aria-label="Upload documents"
-            title="Upload documents"
-            className={({ isActive }) =>
-              `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
-            }
-          >
-            <div className='flex flex-col items-center'>
-              <img
-                src={uploadIcon}
-                alt="Upload icon"
-                className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-              />
-              <p className='md:0'>Upload</p>
-            </div>
-          </NavLink>
-          {console.log(emailIntegrated)}
-          {emailAccess && emailIntegrated && (
-            <div>
-              <button
-                aria-label="Sync Email"
-                title="Sync Email"
+            {/* Upload Docs (always visible) */}
+            <NavLink
+              to="/upload_docs"
+              aria-label="Upload documents"
+              title="Upload documents"
+              className={({ isActive }) =>
+                `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+              }
+            >
+              <div className='flex flex-col items-center'>
+                <img
+                  src={uploadIcon}
+                  alt="Upload icon"
+                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                />
+                <p className='md:0'>Upload</p>
+              </div>
+            </NavLink>
+            {console.log(emailIntegrated)}
+            {emailAccess && emailIntegrated && (
+              <div>
+                <button
+                  aria-label="Sync Email"
+                  title="Sync Email"
+                  className={({ isActive }) =>
+                    `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+                  }
+                  onClick={async () => await syncEmail()}
+                >
+                  <div className='flex flex-col items-center'>
+                    <img
+                      src={resyncEmail}
+                      alt="Upload icon"
+                      className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                    />
+                    <p className='md:0'>Sync Email</p>
+                  </div>
+                </button>
+              </div>
+            )}
+            {/* Create Person (hide on xs to reduce clutter) */}
+            {canCreatePerson && (
+              <NavLink
+                to="/create_person"
+                aria-label="Create person"
+                title="Create person"
                 className={({ isActive }) =>
-                  `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+                  `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
                 }
-                onClick={async () => await syncEmail()}
               >
                 <div className='flex flex-col items-center'>
                   <img
-                    src={resyncEmail}
-                    alt="Upload icon"
+                    src={createPerson}
+                    alt="Create Person Icon"
                     className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
                   />
-                  <p className='md:0'>Sync Email</p>
+                  <p className='md:0'>Create Person</p>
                 </div>
-              </button>
+              </NavLink>
+            )}
+
+            {/* Create Property/Unit (hide on xs) */}
+            {canCreateBuilding && (
+              <NavLink
+                to="/create_building"
+                aria-label="Create property or unit"
+                title="Create property or unit"
+                className={({ isActive }) =>
+                  `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
+                }
+              >
+                <div className='flex flex-col items-center'>
+                  <img
+                    src={propertyIcon}
+                    alt="Create Property Icon"
+                    className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
+                  />
+                  <p className='md:0'>Create Property/Unit</p>
+                </div>
+              </NavLink>
+            )}
+
+            {/* Search & User menu (md+) */}
+            <div className="hidden md:block">
+              <SearchBar
+                placeholder="Search..."
+                type="all"
+                selectEntity={(id, type) => {
+                  if (!id || !type) return;
+                  navigate(`/${type}/${id}`);
+                }}
+              />
             </div>
-          )}
-          {/* Create Person (hide on xs to reduce clutter) */}
-          {canCreatePerson && (
-            <NavLink
-              to="/create_person"
-              aria-label="Create person"
-              title="Create person"
-              className={({ isActive }) =>
-                `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
-              }
-            >
-              <div className='flex flex-col items-center'>
-                <img
-                  src={createPerson}
-                  alt="Create Person Icon"
-                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-                />
-                <p className='md:0'>Create Person</p>
-              </div>
-            </NavLink>
-          )}
-
-          {/* Create Property/Unit (hide on xs) */}
-          {canCreateBuilding && (
-            <NavLink
-              to="/create_building"
-              aria-label="Create property or unit"
-              title="Create property or unit"
-              className={({ isActive }) =>
-                `hidden sm:inline-flex ${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
-              }
-            >
-              <div className='flex flex-col items-center'>
-                <img
-                  src={propertyIcon}
-                  alt="Create Property Icon"
-                  className="h-10 md:h-8 lg:h-10 w-auto object-contain block"
-                />
-                <p className='md:0'>Create Property/Unit</p>
-              </div>
-            </NavLink>
-          )}
-
-          {/* Search & User menu (md+) */}
-          <div className="hidden md:block">
-            <SearchBar
-              placeholder="Search..."
-              type="all"
-              selectEntity={(id, type) => {
-                if (!id || !type) return;
-                navigate(`/${type}/${id}`);
-              }}
-            />
-          </div>
-          <div className="hidden md:block">
-            <UserDropdown />
+            <div className="hidden md:block">
+              <UserDropdown />
+            </div>
           </div>
         </div>
-      </div>
       )}
       {imposter && (
-        <button
-          type="button"
-          onClick={async () => {
-            setImposter(false)
-            await supabase.from('User_Data').update({ "Imposter": false }).eq('company_id', userData.company_id)
-            clearFrontEndCompany()
-          }}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
-          title="Cancel Imposter"
-        >
-          Cancel Imposter Mode
-        </button>
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3">
+          {/* Left: context */}
+          <div className="flex flex-col">
+            <span className="text-xs uppercase tracking-wide text-amber-300/80">
+              Imposter Mode
+            </span>
+            <h2 className="text-sm font-semibold text-amber-100">
+              {imposterCompany}
+            </h2>
+          </div>
+
+          {/* Right: action */}
+          <button
+            type="button"
+            onClick={async () => {
+              setImposter(false)
+              await supabase
+                .from('User_Data')
+                .update({ Imposter: false })
+                .eq('company_id', userData.company_id)
+              clearFrontEndCompany()
+            }}
+            className="inline-flex items-center rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 transition"
+            title="Cancel Imposter Mode"
+          >
+            Exit
+          </button>
+        </div>
       )}
-    
+
     </div>
-      
+
   );
 };
 
