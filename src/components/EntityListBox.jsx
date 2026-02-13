@@ -37,7 +37,7 @@ const EntityListBox = ({
 
 const RelatedEntityCell = ({ entity, children }) => {
   const [related, setRelated] = useState(null);
-
+  let Tenant_Name = ""
   useEffect(() => {
     let cancelled = false;
 
@@ -50,6 +50,7 @@ const RelatedEntityCell = ({ entity, children }) => {
         console.error("Related fetch error", err);
         if (!cancelled) setRelated(null);
       }
+      
     };
 
     run();
@@ -140,17 +141,48 @@ const RelatedEntityCell = ({ entity, children }) => {
     const nextMap = new Map();
 
     for (const chunk of chunks) {
-      const { data, error } = await supabase
-        .from("Lease_Extractions")
-        .select("*") // ideally narrow this later
-        .eq("Is_Current", true)
-        .in("tenant_id", chunk);
+const { data, error } = await supabase
+  .from("Lease_Extractions")
+  .select(`
+    tenant_id,
+    unit_id,
+    lease_commencement_date,
+    lease_signed_date,
+    latest_lease_modification_signed_date,
+    base_rent_amount_current,
+    base_rent_frequency,
+    base_rent_payment_timing,
+    base_rent_due_day,
+    base_rent_effective_date,
+    base_rent_schedule,
+    security_type,
+    security_deposit_amount,
+    additional_rent_components,
+    additional_rent_billing_method,
+    additional_rent_commencement_date,
+    additional_rent_limitations,
+    possession_date,
+    rent_commencement_date,
+    rent_abatement_end_date,
+    lease_expiration_date,
+    lease_term_months,
+    rights_index,
+    renewal_options_summary,
+    renewal_notice_requirements_summary,
+    premises_description,
+    parking_allocation,
+    tenant_maintenance_responsibilities,
+    landlord_maintenance_responsibilities,
+    utility_responsibilities,
+    permitted_use
+  `)
+  .eq("Is_Current", true)
+  .in("tenant_id", chunk);
 
       if (error) {
         console.error("Bulk fetch Lease_Extractions error", error);
         continue;
       }
-
       for (const row of data || []) {
         const key = makeKey(row.tenant_id, row.unit_id);
 
@@ -161,7 +193,6 @@ const RelatedEntityCell = ({ entity, children }) => {
             !Array.isArray(value) &&
             value.manual_review === true
         ).length;
-
         nextMap.set(key, count);
       }
     }
@@ -301,7 +332,7 @@ const RelatedEntityCell = ({ entity, children }) => {
                         reviewCount > 0 ? (
                           <div className="shrink-0 text-right">
                             <span className="block text-xs uppercase tracking-wide text-red-300/90">
-                              Manual Review
+                              Extraction Review
                             </span>
                             <span className="inline-flex items-center justify-center rounded-md px-2 py-1 text-sm font-semibold text-red-200 ring-1 ring-inset ring-red-400/40 bg-red-500/10">
                               {reviewCount}

@@ -80,6 +80,7 @@ const rightsIndex = (rightsIndex) => {
     });
 
     rightsIndex.value = values.join("\n");
+
     return rightsIndex;
 };
 
@@ -287,6 +288,7 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Rights Index": rightList },
         { "Renewal Options Summary": data.renewal_options_summary },
         { "Renwal Notice Requirements": data.renewal_notice_requirements_summary },
+        {"Security Type": data.security_type}
     ];
 
 
@@ -327,6 +329,7 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
     const rights = [
         { "Renewal Options Summary": data.renewal_options_summary },
         { "Rights Index": rightList },
+        
     ];
 
     const lease_docs = data;
@@ -355,6 +358,7 @@ export const FIELD_KEYS = {
     "Base Rent Payment Timing": 'base_rent_payment_timing',
     "Base Rent Due Day": 'base_rent_due_day',
     "Current Rent Effective Date": 'base_rent_effective_date',
+    "Security Type": 'security_type',
 
     "Lease Commencement Date": "lease_commencement_date",
     "Possession Date": "possession_date",

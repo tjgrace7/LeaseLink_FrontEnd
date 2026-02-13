@@ -109,6 +109,7 @@ export const ExtractionModal = ({
   onChat
 
 }) => {
+
   const initialAiValue = useMemo(() => aiValue ?? "", [aiValue])
   const isEmptyAI = useMemo(() => {
     return aiValue == null || String(aiValue).trim() === "" || aiValue === "Null";
@@ -235,7 +236,6 @@ export const ExtractionModal = ({
 
                   {requiresReview && (
                     <div className="flex items-center gap-2">
-                      {initialAiValue.trim() !== "" && (
                         <button
                           type="button"
                           onClick={handleApproveAI}
@@ -244,7 +244,7 @@ export const ExtractionModal = ({
                         >
                           Approve AI value
                         </button>
-                      )}
+                      
                       <span className="text-xs text-gray-500">
                         {decision
                           ? decision === "approve"

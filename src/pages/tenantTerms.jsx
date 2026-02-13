@@ -50,7 +50,7 @@ const FieldRow = React.memo(function FieldRow({ label, rawValue, onClick }) {
     "Rent Abatement End",
   ]);
   let extraClass = ""
-  if (rawValue.value && rawValue.manual_review && !rawValue.is_manual_change) {
+  if (rawValue.manual_review && !rawValue.is_manual_change) {
     extraClass = 'bg bg-red-500'
   }
   let dateValue = ""
@@ -97,6 +97,7 @@ const FieldRow = React.memo(function FieldRow({ label, rawValue, onClick }) {
 const TenantTerms = () => {
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
+  const [tenant, setTenant] = useState({})
   const unit_id = searchParams.get('unit_id');
   const company_id = localStorage.getItem("activeCompanyId");
   const navigate = useNavigate();
@@ -129,6 +130,17 @@ const TenantTerms = () => {
     manual_review: false,
   };
 
+  useEffect(() => {
+    if(!tenant_id) return;
+    const getTenant = async () => {
+      const {data, error} = await supabase.from('tenant').select('*').eq('tenant_id', tenant_id).single()
+      if (error) {
+        console.error("Error Fetching Tenant", error)
+      }
+      setTenant(data)
+    }
+    getTenant()
+  })
   useEffect(() => {
     if(!unit_id) return;
     const getUnit = async () => {
@@ -242,7 +254,6 @@ const TenantTerms = () => {
   const handleOpenExtraction = async (label, term) => {
 
     setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label});
-    console.log("Term", term)
     setActiveLabel(label)
     if (term != null && term != "") {
       console.log("Term Not Null")

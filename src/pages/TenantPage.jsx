@@ -48,6 +48,9 @@ function parseDateLoose(input) {
 
 /** ---------- Shared UI bits (match TenantTerms style) ---------- */
 function EntryRow({ item, onValueClick }) {
+  const { tenant_id } = useParams();
+  const [searchParams] = useSearchParams();
+  const [unit_id]= useState(searchParams.get("unit_id") ?? "");
   if (!item || typeof item !== "object") return null;
 
   const [[label, data]] = Object.entries(item);
@@ -63,7 +66,8 @@ function EntryRow({ item, onValueClick }) {
 
   let extraClass = ""
   if ((label === "Lease Commencement Date" || label === "Lease Expiration Date")&& !data ) {
-      manualReview= true
+    manualReview= true
+
 
   }
   if (manualReview && !manualChange) {
@@ -509,11 +513,11 @@ const TenantPage = () => {
     
 
     setActiveLabel(label)
-    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label});
+
+    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label, manual_review: term.manual_review});
 
     if (term != null) {
       const url = await getSignedUrl(term.source_doc);
-      console.log(url)
       setSignedUrl(`${url}#page=${term.page}`);
     }
   };
@@ -744,7 +748,9 @@ const TenantPage = () => {
           )}
         </SectionCard>
       </div>
+
       {activeLabel && (
+        
         <ExtractionModal
           label={safeExtraction.label}
           aiValue={safeExtraction.value}
