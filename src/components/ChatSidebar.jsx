@@ -49,7 +49,7 @@ const ChatSidebar = ({
         const sourceName = source?.source_doc.split('/').pop();
         return `Document: ${sourceName ?? 'Unknown Document'}`;
       }
-    } else if (entityType === "property") {
+    } else if (entityType === "property" && source?.source_doc) {
       const sourceName = source?.source_doc.split('/').pop();
       if (source.pageNumber && source.highlight_text && source.pageNumber > 0) {
         return `${truncateText(sourceName, 30)}; Page ${source.pageNumber}: Highlight: ${truncateText(source.highlight_text, 80)}`;

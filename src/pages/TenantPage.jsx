@@ -52,6 +52,8 @@ function EntryRow({ item, onValueClick }) {
 
   const [[label, data]] = Object.entries(item);
   let rawValue = data?.value ?? "";
+  let manualReview = data?.manual_review ?? false;
+  let manualChange = data?.is_manual_change ?? false;
   const DATE_LABELS = new Set([
     "Lease Commencement Date",
     "Lease Expiration Date",
@@ -60,7 +62,11 @@ function EntryRow({ item, onValueClick }) {
   ]);
 
   let extraClass = ""
-  if (data && data.manual_review && !data.is_manual_change) {
+  if ((label === "Lease Commencement Date" || label === "Lease Expiration Date")&& !data ) {
+      manualReview= true
+
+  }
+  if (manualReview && !manualChange) {
     extraClass = 'bg bg-red-500'
   }
   if (DATE_LABELS.has(label) && rawValue) {

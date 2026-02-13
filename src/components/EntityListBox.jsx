@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
+import { supabase } from "../supabaseClient";
 
 const EntityListBox = ({
   type,
@@ -21,6 +22,8 @@ const EntityListBox = ({
   if (!Label) return null;
 
   const [showArchived, setShowArchived] = useState(false);
+  const [reviewCountMap, setReviewCountMap] = useState(() => new Map());
+  const makeKey = (tenant_id, unit_id) => `${tenant_id || ""}:${unit_id || ""}`;
 
   const isArchived = (row) => {
     const v = row?.archived;
@@ -31,32 +34,36 @@ const EntityListBox = ({
     return Boolean(v);
   };
 
-  const RelatedEntityInfo = ({ entity }) => {
-    const [related, setRelated] = useState(null);
 
-    useEffect(() => {
-      let cancelled = false;
-      const run = async () => {
-        try {
-          if (getRelatedEntity) {
-            const data = await getRelatedEntity(entity);
-            if (!cancelled) setRelated(data || null);
-          }
-        } catch (err) {
-          console.error("Related fetch error", err);
-          if (!cancelled) setRelated(null);
-        }
-      };
-      run();
-      return () => {
-        cancelled = true;
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [entity]);
+const RelatedEntityCell = ({ entity, children }) => {
+  const [related, setRelated] = useState(null);
 
-    if (!related || !renderRelatedLabel) return null;
-    return <span className="text-white text-sm sm:text-base">{renderRelatedLabel(related)}</span>;
-  };
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        if (!getRelatedEntity) return;
+        const data = await getRelatedEntity(entity);
+        if (!cancelled) setRelated(data || null);
+      } catch (err) {
+        console.error("Related fetch error", err);
+        if (!cancelled) setRelated(null);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity]);
+
+  const reviewCount =
+    reviewCountMap.get(makeKey(entity?.tenant_id, entity?.unit_id)) || 0;
+
+  return children({ related, reviewCount });
+};
 
   const sortedEntities = useMemo(() => {
     const safe = Array.isArray(entities) ? [...entities] : [];
@@ -107,57 +114,116 @@ const EntityListBox = ({
       console.error("Entity click error", err);
     }
   };
+  useEffect(() => {
+  let cancelled = false;
 
+  const run = async () => {
+    const tenantIds = Array.from(
+      new Set(
+        filteredEntities
+          .map((e) => e?.tenant_id)
+          .filter((t) => t && t !== "null")
+      )
+    );
+
+    if (tenantIds.length === 0) {
+      if (!cancelled) setReviewCountMap(new Map());
+      return;
+    }
+
+    const chunkSize = 200;
+    const chunks = [];
+    for (let i = 0; i < tenantIds.length; i += chunkSize) {
+      chunks.push(tenantIds.slice(i, i + chunkSize));
+    }
+
+    const nextMap = new Map();
+
+    for (const chunk of chunks) {
+      const { data, error } = await supabase
+        .from("Lease_Extractions")
+        .select("*") // ideally narrow this later
+        .eq("Is_Current", true)
+        .in("tenant_id", chunk);
+
+      if (error) {
+        console.error("Bulk fetch Lease_Extractions error", error);
+        continue;
+      }
+
+      for (const row of data || []) {
+        const key = makeKey(row.tenant_id, row.unit_id);
+
+        const count = Object.values(row).filter(
+          (value) =>
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value) &&
+            value.manual_review === true
+        ).length;
+
+        nextMap.set(key, count);
+      }
+    }
+
+    if (!cancelled) setReviewCountMap(nextMap);
+  };
+
+  run();
+  return () => {
+    cancelled = true;
+  };
+}, [filteredEntities]);
   return (
     // Key: section stretches to parent height; flex column enables scroll region sizing
     <section className={`bg-lease-gradient text-white p-4 sm:p-5 rounded-lg w-full h-full min-h-0 flex flex-col ${className}`}>
       {/* Header row stays natural height */}
-<div className="pb-6 shrink-0">
-  <div className="
+      <div className="pb-6 shrink-0">
+        <div className="
     grid items-center gap-3
     grid-cols-1
     sm:grid-cols-[20rem_1fr_auto]
   ">
-    {/* Search */}
-    <div className="w-60">
-      <SearchBar
-        placeholder={`Search ${placeholder || Label}`}
-        selectEntity={selectEntity}
-        type={type}
-      />
-    </div>
+          {/* Search */}
+          <div className="w-60">
+            <SearchBar
+              placeholder={`Search ${placeholder || Label}`}
+              selectEntity={selectEntity}
+              type={type}
+            />
+          </div>
 
-    {/* Title */}
-    <h1
-      className="
+          {/* Title */}
+          <h1
+            className="
         text-xl sm:text-2xl font-bold
         text-left sm:text-center
         order-first sm:order-none
         truncate
       "
-      aria-label={`${Label} list`}
-      title={Label}
-    >
-      {Label}
-    </h1>
+            aria-label={`${Label} list`}
+            title={Label}
+          >
+            {Label}
+          </h1>
 
-    {/* Toggle */}
-    <div className="sm:justify-self-end">
-      <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer whitespace-nowrap">
-        <input
-          type="checkbox"
-          className="h-4 w-4 accent-rose-500"
-          checked={showArchived}
-          onChange={(e) => setShowArchived(e.target.checked)}
-          aria-label="Toggle showing archived items"
-        />
-        <span className="opacity-90">
-          Show archived{archivedCount ? ` (${archivedCount})` : ""}
-        </span>
-      </label>
-    </div>
-  </div>
-</div>
+          {/* Toggle */}
+          <div className="sm:justify-self-end">
+            <label className="inline-flex items-center gap-2 text-sm sm:text-base select-none cursor-pointer whitespace-nowrap">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-rose-500"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                aria-label="Toggle showing archived items"
+              />
+              <span className="opacity-90">
+                Show archived{archivedCount ? ` (${archivedCount})` : ""}
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
 
       {/* Scroll region: fills remaining height and scrolls internally */}
       <ul className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
@@ -179,22 +245,23 @@ const EntityListBox = ({
                 className={`w-full text-left border transition-colors px-3 sm:px-4 py-2 rounded-lg ${rowClasses}`}
                 aria-label={`Open ${Label.slice(0, -1)} ${entityLabel ?? ""}${archived ? " (archived)" : ""}`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <div className="flex items-start gap-4">
-                    {suite != null && suite !== "" && (
-                      <span className="text-sm sm:text-base text-white flex flex-col min-w-[4.5rem]">
-                        <span className="opacity-80">Suite</span>
-                        <span className="font-medium break-words">{String(suite)}</span>
+                <div className="flex items-start justify-between gap-4">
+                  {/* LEFT SIDE */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                    <div className="flex items-start gap-4">
+                      {suite != null && suite !== "" && (
+                        <span className="text-sm sm:text-base text-white flex flex-col min-w-[4.5rem]">
+                          <span className="opacity-80">Suite</span>
+                          <span className="font-medium break-words">{String(suite)}</span>
+                        </span>
+                      )}
+
+                      <span className="font-medium text-sm sm:text-base">
+                        {Label === "Units" && <span className="block opacity-80">Address</span>}
+                        <span className="break-words">{entityLabel ?? "—"}</span>
                       </span>
-                    )}
+                    </div>
 
-                    <span className="font-medium text-sm sm:text-base">
-                      {Label === "Units" && <span className="block opacity-80">Address</span>}
-                      <span className="break-words">{entityLabel ?? "—"}</span>
-                    </span>
-                  </div>
-
-                  <div className="flex items-start gap-6">
                     {sq != null && sq !== "" && (
                       <span className="text-sm sm:text-base text-white">
                         <span className="block opacity-80">Square Footage</span>
@@ -202,11 +269,22 @@ const EntityListBox = ({
                       </span>
                     )}
 
+                    {/* Current Tenant stays LEFT */}
                     {getRelatedEntity && renderRelatedLabel && (
-                      <div className="text-left">
-                        {Label === "Units" && <span className="block opacity-80 text-sm">Current Tenant</span>}
-                        <RelatedEntityInfo entity={entity} />
-                      </div>
+                      <RelatedEntityCell entity={entity}>
+                        {({ related }) =>
+                          related ? (
+                            <div className="text-left">
+                              {Label === "Units" && (
+                                <span className="block opacity-80 text-sm">Current Tenant</span>
+                              )}
+                              <span className="text-white text-sm sm:text-base">
+                                {renderRelatedLabel(related)}
+                              </span>
+                            </div>
+                          ) : null
+                        }
+                      </RelatedEntityCell>
                     )}
 
                     {archived && (
@@ -215,7 +293,26 @@ const EntityListBox = ({
                       </span>
                     )}
                   </div>
+
+                  {/* RIGHT SIDE */}
+                  {getRelatedEntity && renderRelatedLabel && (
+                    <RelatedEntityCell entity={entity}>
+                      {({ reviewCount }) =>
+                        reviewCount > 0 ? (
+                          <div className="shrink-0 text-right">
+                            <span className="block text-xs uppercase tracking-wide text-red-300/90">
+                              Manual Review
+                            </span>
+                            <span className="inline-flex items-center justify-center rounded-md px-2 py-1 text-sm font-semibold text-red-200 ring-1 ring-inset ring-red-400/40 bg-red-500/10">
+                              {reviewCount}
+                            </span>
+                          </div>
+                        ) : null
+                      }
+                    </RelatedEntityCell>
+                  )}
                 </div>
+
               </button>
             </li>
           );
