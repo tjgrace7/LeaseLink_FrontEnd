@@ -267,7 +267,7 @@ const ChatPage = () => {
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
 
-  
+
   // router
   const navigate = useNavigate();
 
@@ -431,7 +431,7 @@ const ChatPage = () => {
     if (!session_id) return;
     try {
 
-      const trimmed = messages.slice(-50).map(({ message, text, role, longAnswer, sources, emailSources}) => ({
+      const trimmed = messages.slice(-50).map(({ message, text, role, longAnswer, sources, emailSources }) => ({
         message: message || text,
         role,
         longAnswer,
@@ -664,7 +664,7 @@ const ChatPage = () => {
       { role: "assistant", text: "...", loading: true },
     ]);
     setInput("");
-    
+
 
     let payload;
     const unit_id = unit.unit_id
@@ -774,27 +774,30 @@ const ChatPage = () => {
                   loading={m.loading}
                   onClick={async (sources, email_sources, longAnswer) => {
 
-                    if(entity_type === "property" && longAnswer != "") {
+                    if (entity_type === "property" && longAnswer != "") {
                       //Create Show Modal For Long Answer Here
                       setLongAnswer(longAnswer)
-                      
+
                     }
-                    const enriched = await Promise.all(
-                      (sources || []).map(async (source) => {
-                        const signedURL = await getSignedUrl(source.source_doc);
+                    if (sources) {
+                      const enriched = await Promise.all(
+                        (sources || []).map(async (source) => {
+                          const signedURL = await getSignedUrl(source.source_doc);
 
-                        const url = `${signedURL}#page=${encodeURIComponent(source.pageNumber ?? "")}` +
-                          `&highlight_text=${encodeURIComponent(source.highlight_text ?? "")}`;
+                          const url = `${signedURL}#page=${encodeURIComponent(source.pageNumber ?? "")}` +
+                            `&highlight_text=${encodeURIComponent(source.highlight_text ?? "")}`;
 
-                        return {
-                          ...source,
-                          source_doc_signed_url: url,
-                        };
-                      }),
-                      setEmailSources(email_sources)
-                    );
+                          return {
+                            ...source,
+                            source_doc_signed_url: url,
+                          };
+                        }),
                     
-                    setSources(enriched);
+                    setEmailSources(email_sources)
+                    );
+                  
+              setSources(enriched);
+                  }
                   }}
                 />
               ))}
@@ -910,9 +913,9 @@ const ChatPage = () => {
       )}
       {longAnswer != "" && (
         <LongModal
-        longanswer={longAnswer}
-        OnClose={() => setLongAnswer("")}
-/>
+          longanswer={longAnswer}
+          OnClose={() => setLongAnswer("")}
+        />
       )}
 
       {popUp && (
