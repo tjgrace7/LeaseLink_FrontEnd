@@ -344,7 +344,9 @@ export const ExtractionModal = ({
 
             {/* PDF Viewer */}
             {signedUrl != null && (
+              
               <div className="rounded-md border overflow-hidden">
+                {console.log("Signed URL for PDF viewer", signedUrl)}
                 <iframe
                   src={signedUrl}
                   title="Document Viewer"

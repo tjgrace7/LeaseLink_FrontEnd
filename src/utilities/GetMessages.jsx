@@ -340,12 +340,13 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
 
 export const getSignedUrl = async (filePath) => {
     if (!filePath) return null;
+    console.log("Generating signed URL for file path:", filePath);
     const { data, error } = await supabase.storage.from("lease-docs").createSignedUrl(filePath, 600);
     if (error) {
         console.error("Error Generating Signed URL", error);
         return null;
     }
-    console.log(data)
+
     return data?.signedUrl ?? null;
 };
 

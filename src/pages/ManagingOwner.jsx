@@ -178,7 +178,7 @@ const ManagingOwner = () => {
 
       {/* Properties List */}
       <div className="w-full max-w-5xl mx-auto">
-        <DisplayBox className="p-4 sm:p-5 md:p-6">
+        <DisplayBox className="p-4 sm:p-5 md:p-6 flex-col">
           {/* Section title ABOVE the list */}
           <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4">
             Properties Owned
@@ -194,7 +194,7 @@ const ManagingOwner = () => {
           ) : properties.length === 0 ? (
             <Empty title="No properties found" hint="When you add properties for this owner, they will show up here." />
           ) : (
-            <ul className="divide-y divide-white/10 rounded-2xl overflow-hidden border border-white/10">
+            <ul className="divide-y divide-white/10 rounded-2xl overflow-hidden border border-white/10 w-1/2">
               {properties.map((property) => (
                 <li key={property.prop_id}>
                   <button

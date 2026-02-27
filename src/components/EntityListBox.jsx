@@ -249,7 +249,7 @@ const { data, error } = await supabase
                 aria-label="Toggle showing archived items"
               />
               <span className="opacity-90">
-                Show archived{archivedCount ? ` (${archivedCount})` : ""}
+                Show Archived{archivedCount ? ` (${archivedCount})` : ""}
               </span>
             </label>
           </div>

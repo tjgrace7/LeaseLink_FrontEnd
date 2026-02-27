@@ -50,7 +50,7 @@ function parseDateLoose(input) {
 function EntryRow({ item, onValueClick }) {
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
-  const [unit_id]= useState(searchParams.get("unit_id") ?? "");
+  const [unit_id] = useState(searchParams.get("unit_id") ?? "");
   if (!item || typeof item !== "object") return null;
 
   const [[label, data]] = Object.entries(item);
@@ -65,8 +65,8 @@ function EntryRow({ item, onValueClick }) {
   ]);
 
   let extraClass = ""
-  if ((label === "Lease Commencement Date" || label === "Lease Expiration Date")&& !data ) {
-    manualReview= true
+  if ((label === "Lease Commencement Date" || label === "Lease Expiration Date") && !data) {
+    manualReview = true
 
 
   }
@@ -326,7 +326,7 @@ const TenantPage = () => {
   /** ---------- Load extracted terms ---------- */
   useEffect(() => {
     if (!tenant_id || !selectedUnit) return;
-    
+
     let isCancelled = false;
 
     const loadLeases = async () => {
@@ -507,16 +507,18 @@ const TenantPage = () => {
   }
   const handleOpenExtraction = async (payload) => {
 
+    
     const label = Object.keys(payload)[0]
     const term = Object.values(payload)[0]
+console.log("Payload for extraction modal", term)
 
-    
 
-    setActiveLabel(label)
 
-    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label, manual_review: term.manual_review});
 
     if (term != null) {
+      setActiveLabel(label)
+
+      setActiveExtraction({ value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label, manual_review: term.manual_review });
       const url = await getSignedUrl(term.source_doc);
       setSignedUrl(`${url}#page=${term.page}`);
     }
@@ -750,7 +752,7 @@ const TenantPage = () => {
       </div>
 
       {activeLabel && (
-        
+
         <ExtractionModal
           label={safeExtraction.label}
           aiValue={safeExtraction.value}
@@ -777,7 +779,7 @@ const TenantPage = () => {
           onChat={() => {
             const chatId = crypto.randomUUID()
             loadExtractionChat(tenant_id, safeExtraction.label, safeExtraction.value, safeExtraction.reason, company_id, tenant.Tenant_Name, session?.user?.id, chatId)
-            navigate('/chat')   
+            navigate('/chat')
           }}
         />
       )}

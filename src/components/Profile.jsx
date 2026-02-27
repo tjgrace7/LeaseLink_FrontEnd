@@ -24,7 +24,7 @@ const Profile = ({
   Title = '',
   edit_Entity = false,
   delete_Entity = false,
-  selectedUnit = null, 
+  selectedUnit = null,
 }) => {
   const [image, setImage] = useState('');
   const [entityId, setEntityId] = useState('');
@@ -96,6 +96,7 @@ const Profile = ({
               const url = await get_entity_image(file, session);
               return url || '';
             } catch {
+              console.log('Error fetching related entity image');
               return '';
             }
           })
@@ -106,7 +107,8 @@ const Profile = ({
       }
     };
     fetchRelated();
-    if (getRelatedEntity.length >= 5) {
+    console.log('Related entities:', getRelatedEntity);
+    if (getRelatedEntity != undefined && getRelatedEntity.length >= 5) {
       setSearchableUnits(true);
     }
     return () => { cancelled = true; };
@@ -262,7 +264,7 @@ const Profile = ({
           <h1 className="max-w-full line-clamp-2 break-words [overflow-wrap:anywhere] text-xl sm:text-2xl font-bold underline underline-offset-4 decoration-white/30">
             {Title}
           </h1>
-    
+
         )}
 
         {image && (
@@ -276,92 +278,109 @@ const Profile = ({
         )}
 
         <div className="mt-2 text-lg sm:text-xl font-semibold">
-          <span className="block w-full line-clamp-2 break-words [overflow-wrap:anywhere]">{getLabel?.(entity)|| 'Unnamed Entity'}</span>
+          <span className="block w-full line-clamp-2 break-words [overflow-wrap:anywhere]">{getLabel?.(entity) || 'Unnamed Entity'}</span>
         </div>
       </div>
 
-      {/* Related entities column — render only if present to avoid empty space */}
-      {hasRelated && (
-        <div className="flex flex-col items-start">
-          <div className="w-full">
-            <div className="text-base sm:text-lg font-medium mb-2">
-              <span className="underline underline-offset-4 decoration-white/30">
-                {RelatedTitle}
-              </span>
-            </div>
+      <div className="flex flex-col items-start w-full">
+        {/* This wrapper always exists and controls spacing between sections */}
+        <div className="w-full flex flex-col gap-4">
+          {/* Related section only when hasRelated */}
+          {hasRelated && (
+            <div className="w-full">
+              <div className="text-base sm:text-lg font-medium mb-2">
+                <span className="underline underline-offset-4 decoration-white/30">
+                  {RelatedTitle}
+                </span>
+              </div>
 
-            <div className="space-y-3 sm:space-y-4 max-h-64 overflow-y-auto pr-1 sm:pr-2 custom-scroll">
-              {loadingRelated ? (
-                <div className="text-white/80 text-sm">Loading…</div>
-              ) : (
-                <div>
-                  {relatedEntities.length <= 1 && (
-                    relatedEntities.map((rel, i) => {
-                      const keyCandidate =
-                        (getRelatedEntityId && getRelatedEntityId(rel)) ||
-                        `${getRelatedLabel?.(rel) || 'related'}-${i}`;
-                      const imgUrl = relatedImages[i];
+              <div className="space-y-3 sm:space-y-4 max-h-64 overflow-y-auto pr-1 sm:pr-2 custom-scroll">
+                {loadingRelated ? (
+                  <div className="text-white/80 text-sm">Loading…</div>
+                ) : (
+                  <div>
+                    {relatedEntities.length <= 1 &&
+                      relatedEntities.map((rel, i) => {
+                        const keyCandidate =
+                          (getRelatedEntityId && getRelatedEntityId(rel)) ||
+                          `${getRelatedLabel?.(rel) || "related"}-${i}`;
+                        const imgUrl = relatedImages[i];
 
-                      return (
-                        <div key={keyCandidate} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                          {imgUrl && (
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
-                              <img
-                                src={imgUrl}
-                                alt={`${getRelatedLabel?.(rel) || 'Related'} image`}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            </div>
-                          )}
-
-                          <button
-                            className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
-                            onClick={() => handleRelatedClick(rel)}
-                            title={getRelatedLabel?.(rel) || 'Unnamed'} // nice tooltip for full text
+                        return (
+                          <div
+                            key={keyCandidate}
+                            className="flex items-center gap-2 sm:gap-3 min-w-0"
                           >
-                            <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
-                              {getRelatedLabel?.(rel) || 'Unnamed'}
-                            </span>
-                          </button>
-                        </div>
-                      );
-                    })
-                  )}
-                  {Title === 'Tenant' && relatedEntities.length > 1 && !selectedUnit && (
-                    <div>
-                      <Dropdown
-                        options={relatedEntities}
-                        getOptionTitle={getRelatedLabel}
-                        getOptionId={getRelatedEntityId}
-                        placeholder={selectedUnit ? `${selectedUnit?.Suite} - ${selectedUnit.address}` : "Select Unit"}
-                        onSelect={(option) => {
-                          navigate(`/tenant/${entityId}?unit_id=${getRelatedEntityId(option)}`)
-                          window.location.reload();
-                        }}
-                        searchable={searchableUnits}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                            {imgUrl && (
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
+                                <img
+                                  src={imgUrl}
+                                  alt={`${getRelatedLabel?.(rel) || "Related"} image`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              </div>
+                            )}
 
-            {(Title === 'Unit' || Title === 'Property') && (
-              <div className="flex flex-col mt-4 gap-2">
+                            <button
+                              className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
+                              onClick={() => handleRelatedClick(rel)}
+                              title={getRelatedLabel?.(rel) || "Unnamed"}
+                            >
+                              <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
+                                {getRelatedLabel?.(rel) || "Unnamed"}
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })}
+
+                    {Title === "Tenant" &&
+                      relatedEntities.length > 1 &&
+                      !selectedUnit && (
+                        <Dropdown
+                          options={relatedEntities}
+                          getOptionTitle={getRelatedLabel}
+                          getOptionId={getRelatedEntityId}
+                          placeholder={
+                            selectedUnit
+                              ? `${selectedUnit?.Suite} - ${selectedUnit.address}`
+                              : "Select Unit"
+                          }
+                          onSelect={(option) => {
+                            navigate(
+                              `/tenant/${entityId}?unit_id=${getRelatedEntityId(option)}`
+                            );
+                            window.location.reload();
+                          }}
+                          searchable={searchableUnits}
+                        />
+                      )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Add Entities / Create Chat block ALWAYS stays in same place */}
+          <div className="w-full">
+            {(Title === "Unit" || Title === "Property") && (
+              <div className="flex flex-col gap-2">
                 <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
                   Add Entities
                 </h2>
+
                 <button
-                  onClick={() => navigate('/create_person')}
+                  onClick={() => navigate("/create_person")}
                   className="mt-1 cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
                 >
                   Create Tenant
                 </button>
-                {Title === 'Property' && (
+
+                {Title === "Property" && (
                   <button
-                    onClick={() => navigate('/create_building')}
+                    onClick={() => navigate("/create_building")}
                     className="cursor-pointer rounded-lg sm:rounded-xl px-3 py-2 text-left ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition text-sm sm:text-base"
                   >
                     Create Unit
@@ -369,8 +388,9 @@ const Profile = ({
                 )}
               </div>
             )}
-            {(Title === 'Tenant') && (
-              <div className="flex flex-col mt-4 gap-2">
+
+            {Title === "Tenant" && (
+              <div className="flex flex-col gap-2">
                 <h2 className="text-sm sm:text-base font-semibold underline underline-offset-4 decoration-white/30">
                   Create Chat
                 </h2>
@@ -380,13 +400,11 @@ const Profile = ({
                 >
                   New Chat
                 </button>
-
               </div>
             )}
           </div>
         </div>
-      )}
-
+      </div>
       {confirmData && (
         <ConfirmPopUp
           title={confirmData.title}

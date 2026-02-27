@@ -135,7 +135,7 @@ const ChatSidebar = ({
       {/* Terms & Rent */}
       {termsRent.length > 0 && (
         <div className="mb-6">
-          <SectionTitle>Terms and Rent</SectionTitle>
+          <SectionTitle>Dates</SectionTitle>
 
           <ul className="space-y-2">
             {termsRent.map((item, index) => {

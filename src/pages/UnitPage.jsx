@@ -18,7 +18,7 @@ const SectionTitle = ({ children }) => (
 );
 
 const EmptyState = ({ title, hint }) => (
-  <div className="text-sm text-gray-300">
+  <div className="text-sm text-gray-300 w-full text-left cursor-pointer hover:bg-gray-700 p-3 rounded-xl">
     <p className="font-medium">{title}</p>
     {hint && <p className="opacity-80">{hint}</p>}
   </div>
@@ -204,7 +204,7 @@ const UnitPage = () => {
           />
 
         {/* Tenants list */}
-        <DisplayBox className="w-full">
+        <DisplayBox className="w-full gap-12">
 
           {/* Current Tenant */}
           <div className="mb-5">
@@ -247,11 +247,6 @@ const UnitPage = () => {
         </DisplayBox>
       </div>
 
-      {/* Previous Messages */}
-      <div className="mt-8">
-
-          <PreviousMessages entityId={unit_id} session={session} entityType="unit" />
-      </div>
     </div>
   );
 };
