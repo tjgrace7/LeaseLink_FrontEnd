@@ -269,7 +269,6 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Additional Rent Commencement Date": data.additional_rent_commencement_date },
         { "Rent Abatement End": data.rent_abatement_end_date },
         { "Security Deposit Amount": data.security_deposit_amount },
-        { "Security Deposit Type": data.security_deposit_type },
     ];
 
     const premises = [
@@ -282,7 +281,7 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
         { "Landlord Maintenance Responsibilities": data.landlord_maintenance_responsibilities },
     ];
 
-
+    console.log("Security Type", data.security_type)
     const rightList = rightsIndex(data.rights_index)
     const rights = [
         { "Rights Index": rightList },

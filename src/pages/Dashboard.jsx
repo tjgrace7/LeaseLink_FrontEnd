@@ -213,10 +213,10 @@ const Dashboard = () => {
         </section>
 
         {/* Properties + Previous Messages */}
-        <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8">
+        <section className="px-4 sm:px-6 md:px-8 mt-6 sm:mt-8 mb-2 md:mb-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 auto-rows-fr h-[70dvh] min-h-0">
             {/* Left: Properties */}
-            <div>
+            <div className='min-h-0'>
               {loading.properties ? (
                 <div className="animate-pulse">
                   <div className="h-24 rounded-2xl bg-white/10" />

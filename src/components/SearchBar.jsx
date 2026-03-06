@@ -142,7 +142,7 @@ const SearchBar = ({
   const dropdownMaxHeight = "clamp(14rem, 45vh, 24rem)";
 
   // Mobile dropdown: fixed "sheet" under the input so it doesn't clip
-  const useFixedDropdown = isSmallScreen && mobileDropdownMode === "fixed";
+  const useFixedDropdown = isSmallScreen ;
 
   const onKeyDown = (e) => {
     if (!open) return;

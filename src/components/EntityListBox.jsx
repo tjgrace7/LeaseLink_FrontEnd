@@ -104,7 +104,20 @@ const RelatedEntityCell = ({ entity, children }) => {
     try {
       if (typeof getRelatedEntity === "function") {
         const related = await getRelatedEntity(entity);
+        console.log("Related entity on click", related);
         if (related?.tenant_id) {
+          const {data, error} = await supabase.from('Tenant_Unit').select('unit_id').eq('tenant_id', related.tenant_id);
+          if (error) {
+            console.error("Error fetching tenant-unit link", error);
+            selectEntity?.(related.tenant_id, "tenant");
+            return;
+          }
+          if (data && data.length > 1) {
+            
+              console.log("Entity", entity)
+              selectEntity?.(related.tenant_id, "tenant", entity.unit_id, "unit_id") 
+              return;
+            }
           selectEntity?.(related.tenant_id, "tenant");
           return;
         }
@@ -213,7 +226,7 @@ const { data, error } = await supabase
         <div className="
     grid items-center gap-3
     grid-cols-1
-    sm:grid-cols-[20rem_1fr_auto]
+    sm:grid-cols-[15rem_minmax(0,1fr)_auto]
   ">
           {/* Search */}
           <div className="w-60">

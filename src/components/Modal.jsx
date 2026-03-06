@@ -109,7 +109,6 @@ export const ExtractionModal = ({
   onChat
 
 }) => {
-
   const initialAiValue = useMemo(() => aiValue ?? "", [aiValue])
   const isEmptyAI = useMemo(() => {
     return aiValue == null || String(aiValue).trim() === "" || aiValue === "Null";

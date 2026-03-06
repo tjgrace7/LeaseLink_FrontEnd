@@ -69,7 +69,7 @@ const LoadPreviousMessages = ({
 
   return (
     // Critical: w-full h-full min-h-0 so parent height wins
-    <DisplayBox className={`w-full h-full min-h-0 ${className}`}>
+    <div className={`w-full h-full min-h-0 ${className}`}>
       {previousChats.length > 0 ? (
         // Card takes full height, internal layout controls scroll area
         <section className="bg-lease-gradient text-white p-5 sm:p-6 rounded-xl w-full h-full min-h-0 flex flex-col">
@@ -130,7 +130,7 @@ const LoadPreviousMessages = ({
           </p>
         </div>
       )}
-    </DisplayBox>
+    </div>
   );
 };
 

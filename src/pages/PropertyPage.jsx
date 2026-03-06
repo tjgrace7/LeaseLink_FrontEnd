@@ -90,8 +90,12 @@ const PropertyPage = () => {
 
   // Navigation handler for a selected unit
   const selectUnit = useCallback(
-    (unit_id, type) => {
-      navigate(`/${type}/${unit_id}`);
+    (entity_id, type, extra_id = null, extra_type = null) => {
+      if (extra_id && extra_type) {
+        navigate(`/${type}/${entity_id}?${extra_type}=${extra_id}`);
+      } else {
+        navigate(`/${type}/${entity_id}`);
+      }
     },
     [navigate]
   );

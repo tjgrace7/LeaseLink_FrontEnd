@@ -8,6 +8,7 @@ import { ArchiveEntity, UnarchiveEntity } from '../utilities/Generic';
 import ConfirmPopUp from './Confirm';
 import { nav } from 'framer-motion/client';
 import Dropdown from './dropdown';
+import { supabase } from '../supabaseClient';
 
 const Profile = ({
   entity,
@@ -33,6 +34,7 @@ const Profile = ({
   const [loadingRelated, setLoadingRelated] = useState(false);
   const [confirmData, setConfirmData] = useState(null);
   const [searchableUnits, setSearchableUnits] = useState(false);
+  const [extraEntities, setExtraEntities] = useState([]);
   const navigate = useNavigate();
 
   const relatedRouteBase = useMemo(() => {
@@ -50,6 +52,35 @@ const Profile = ({
     if (!entity || !getEntityId) return;
     setEntityId(getEntityId(entity));
   }, [entity, getEntityId]);
+
+  useEffect(() => {
+    if (!entity) return;
+    if (Title === "Tenant") {
+        const fetchUnits = async () => {
+      const { data, error } = await supabase.from('Tenant_Unit').select('unit_id').eq('tenant_id', getEntityId(entity));
+      if (error) {
+        console.error("Error fetching tenant units", error);
+        return;
+      }
+      const relatedUnitIds = new Set(relatedEntities.map((re) => re.unit_id));
+
+      const unitIds = data
+        .map((tu) => tu.unit_id)
+        .filter((id) => !relatedUnitIds.has(id));
+      
+      if (unitIds.length === 0) return;
+
+      const {data: units, error: unitError} = await supabase.from('Units').select('*').in('unit_id', unitIds);
+      if (unitError) {
+        console.error("Error fetching extra tenant units", unitError);
+        return;
+      }
+      setExtraEntities(units);
+    }
+    fetchUnits();
+
+    }
+  }, [entity, Title, relatedEntities])
 
   // -------- Main entity image
   useEffect(() => {
@@ -307,31 +338,57 @@ const Profile = ({
                         const imgUrl = relatedImages[i];
 
                         return (
-                          <div
-                            key={keyCandidate}
-                            className="flex items-center gap-2 sm:gap-3 min-w-0"
-                          >
-                            {imgUrl && (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
-                                <img
-                                  src={imgUrl}
-                                  alt={`${getRelatedLabel?.(rel) || "Related"} image`}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              </div>
-                            )}
-
-                            <button
-                              className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
-                              onClick={() => handleRelatedClick(rel)}
-                              title={getRelatedLabel?.(rel) || "Unnamed"}
+                         <div className="flex flex-col gap-3 sm:gap-4 mb-2 sm:mb-3 ml-1 sm:ml-2" key={keyCandidate}>
+                            <div
+                              key={keyCandidate}
+                              className="flex items-center gap-2 sm:gap-3 min-w-0"
                             >
-                              <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
-                                {getRelatedLabel?.(rel) || "Unnamed"}
-                              </span>
-                            </button>
+                              {imgUrl && (
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded border-2 border-white/80 shadow-md overflow-hidden flex-shrink-0">
+                                  <img
+                                    src={imgUrl}
+                                    alt={`${getRelatedLabel?.(rel) || "Related"} image`}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                </div>
+                              )}
+
+                              <button
+                                className="w-0 flex-1 max-w-full cursor-pointer rounded-lg sm:rounded-xl text-left px-2 py-2 sm:px-3 sm:py-2 ring-1 ring-inset ring-white/10 hover:bg-white/10 active:bg-white/15 transition min-w-0"
+                                onClick={() => handleRelatedClick(rel)}
+                                title={getRelatedLabel?.(rel) || "Unnamed"}
+                              >
+                                <span className="block min-w-0 max-w-full text-sm sm:text-base line-clamp-2 break-words">
+                                  {getRelatedLabel?.(rel) || "Unnamed"}
+                                </span>
+                              </button>
+
+                            </div>
+                            {Title === "Tenant" && (
+
+                              <Dropdown
+                                options={extraEntities}
+                                getOptionTitle={getRelatedLabel}
+                                getOptionId={getRelatedEntityId}
+                                placeholder={
+                                  selectedUnit
+                                    ? `${selectedUnit?.Suite} - ${selectedUnit.address}`
+                                    : "Select Unit"
+                                }
+                                onSelect={(option) => {
+                                  navigate(
+                                    `/tenant/${entityId}?unit_id=${getRelatedEntityId(option)}`
+                                  );
+                                  window.location.reload();
+                                }}
+                                searchable={searchableUnits}
+
+                                
+                              />
+
+                            )}
                           </div>
                         );
                       })}
