@@ -658,7 +658,7 @@ const ChatPage = () => {
       console.log("Access Not Granted")
       return;
     }
-    setMessages((prev) => [
+    setMFessages((prev) => [
       ...prev,
       { role: "user", text: trimmed },
       { role: "assistant", text: "...", loading: true },

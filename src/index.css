@@ -26,3 +26,11 @@ html, body {
 :root {
   --vh-100: 100svh;
 }
+
+.grecaptcha-badge {
+  visibility: visible !important;
+  left: 0 !important;
+  right: auto !important;
+  box-shadow: none !important;
+  border-radius: 0 4px 4px 0 !important;
+}
