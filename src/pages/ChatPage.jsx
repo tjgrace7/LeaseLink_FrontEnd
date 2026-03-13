@@ -1,3 +1,33 @@
+/**
+ * ChatPage — main AI chat interface for LeaseLink.
+ *
+ * Allows users to select a tenant, property, or unit as context and then send
+ * natural-language questions about that entity. The AI response is fetched via
+ * a POST to the backend `/entity_questions` endpoint and then polled from
+ * Supabase until the assistant reply appears.
+ *
+ * Key sub-components (defined in this file):
+ *  - ComposerInput  — memoised text input; kept stable to avoid keyboard flicker
+ *  - Header         — sticky bar with entity label, SearchBar, optional unit picker
+ *  - Composer       — message form (or "select entity" prompt when none selected)
+ *  - ChatBubble     — renders a single user or assistant message; clicking an
+ *                     assistant bubble opens a source/email/long-answer modal
+ *
+ * State management strategy:
+ *  - Chat session (session_id) is persisted to localStorage so a browser
+ *    refresh or back-navigation restores the thread.
+ *  - isPageRefresh detection via performance.getEntriesByType("navigation")
+ *    determines whether to restore or start fresh.
+ *  - Messages are cached as `chat_thread_<session_id>` in localStorage
+ *    (last 50 messages) and also fetched from the `entity_questions` table
+ *    when the cache is absent.
+ *  - GTM events are fired for: entity selection, message send, chat response.
+ *
+ * Access control:
+ *  - baseAccess must be true (from AuthProvider); otherwise the user is
+ *    redirected to /dashboard with an alert.
+ *  - propertyChat feature flag enables property entities in the SearchBar.
+ */
 // src/pages/ChatPage.jsx
 import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";

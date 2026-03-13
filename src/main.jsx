@@ -1,3 +1,6 @@
+// main.jsx
+// Application entry point. Sets up routing, auth context, and Google reCAPTCHA provider.
+// All protected routes require an active Supabase session via ProtectedRoute.
 
 import './utilities/logCollector'
 import React from 'react';
@@ -45,6 +48,10 @@ import SpecialAccess from './pages/specialAccess';
 import CheckEmail from './pages/checkEmail';
 import ForgotPassword from './pages/ForgotPassword';
 
+// Guards a route behind authentication.
+// - Shows a spinner while the session is loading (undefined).
+// - Allows the page to render if a Supabase ?code= param is present (invite/password-reset flow).
+// - Redirects unauthenticated users to /login.
 const ProtectedRoute = ({ children}) => {
   const auth = useAuth();
   const location = useLocation();
@@ -62,13 +69,16 @@ const ProtectedRoute = ({ children}) => {
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+  // Wrap everything in Google reCAPTCHA v3 so any child can call useGoogleReCaptcha()
   <GoogleReCaptchaProvider
     reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
     scriptProps={{async: true, defer: true}}>
   <React.StrictMode>
     <BrowserRouter>
+      {/* AuthProvider supplies session/user context to the entire tree */}
       <AuthProvider>
         <Routes>
+          {/* Public routes — accessible without login */}
           <Route path='/' element={<Home/>}/>
           <Route path='/login' element={<SignIn/>}/>
           <Route path="/request" element={<RequestAccess/>}/>
@@ -80,8 +90,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path='/terms' element={<TermsAndConditions/>}/>
           <Route path='/linkedin/1' element={<LinkedInLanding/>}/>
           <Route path='/linkedin/2' element={<LinkedInLanding2/>}/>
+
+          {/* Invite completion — protected but allows Supabase ?code= param */}
           <Route path='/auth/invite-complete' element={<ProtectedRoute><InviteComplete/></ProtectedRoute>}/>
+
+          {/* OAuth integration callback — handled without Layout shell */}
           <Route path='/settings/integrations' element={<IntegrationsResponsePage/>}/>
+
+          {/* Authenticated app shell — all nested routes render inside Layout */}
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
@@ -103,7 +119,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path='/terms/:tenant_id' element={<ProtectedRoute><TenantTerms/></ProtectedRoute>}/>
             <Route path='/admindashboard' element={<ProtectedRoute><LeaseLinkDashboard/></ProtectedRoute>}/>
             <Route path='/create_company' element={<ProtectedRoute><CreateCompanies/></ProtectedRoute>}/>
-            
+
             <Route path='/special-access' element={<ProtectedRoute><SpecialAccess/></ProtectedRoute>}/>
           </Route>
         </Routes>
@@ -112,4 +128,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
   </GoogleReCaptchaProvider>
 );
-

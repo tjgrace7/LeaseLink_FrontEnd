@@ -1,7 +1,43 @@
+/**
+ * SearchBar
+ *
+ * Global entity search field used in TopNav (and potentially modals).
+ * Calls the Supabase Edge Function `search-bar` with the typed query and
+ * renders categorised results (Owners, Tenants, Properties, Units) in a
+ * dropdown.
+ *
+ * Key behaviours:
+ *  - 250 ms debounce on keystroke to avoid spamming the Edge Function.
+ *  - Keyboard navigation (ArrowUp/Down, Enter to select, Escape to close).
+ *  - On small screens (≤ 640 px) the dropdown is fixed-positioned so it
+ *    doesn't clip inside overflow-hidden containers, and the soft keyboard
+ *    is dismissed after a selection.
+ *  - Wrapped in React.memo to avoid re-renders from parent state changes
+ *    that don't affect the search props.
+ *
+ * Props:
+ *  @param {string}   placeholder      — Input placeholder text (default "Search…")
+ *  @param {Function} selectEntity     — Called with (entityId, entityType) when the user picks a result
+ *  @param {string}   type             — Filter passed to the Edge Function (default "units_properties_tenants")
+ *  @param {boolean}  noAutoFocus      — Suppress autofocus on mount (useful in modals)
+ *  @param {string}   className        — Extra classes on the outer wrapper
+ *  @param {string}   dropdownClassName — Extra classes on the results dropdown
+ */
 import { FiSearch } from "react-icons/fi";
 import { useState, useEffect, useRef, memo, useMemo } from "react";
 import { useAuth } from "../components/AuthProvider";
 
+/**
+ * useMediaQuery
+ *
+ * Lightweight hook that tracks whether a CSS media query currently matches.
+ * Uses `window.matchMedia` with a change-event listener so the value stays
+ * reactive without polling. Used here to detect small screens and
+ * reduced-motion preferences.
+ *
+ * @param {string} query — A valid CSS media query string (e.g. "(max-width: 640px)")
+ * @returns {boolean} — true while the query matches
+ */
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
 
@@ -93,6 +129,15 @@ const SearchBar = ({
     setActiveIndex(-1);
   };
 
+  /**
+   * EntitySelected — called when the user clicks or keyboard-selects a result.
+   * Persists the selection to localStorage (consumed by ChatPage / other pages),
+   * invokes the parent's selectEntity callback, and clears the search field.
+   *
+   * @param {string|number} entityId   — Primary key of the selected entity
+   * @param {string}        entityName — Human-readable label (stored for display)
+   * @param {string}        entityType — One of "owner" | "tenant" | "property" | "unit"
+   */
   const EntitySelected = (entityId, entityName, entityType) => {
     selectEntity(entityId, entityType);
     clearResults();
@@ -107,6 +152,12 @@ const SearchBar = ({
     if (isSmallScreen && inputRef.current) inputRef.current.blur();
   };
 
+  /**
+   * onSearch — fires the Edge Function query and stores categorised results.
+   * On error or empty response it calls clearResults() to close the dropdown.
+   *
+   * @param {string} input — The trimmed search string (min 1 character)
+   */
   const onSearch = async (input) => {
     try {
       const res = await fetch(
@@ -309,6 +360,18 @@ const SearchBar = ({
   );
 };
 
+/**
+ * Section — renders a labelled group of search-result buttons within the dropdown.
+ * Each item is a keyboard-navigable `<button role="option">` inside a `<ul>`.
+ * Transitions are suppressed when the user has requested reduced motion.
+ *
+ * @param {string}   title               — Group heading (e.g. "Tenants")
+ * @param {Array}    items               — Result objects to display
+ * @param {Function} getKey              — Returns a stable React key for each item
+ * @param {Function} render              — Returns the JSX label for each item
+ * @param {Function} onClick             — Called with the raw item when selected
+ * @param {boolean}  prefersReducedMotion — Disables CSS transitions when true
+ */
 const Section = ({ title, items, getKey, render, onClick, prefersReducedMotion }) => {
   return (
     <div>

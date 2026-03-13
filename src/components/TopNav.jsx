@@ -1,4 +1,26 @@
-// TopNav.jsx — responsive & mobile-friendly
+/**
+ * TopNav — sticky top navigation bar (responsive & mobile-friendly).
+ *
+ * Rendered once inside Layout above the main content area. Contains:
+ *  - Brand logo → navigates to /dashboard
+ *  - Action buttons: Chat, Upload, Sync Email (conditional), Create Person
+ *    (conditional), Create Property/Unit (conditional)
+ *  - SearchBar and UserDropdown (hidden on small screens, shown md+)
+ *  - Imposter Mode banner — shown when a LeaseLink admin has switched into
+ *    another company's context; provides an "Exit" button to revert.
+ *
+ * Conditional visibility rules:
+ *  - firstValue:        the entire nav is hidden until userData has loaded
+ *                       (prevents a layout flash before the session is ready)
+ *  - emailIntegrated:   Sync Email button is shown only when emailAccess is
+ *                       enabled AND the user's Email_Sync_Logs record shows
+ *                       status "complete" or "error" (i.e. a prior sync exists)
+ *  - canCreatePerson:   at least one of CreateUsers / Create_Tenants /
+ *                       Create_Contact / Create_Owner is granted in roleData
+ *  - canCreateBuilding: Create_Properties or Create_Unit is granted
+ *  - imposter:          userData.Imposter is truthy — set by the admin dashboard
+ *                       when switching company context
+ */
 import { HiPlus, HiOfficeBuilding } from 'react-icons/hi';
 import { FaUserPlus } from 'react-icons/fa';
 import { FiUpload, FiMessageCircle } from 'react-icons/fi';
@@ -18,8 +40,12 @@ import { supabase } from '../supabaseClient';
 const TopNav = () => {
   const { session, roleData, userData, clearFrontEndCompany, emailAccess } = useAuth();
   const navigate = useNavigate();
+  // true when userData.Imposter is set — triggers the amber imposter-mode banner
   const [imposter, setImposter] = useState(false)
+  // true when the user has a completed/errored email sync (i.e. prior sync exists)
   const [emailIntegrated, setEmailIntegrated] = useState(false)
+  // mirrors userData.First_Value; gates the main nav render to avoid a flash
+  // before auth/userData have resolved (default true keeps nav visible on first paint)
   const [firstValue, setFirstValue] = useState(true)
   const [imposterCompany, setImposterCompany] = useState("")
   const company_id = localStorage.getItem("activeCompanyId");
@@ -79,6 +105,7 @@ const TopNav = () => {
       body: JSON.stringify(payload),
     });
   }
+  // Show "Create Person" if the user has any people-creation permission
   const canCreatePerson =
     !!roleData &&
     (roleData.CreateUsers ||
@@ -86,6 +113,7 @@ const TopNav = () => {
       roleData.Create_Contact ||
       roleData.Create_Owner);
 
+  // Show "Create Property/Unit" if the user has any building-creation permission
   const canCreateBuilding =
     !!roleData && (roleData.Create_Properties || roleData.Create_Unit);
 

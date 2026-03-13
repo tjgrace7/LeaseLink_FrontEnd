@@ -1,4 +1,26 @@
 // src/components/EntityListBox.jsx
+// Reusable list component for displaying any entity type (properties, units, tenants, owners, contacts).
+// Features:
+//   - Alphabetical / suite-aware sorting via useMemo
+//   - Archived entity toggle with count badge
+//   - Inline SearchBar for quick filtering
+//   - Optional "related entity" column (e.g. current tenant on a unit row)
+//   - Bulk-fetches Lease_Extractions to show per-row "manual review needed" counts
+//
+// Props:
+//   type               - Entity type string passed to SearchBar.
+//   selectEntity       - Callback(id, boxType) called when a row is clicked.
+//   entities           - Array of entity objects to display.
+//   getEntityLabel     - (entity) => string — display name for a row.
+//   getEntityId        - (entity) => string|number — unique ID for a row.
+//   Label              - Section heading / accessible label (e.g. "Units").
+//   placeholder        - Search bar placeholder text override.
+//   boxType            - Type string forwarded to selectEntity as the second arg.
+//   getSQ              - (entity) => square footage value, or null.
+//   getSuite           - (entity) => suite identifier, or null.
+//   getRelatedEntity   - async (entity) => related entity data (e.g. tenant for a unit).
+//   renderRelatedLabel - (related) => ReactNode — renders the related entity cell.
+//   className          - Optional extra Tailwind classes for the outer section.
 
 import { useEffect, useMemo, useState } from "react";
 import SearchBar from "./SearchBar";
@@ -25,6 +47,8 @@ const EntityListBox = ({
   const [reviewCountMap, setReviewCountMap] = useState(() => new Map());
   const makeKey = (tenant_id, unit_id) => `${tenant_id || ""}:${unit_id || ""}`;
 
+  // Normalizes the archived field which may come back as a boolean, "true"/"false" string,
+  // "t"/"f" (Postgres shorthand), "1"/"0", or "yes"/"no".
   const isArchived = (row) => {
     const v = row?.archived;
     if (typeof v === "string") {
@@ -35,6 +59,8 @@ const EntityListBox = ({
   };
 
 
+// Inner component that asynchronously resolves a related entity and passes it
+// (along with a review count) to a render-prop child function.
 const RelatedEntityCell = ({ entity, children }) => {
   const [related, setRelated] = useState(null);
   let Tenant_Name = ""
@@ -66,6 +92,8 @@ const RelatedEntityCell = ({ entity, children }) => {
   return children({ related, reviewCount });
 };
 
+  // Sort entities: rows with a suite number come first (sorted numerically),
+  // then remaining rows sorted alphabetically by label.
   const sortedEntities = useMemo(() => {
     const safe = Array.isArray(entities) ? [...entities] : [];
     const safeText = (v) => (v == null ? "" : String(v));
@@ -100,6 +128,9 @@ const RelatedEntityCell = ({ entity, children }) => {
     [entities]
   );
 
+  // Handles row clicks. If the entity has a related tenant (e.g. a unit with a current
+  // tenant), it navigates to the tenant instead. When a tenant is linked to multiple units,
+  // the specific unit_id is passed so the chat page can scope context correctly.
   const handleClick = async (entity) => {
     try {
       if (typeof getRelatedEntity === "function") {
@@ -112,10 +143,10 @@ const RelatedEntityCell = ({ entity, children }) => {
             selectEntity?.(related.tenant_id, "tenant");
             return;
           }
+          // Multi-unit tenant: pass the originating unit_id to disambiguate
           if (data && data.length > 1) {
-            
               console.log("Entity", entity)
-              selectEntity?.(related.tenant_id, "tenant", entity.unit_id, "unit_id") 
+              selectEntity?.(related.tenant_id, "tenant", entity.unit_id, "unit_id")
               return;
             }
           selectEntity?.(related.tenant_id, "tenant");
@@ -128,6 +159,10 @@ const RelatedEntityCell = ({ entity, children }) => {
       console.error("Entity click error", err);
     }
   };
+  // Bulk-fetches Lease_Extractions for all visible tenant rows to count fields
+  // flagged for manual review (manual_review === true). Results are stored in a
+  // Map keyed by "tenant_id:unit_id" to handle multi-unit tenants. Fetched in
+  // chunks of 200 to stay within Supabase query limits.
   useEffect(() => {
   let cancelled = false;
 

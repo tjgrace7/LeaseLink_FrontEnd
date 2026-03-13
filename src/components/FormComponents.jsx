@@ -1,3 +1,13 @@
+// FormComponents.jsx
+// Shared form primitive components used across create/edit forms in the app.
+//
+// Exports:
+//   Label       - Styled <label> with optional className override.
+//   Input       - Styled <input> with error state ring highlighting.
+//   Field       - Composes Label + children + inline error message.
+//   SectionCard - Titled card wrapper for grouping related form fields.
+//   Chip        - Removable tag/pill used in multi-select fields.
+
 import { FiX } from "react-icons/fi";
 export const Label = ({ children, htmlFor, className = "" }) => (
   <label htmlFor={htmlFor} className={`text-sm font-medium mb-1 ${className}`}>

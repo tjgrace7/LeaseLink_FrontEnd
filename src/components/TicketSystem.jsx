@@ -1,16 +1,32 @@
+// src/components/TicketSystem.jsx
+// Floating help-chat widget rendered on medium+ screens (hidden on mobile).
+//
+// Sub-components:
+//   ChatBubble    - Renders a single chat message bubble. Assistant messages include a
+//                   "Did this answer your question?" follow-up; if the user says No, a
+//                   "Submit Support Ticket" button appears.
+//   ComposerInput - Memoized controlled <input> for the message composer.
+//   Composer      - Form wrapper around ComposerInput + Send button.
+//
+// TicketSystem (root export):
+//   - Maintains a persistent session ID in localStorage across opens/closes.
+//   - Fetches chat history from the `Help_Chats` Supabase table on session init.
+//   - Sends messages to the /help backend endpoint and polls for the assistant response.
+//   - Submits an Asana task (with console error logs) when the user clicks "Submit Support Ticket".
 import { useAuth, } from "./AuthProvider";
 import { useState, useEffect, memo, useRef, useCallback } from 'react'
 import { getLogs, getErrors, clearLogs } from "../utilities/logCollector";
 import Spinner from "./loadingSpinner";
 import { supabase } from "../supabaseClient";
 
+//The ChatBubble component represents each individual message in the chat, differentiating between user and assistant messages, and providing options for feedback and ticket submission.
 const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticketSubmit }) {
     const text = message.text || message.message;
     const role = message.role;
     const loading = message.loading || false;
     const [notAnswered, setNotAnswered] = useState(false);
 
-
+    //Makes sure the message is an Array.
     const links = Array.isArray(message.links)
         ? message.links
         : message.links
@@ -23,6 +39,7 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
 
     return (
         <div className={`flex flex-col mt-4 mb-4 ${isUser ? "justify-end" : "justify-start"}`}>
+            {/* The message bubble itself, styled differently for user and assistant messages. If the message is loading, a spinner is shown instead. */}
             <div
                 className={[
                     "w-full max-w-[85%] sm:max-w-3xl whitespace-pre-wrap rounded-2xl",
@@ -32,6 +49,7 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
                     !loading && onClick ? "cursor-pointer hover:ring-white/20" : "",
                 ].join(" ")}
             >
+                {/* If the message is still loading, show a spinner. Otherwise, show the message text and any associated links. */}
                 {loading ? (
                     <div className="spinner">
 
@@ -42,10 +60,12 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
                             {text}
                             {(links || []).map((link, idx) => {
                                 console.log("Processing link:", link);
-
+                                {/* Ensure link has required properties before rendering */}
 
                                 return (
+                                    
                                     <div key={idx}>
+                                        {/* Sends a 2nd message with documentation links if they exist */}
                                         <a
                                             href={link.url}
                                             target="_blank"
@@ -78,6 +98,7 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
                         !loading && onClick ? "cursor-pointer hover:ring-white/20" : "",
                     ].join(" ")}
                 >
+                    {/* After an assistant message, ask the user if their question was answered, and provide buttons for feedback. If they indicate their question was not answered, show an option to submit a support ticket. */}
                     <span className="break-words text-left block">
                         Did this Answer Your Question?
                         <div className="flex gap-4 mt-2">
@@ -108,6 +129,7 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
                         !loading && onClick ? "cursor-pointer hover:ring-white/20" : "",
                     ].join(" ")}
                 >
+                    {/* If the user indicates their question was not answered, show this message and a button to submit a support ticket. */}
                     <span className="break-words text-left block">
                         We're sorry to hear that. Ask a follow up question to get more help or click the button below to submit a support ticket.
                     </span>
@@ -123,6 +145,7 @@ const ChatBubble = memo(function ChatBubble({ message,  onClick, answered, ticke
         </div>
     );
 });
+//The TicketSystem component manages the overall state of the chat interface, including the current messages, user input, and interactions with the backend to fetch and send messages, as well as submit support tickets.
 const ComposerInput = memo(function ComposerInput({
     value,
     onChange,
@@ -308,6 +331,10 @@ const TicketSystem = () => {
         return data;
     };
 
+    // Polls the Help_Chats table until a new assistant message appears (indicating the
+    // backend has finished processing). Retries up to `retries` times with `delay` ms
+    // between each attempt. Replaces the loading bubble with an error if no response
+    // arrives within the retry window.
     const pollForNextAssistantResponse = async (
         existingAssistantCount,
         retries = 20,
@@ -330,6 +357,9 @@ const TicketSystem = () => {
             { role: "assistant", text: "⚠️ No response received. Please try again later." },
         ]);
     };
+    // Creates an Asana task in the support project containing the full chat transcript,
+    // the user's identity/company, and any captured console errors from logCollector.
+    // The task is also moved to the backlog section immediately after creation.
     const SubmitTicket = async (message) => {
         const today = new Date().toISOString().split("T")[0];
         const logs = getLogs();

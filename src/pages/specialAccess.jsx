@@ -1,3 +1,24 @@
+/**
+ * specialAccess — First-time onboarding wizard.
+ *
+ * Shown to new users (those whose userData.First_Value is false and who have
+ * the Create_Properties role permission) instead of the normal Dashboard.
+ * Walks them through creating their first Property + Unit + Tenant in a single
+ * form, then optionally uploading a lease document.
+ *
+ * Flow:
+ *  1) On mount, checks whether a property/unit/tenant already exists for this
+ *     company. If so, skips ahead to /create_building, /create_person, or
+ *     /chat as appropriate.
+ *  2) Stage "Entity Create" — collects Property, Unit, and Tenant fields in
+ *     one step; calls CreateProperty → CreateUnit → Create_Person Edge
+ *     Functions sequentially.
+ *  3) Stage "Upload" — after entities are created, prompts for a single lease
+ *     file, uploads it via generate_upload_url + putWithProgress, then calls
+ *     the /firstLease endpoint to trigger extraction.
+ *  4) On success, pre-seeds localStorage and navigates to /chat with the new
+ *     tenant as context.
+ */
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import DisplayBox from "../components/DisplayBox";

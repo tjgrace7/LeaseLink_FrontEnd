@@ -1,3 +1,13 @@
+/**
+ * Sidebar
+ *
+ * Fixed left-hand navigation panel rendered inside the main Layout.
+ * Contains the LeaseLink logo, primary nav links (Home, Chat), and a
+ * sign-out button in the footer.
+ *
+ * The sidebar itself is stateless — it just reads from the router to
+ * apply the active-link highlight via NavLink's `isActive` callback.
+ */
 import { NavLink, useNavigate } from 'react-router-dom';
 import smalllogo from '../assets/Lease_Link_Logo_Small.png';
 import { FiHome, FiMessageSquare, FiLogOut } from 'react-icons/fi';
@@ -6,6 +16,11 @@ import SignOut from '../components/SignOut'; // if this renders a button/handles
 const Sidebar = () => {
   const navigate = useNavigate();
 
+  /**
+   * Clears all chat-related keys from localStorage so that navigating to
+   * /chat via the sidebar always starts a fresh session rather than
+   * resuming a previous entity context.
+   */
   const clearChatState = () => {
     localStorage.removeItem('chat_session_id');
     localStorage.removeItem('entity_id');
@@ -66,9 +81,10 @@ const Sidebar = () => {
         {/* If your SignOut component already handles the click/auth, keep it. 
             Otherwise, you can render a button with FiLogOut and call your sign-out logic. */}
 
+        {/* SignOut renders the logout button and handles auth + redirect */}
         <SignOut />
 
-
+        {/* Decorative logout icon rendered alongside the SignOut button */}
         <FiLogOut />
 
       </div>

@@ -1,3 +1,20 @@
+/**
+ * logCollector.js — global console interceptor for log/error collection.
+ *
+ * Imported once at the top of main.jsx so it is active for the entire app
+ * lifetime. Monkey-patches console.log, console.error, and console.warn to
+ * buffer all messages while still passing them through to the original
+ * implementation (so DevTools output is unchanged).
+ *
+ * Also installs a window.onerror handler to capture uncaught JS errors.
+ *
+ * Collected entries can be retrieved or cleared via the exported helpers:
+ *  getLogs()   — returns all [LOG] and [WARN] lines joined by newline
+ *  getErrors() — returns all [ERROR] and [ONERROR] lines joined by newline
+ *  clearLogs() — empties both buffers
+ *
+ * Typical use: include the buffer in support tickets (see TicketSystem.jsx).
+ */
 const logBuffer = [];
 const errorBuffer = [];
 

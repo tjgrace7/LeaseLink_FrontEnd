@@ -1,6 +1,19 @@
 // ChatHeader.jsx
+// Sticky top bar for the chat page.
+// Contains the entity SearchBar and a "Sources" toggle button visible on mobile (<lg).
+// Memoized to avoid re-renders when parent state unrelated to header changes.
 import { memo } from "react";
 import SearchBar from "../components/SearchBar";
+
+/**
+ * @param {boolean}  entitySelected - Whether an entity is currently selected in the chat.
+ * @param {string}   entity_name    - Display name of the selected entity.
+ * @param {string}   entity_type    - Type of entity (e.g. "tenant", "property").
+ * @param {string}   entity_image   - Avatar/image URL for the selected entity.
+ * @param {Function} selectEntity   - Callback to select a new entity from the search bar.
+ * @param {string}   access_token   - Auth token forwarded to SearchBar if needed.
+ * @param {Function} setSidebarOpen - Opens the chat sidebar drawer on mobile.
+ */
 const ChatHeader = memo(function ChatHeader({
   entitySelected, entity_name, entity_type, entity_image,
   selectEntity, access_token, setSidebarOpen

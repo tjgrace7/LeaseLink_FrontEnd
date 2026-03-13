@@ -1,3 +1,17 @@
+// src/pages/tenantTerms.jsx
+// Full lease-term detail page for a single tenant/unit combination.
+// Accessible via /terms/:tenant_id (optionally with ?unit_id=<id>).
+//
+// Data flow:
+//   1) Fetches raw AI-extracted lease terms from getLeaseDocs() (Lease_Extractions table).
+//   2) Loads any manual overrides from getTenantTermOverrides().
+//   3) Merges them in getDisplayValue(): override wins unless the raw value is a future date
+//      that has now passed the override's modified_at — in which case the newer document
+//      value is preferred automatically.
+//   4) Renders fields in labelled sections (Basic Lease Details, Rights,
+//      Rent & Financial Terms, Premises & Maintenance Responsibilities).
+//   5) Each field row is a button that opens ExtractionModal, where users can approve,
+//      edit, or create a value and save the override back to Supabase.
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getLeaseDocs, parseUSDate, getSignedUrl, FIELD_KEYS, saveOverride, loadExtractionChat } from "../utilities/GetMessages";
@@ -11,6 +25,9 @@ import {
 import { ExtractionModal } from "../components/Modal.jsx";
 import { supabase } from "../supabaseClient.js";
 
+// Loosely parses a date string into a Date object.
+// Handles M/D/Y and M-D-Y shorthand (expanding 2-digit years) as well as ISO and
+// natural-language formats via Date constructor fallback. Returns null for empty/invalid input.
 function parseDateLoose(input) {
   if (!input) return null;
   if (input instanceof Date) return isNaN(input) ? null : input;
@@ -195,7 +212,10 @@ const TenantTerms = () => {
     };
   }, [tenant_id]);
 
-  // Compute displayed value for a label
+  // Returns the value to display for a given field label.
+  // Priority: manual override > raw AI value, UNLESS the raw value is a future/past date
+  // that was amended AFTER the override was saved (i.e. a newer lease amendment takes
+  // precedence over a stale manual edit).
   const getDisplayValue = useCallback(
     (label, rawValue) => {
 
@@ -222,7 +242,9 @@ const TenantTerms = () => {
   );
 
 
-  // Build flattened sections (read-only list)
+  // Merges raw lease data with overrides into a flat list of sections + fields.
+  // Each field carries an `id` (canonical DB key), `label`, `value` (display-ready),
+  // and `hasOverride` flag used to style manually-edited rows differently.
   const sections = useMemo(() => {
     const S = [
       { title: "Basic Lease Details", data: basicLease },
@@ -249,8 +271,8 @@ const TenantTerms = () => {
     }));
   }, [basicLease, rent, premises, rights, overrides, getDisplayValue]);
 
-  // Open field in the persistent editor
-
+  // Opens the ExtractionModal for the clicked field.
+  // Fetches a signed URL for the source PDF so it can be shown alongside the field value.
   const handleOpenExtraction = async (label, term) => {
 
 

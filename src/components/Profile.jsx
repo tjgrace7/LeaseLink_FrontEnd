@@ -1,4 +1,30 @@
 // src/components/Profile.jsx
+// Reusable entity profile card used on PropertyPage, UnitPage, TenantPage, and ContactPage.
+//
+// Displays:
+//   - The entity's name and avatar (loaded from Supabase Storage via a signed URL)
+//   - An optional list of "related entities" (e.g. managing owner for a property,
+//     units for a tenant, property for a unit)
+//   - Edit and Archive/Restore action buttons gated by edit_Entity / delete_Entity props
+//   - Context-sensitive quick-action buttons (Add Entities for units/properties, New Chat for tenants)
+//   - A ConfirmPopUp dialog before any destructive archive/restore action
+//
+// Props:
+//   entity             - The main entity object being displayed.
+//   getEntityId        - (entity) => id — extracts the primary key.
+//   session            - Supabase auth session (used for signed URL generation).
+//   getFilePath        - (entity) => string|null — Storage path for the main entity's image.
+//   getLabel           - (entity) => string — Display name for the main entity.
+//   getRelatedEntity   - async (entity, session) => object|object[]|null — Fetches related entity data.
+//   getRelatedFilePath - (related) => string|null — Storage path for a related entity's image.
+//   getRelatedLabel    - (related) => string — Display name for a related entity.
+//   RelatedTitle       - Section label for related entities (e.g. "Unit(s)", "Managing Owner").
+//   getRelatedEntityId - (related) => id — Primary key for a related entity (used for navigation).
+//   className          - Optional extra Tailwind classes.
+//   Title              - Entity type label (e.g. "Property", "Unit", "Tenant", "Contact").
+//   edit_Entity        - Boolean; when true, renders an Edit button.
+//   delete_Entity      - Boolean; when true, renders an Archive/Restore button.
+//   selectedUnit       - Unit object currently selected via the unit dropdown (Tenant only).
 import { useEffect, useMemo, useState, memo } from 'react';
 import { FiDelete, FiEdit, FiRotateCcw, FiTrash } from 'react-icons/fi';
 import { get_entity_image } from '../utilities/get_entity_image';
@@ -37,6 +63,7 @@ const Profile = ({
   const [extraEntities, setExtraEntities] = useState([]);
   const navigate = useNavigate();
 
+  // Maps the RelatedTitle prop to the URL prefix used when a related-entity button is clicked.
   const relatedRouteBase = useMemo(() => {
     switch (RelatedTitle) {
       case 'Unit(s)': return '/unit';
@@ -53,6 +80,10 @@ const Profile = ({
     setEntityId(getEntityId(entity));
   }, [entity, getEntityId]);
 
+  // For tenants with multiple unit assignments, fetch any unit IDs that are NOT already
+  // covered by the relatedEntities list (which only contains the "current" unit). These
+  // extras are stored in extraEntities and offered via a Dropdown so the user can switch
+  // the view to a different unit context.
   useEffect(() => {
     if (!entity) return;
     if (Title === "Tenant") {
@@ -203,6 +234,8 @@ const Profile = ({
 
   const hasRelated = (relatedEntities?.length || 0) > 0;
 
+  // Seeds localStorage with the entity context and navigates to /chat so ChatPage
+  // initialises a fresh session pre-loaded with this tenant's data.
   const loadChat = (tenant) => {
 
     if (!entityId) return;

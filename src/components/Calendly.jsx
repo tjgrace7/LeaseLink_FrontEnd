@@ -1,3 +1,20 @@
+/**
+ * CalendlyInline
+ *
+ * Embeds a Calendly scheduling widget inline on the page.
+ * On first mount the component lazily injects the Calendly external script
+ * (`widget.js`) into the document body — subsequent renders skip this step
+ * because the script is identified by a stable `id` attribute.
+ * Calendly then scans the DOM for elements with the class
+ * `calendly-inline-widget` and `data-url`, and replaces them with an iframe.
+ *
+ * @param {string} url    — Full Calendly scheduling URL (defaults to the
+ *                          LeaseLink set-call link)
+ * @param {number} height — Desired widget height in pixels (default 700).
+ *                          Note: the current implementation sets height to
+ *                          "90%" via inline style; this prop is accepted but
+ *                          not yet applied to the style object.
+ */
 // components/CalendlyInline.jsx
 import { useEffect, useRef } from "react";
 

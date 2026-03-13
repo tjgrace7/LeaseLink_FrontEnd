@@ -1,3 +1,20 @@
+// src/utilities/GetMessages.jsx
+// Central data-access layer for lease-term retrieval, chat session management,
+// field override persistence, and extraction-context helpers.
+//
+// Key exports:
+//   parseUSDate          - Normalizes ISO (YYYY-MM-DD) and US (MM/DD/YYYY) date strings.
+//   parseFutureRents     - Parses a semicolon-separated future-rent schedule string.
+//   getPreviousChats     - Fetches past chat sessions for an entity via Edge Function.
+//   getCompanyPreviousChats - Fetches company-level recent chat sessions.
+//   getLeaseDocs         - Fetches Lease_Extractions and formats them into labelled sections
+//                          used by TenantTerms (full-detail view).
+//   getTenantLeaseInfo   - Lighter version of getLeaseDocs used by TenantPage overview.
+//   getSignedUrl         - Returns a 10-minute signed URL for a file in the lease-docs bucket.
+//   FIELD_KEYS           - Maps human-readable field labels to Lease_Extractions column names.
+//   saveOverride         - Writes a user-reviewed value back to Lease_Extractions (approve /
+//                          edit / create modes) and optionally triggers a tenant refresh.
+//   loadExtractionChat   - Pre-seeds a chat session with extraction context and navigates to /chat.
 import { supabase } from "../supabaseClient";
 
 const supabase_url = import.meta.env.VITE_SUPABASE_URL;
@@ -102,6 +119,13 @@ const rightsIndex = (rightsIndex) => {
 
 /* ---------------------------- Supabase fetchers ---------------------------- */
 
+/**
+ * Fetches past chat sessions for a specific entity (tenant/property/unit).
+ * Calls the `entity-session-organizer` Edge Function and passes results to setChats.
+ * @param {string}   entityId - The entity whose sessions to fetch.
+ * @param {object}   session  - Supabase auth session (access_token used for auth header).
+ * @param {Function} setChats - State setter called with the sessions array.
+ */
 export const getPreviousChats = async (entityId, session, setChats) => {
     const response = await fetch(
         `${supabase_url}/functions/v1/entity-session-organizer?entity_id=${encodeURIComponent(entityId)}`,
@@ -119,6 +143,13 @@ export const getPreviousChats = async (entityId, session, setChats) => {
     }
 };
 
+/**
+ * Fetches recent company-level chat sessions (used on the Dashboard).
+ * Calls the `company_recent_chats` Edge Function.
+ * @param {string}   company_id - The company whose sessions to fetch.
+ * @param {object}   session    - Supabase auth session.
+ * @param {Function} setChats   - State setter called with the sessions array.
+ */
 export const getCompanyPreviousChats = async (company_id, session, setChats) => {
     const response = await fetch(
         `${supabase_url}/functions/v1/company_recent_chats?company_id=${encodeURIComponent(company_id)}`,
@@ -199,12 +230,23 @@ export const parseFutureRents = (futureValue) => {
         })
         .filter((x) => x.effective_date && x.monthly_rent != null);
 };
-/*------------------------------ getLeaseDocs ------------------------------ */
+/** Formats future rent schedule as "effective_date: $X/yr; ..." for display. */
 export const formatFutureAnnual = (futureValue) =>
     parseFutureRents(futureValue)
         .map((r) => `${r.effective_date}: $${r.annual_rent.toFixed(2)}/yr`)
         .join("; ");
 
+/**
+ * Fetches the current Lease_Extractions row for a tenant/unit and formats it into
+ * labelled section arrays used by TenantTerms (full-detail view).
+ * Also computes derived values: Annual Base Rent and Base Rent PSF using the unit's
+ * square footage from the Units table.
+ *
+ * @param {string} tenant_id - Tenant to fetch terms for.
+ * @param {string} [unit_id] - Optional unit context; when provided fetches the
+ *                             extraction scoped to that unit.
+ * @returns {{ basic_lease, rent, premises, rights }} Section arrays of { label: extractionObj }.
+ */
 export const getLeaseDocs = async (tenant_id, unit_id = null) => {
     const res = await getLeaseInfo(tenant_id, unit_id);
     const data = res[0]
@@ -295,7 +337,15 @@ export const getLeaseDocs = async (tenant_id, unit_id = null) => {
 };
 
 /* ---------------------------- getTenantLeaseInfo --------------------------- */
-
+/**
+ * Lighter version of getLeaseDocs used by TenantPage's overview grid.
+ * Returns fewer fields grouped into: lease_summary, financial_snapshot,
+ * responsibility, keyDates, and rights.
+ *
+ * @param {string} tenant_id
+ * @param {string} [unit_id]
+ * @returns {{ lease_summary, financial_snapshot, responsibility, keyDates, rights, lease_docs }}
+ */
 export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
     const res = await getLeaseInfo(tenant_id, unit_id);
     const data = res[0]
@@ -337,6 +387,12 @@ export const getTenantLeaseInfo = async (tenant_id, unit_id = null) => {
 };
 
 
+/**
+ * Generates a 10-minute signed URL for a file stored in the `lease-docs` Supabase bucket.
+ * Returns null if filePath is empty or if the Supabase call fails.
+ * @param {string} filePath - Storage path (e.g. "company_id/tenant_id/lease.pdf").
+ * @returns {Promise<string|null>}
+ */
 export const getSignedUrl = async (filePath) => {
     if (!filePath) return null;
     console.log("Generating signed URL for file path:", filePath);
@@ -349,6 +405,11 @@ export const getSignedUrl = async (filePath) => {
     return data?.signedUrl ?? null;
 };
 
+/**
+ * Maps every human-readable lease field label (as shown in the UI) to the corresponding
+ * column name in the Lease_Extractions Supabase table. Used by saveOverride and
+ * getDisplayValue to translate between display labels and DB column names.
+ */
 export const FIELD_KEYS = {
     // Basic Lease
 
@@ -398,6 +459,27 @@ export const FIELD_KEYS = {
 
 
 };
+/**
+ * Persists a user-reviewed extraction value back to Lease_Extractions.
+ *
+ * Decision modes:
+ *   "approve" - Marks the AI value as reviewed (clears manual_review flag), no value change.
+ *   "edit"    - Saves the user-edited value and marks is_manual_change = true.
+ *   "create"  - Inserts a brand-new value (when AI returned nothing) using a full patch
+ *               object including the selected source document.
+ *
+ * After saving, if the edited field is `lease_commencement_date`, triggers a
+ * /refresh_tenant call on the backend to recompute derived lease fields.
+ * Reloads the page after a successful save.
+ *
+ * @param {string} termLabel  - Human-readable field label (mapped via FIELD_KEYS).
+ * @param {string} newValue   - Final value to persist.
+ * @param {object} meta       - { decision, approved_ai, source_doc, selected_lease_id }
+ * @param {string} tenant_id
+ * @param {string} unit_id
+ * @param {string} company_id
+ * @param {object} session    - Supabase auth session.
+ */
 export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id, company_id, session) => {
     //const server_url = "http://localhost:8000";
     const server_url = import.meta.env.VITE_SERVER_URL;
@@ -480,6 +562,20 @@ export const saveOverride = async (termLabel, newValue, meta, tenant_id, unit_id
     return { ok: true }
 };
 
+/**
+ * Pre-seeds a new chat session with an assistant message summarising the extraction
+ * context for a specific field (label, AI value, and reasoning). Then sets localStorage
+ * so ChatPage initialises with the correct entity/session on navigation to /chat.
+ *
+ * @param {string} tenant_id
+ * @param {string} label      - Field label (e.g. "Lease Commencement Date").
+ * @param {string} aiValue    - The AI-extracted value for that field.
+ * @param {string} aiReason   - The AI's justification text.
+ * @param {string} company_id
+ * @param {string} tenantName
+ * @param {string} user_id    - Supabase auth user ID.
+ * @param {string} chatId     - UUID for the new chat session.
+ */
 export const loadExtractionChat = async (tenant_id, label, aiValue, aiReason, company_id, tenantName, user_id, chatId) => {
     console.log("Company Id", company_id)
     const Message = `This Message displays the Extration Data for ${tenantName}

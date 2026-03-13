@@ -1,3 +1,19 @@
+// Modal.jsx
+// Collection of modal dialogs used throughout the chat and extraction review flows.
+//
+// Exports:
+//   ShowModal       - Full-screen overlay that renders a PDF document (via iframe) and
+//                     its associated highlight text excerpt. Used when a user clicks a
+//                     chat source in ChatSidebar.
+//   EmailModal      - Full-screen overlay displaying email sender, subject, and body.
+//                     Used when a user clicks an email source in ChatSidebar.
+//   ExtractionModal - Rich modal for reviewing AI-extracted lease fields. Supports
+//                     approve / edit / create workflows, displays confidence score and
+//                     AI justification, and embeds a PDF viewer when a signed URL is
+//                     available. Requires a review decision before saving when
+//                     `requiresReview` is true.
+//   LongModal       - Simple scrollable overlay for displaying a full AI chat response.
+
 import { Key } from "lucide-react"
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
@@ -95,6 +111,22 @@ export const EmailModal = ({ Email, OnClose }) => {
     </div>
   )
 }
+/**
+ * ExtractionModal
+ * Lets a user review and save a single AI-extracted lease field.
+ *
+ * @param {string}   label          - Human-readable field name shown in the header.
+ * @param {number}   aiConfidence   - 0–1 confidence score from the AI model.
+ * @param {string}   aiReason       - AI justification text for the extraction.
+ * @param {string}   aiFuture       - Future/scheduled value, if any.
+ * @param {string}   aiValue        - Current AI-extracted value.
+ * @param {boolean}  requiresReview - When true, user must explicitly approve or edit before saving.
+ * @param {string}   signedUrl      - Pre-signed URL for the source lease PDF; shown in an iframe.
+ * @param {Function} onClose        - Callback to close the modal without saving.
+ * @param {Function} onSave         - (finalValue, meta) => void — called with the resolved value and metadata.
+ * @param {string}   tenant_id      - Used to fetch available lease documents when there is no signed URL.
+ * @param {Function} onChat         - Opens the chat view for follow-up questions about this field.
+ */
 export const ExtractionModal = ({
   label,
   aiConfidence,

@@ -1,17 +1,26 @@
+// src/components/ChatSidebar.jsx
+// Desktop/drawer sidebar for the Chat page.
+//
+// Sections:
+//   1) Sources     - Document highlights returned by the last AI response. For tenant
+//                    entity types, each source is listed individually. For property entity
+//                    types, sources are first grouped by tenant name so the user can see
+//                    which documents belong to which tenant.
+//   2) Email Sources - Emails returned as context by the AI; clicking one opens EmailModal.
+//   3) Dates       - Quick-view of key lease dates extracted from the active tenant lease.
+//   4) Previous Chats - Session list for the selected entity; clicking one restores the thread.
 import React from "react";
 /**
  * ChatSidebar
- * - Shows:
- *   1) Sources list (with clickable highlights)
- *   2) Optional "Terms and Rent" section
- *   3) Previous Chats list
- *
  * Props:
- * - previousChats: [{ session_id, title }]
- * - sources: [{ pageNumber, highlight_text }]
- * - termsRent: [{ [label]: value }]
- * - onSelectChat: function(session_id)
- * - onSourceClick: function(source)
+ * @param {Array}    previousChats  - [{ session_id, title }] list of past chat sessions.
+ * @param {Array}    sources        - Document citation objects from the last AI response.
+ * @param {Array}    termsRent      - [{ [label]: extractionObj }] lease date terms for the Dates section.
+ * @param {Array}    emailSources   - Email objects returned as context by the AI.
+ * @param {string}   entityType     - "tenant" | "property" — controls how sources are rendered.
+ * @param {Function} onSelectChat   - (session_id) => void — called when a previous chat is clicked.
+ * @param {Function} onSourceClick  - (source) => void — called when a document source is clicked.
+ * @param {Function} onEmailClick   - (email) => void — called when an email source is clicked.
  */
 const ChatSidebar = ({
   previousChats = [],
@@ -23,6 +32,8 @@ const ChatSidebar = ({
   onEmailClick,
   entityType,
 }) => {
+  // Group document sources by tenant name when the entity type is "property" so the
+  // sidebar can show a separate sub-list per tenant. For non-property types this is null.
   const sourcesByTenant = React.useMemo(() => {
     if (entityType !== 'property') return null;
     if (!Array.isArray(sources)) return {};
@@ -39,6 +50,10 @@ const ChatSidebar = ({
     return Object.keys(sourcesByTenant);
   }, [sourcesByTenant]);
 
+  // Builds the human-readable label shown for each document source button.
+  // For tenants: shows "Page N: <truncated highlight>" when page/highlight data is present,
+  //              otherwise falls back to the filename from the source_doc path.
+  // For properties: prepends the truncated filename to the page/highlight info.
   const getSourceText = (source) => {
 
     if (entityType === "tenant") {

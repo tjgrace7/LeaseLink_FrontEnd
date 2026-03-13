@@ -1,4 +1,13 @@
-// components/PolicyGate.jsx
+// components/PrivacyPolicyGate.jsx (PolicyGate)
+// Full-screen blocking overlay that forces users to accept the latest Privacy Policy
+// and/or Terms & Conditions before they can use the app.
+//
+// Behavior:
+//   - Fetches the current (isCurrent=true) PrivacyPolicies and Terms&Conditions rows.
+//   - Compares the user's accepted_policy_id / accepted_terms_id against the fetched IDs.
+//   - If either is out of date, renders a modal with scrollable document text and checkboxes.
+//   - On accept, writes acceptance timestamps/IDs back to User_Data and dismisses the gate.
+//   - Locks page scroll (overflow-hidden on body) while the gate is visible.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "./AuthProvider";

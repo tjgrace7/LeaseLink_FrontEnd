@@ -1,3 +1,16 @@
+/**
+ * ForgotPassword — password reset request page.
+ *
+ * Two-step flow (single page, no navigation):
+ *  1) User enters their email and clicks "Continue" — a confirmation prompt
+ *     appears showing the email they typed so they can verify it before sending.
+ *  2) On confirmation, calls the `reset-password` Supabase Edge Function which
+ *     sends a reset link. The link directs the user to /check-email.
+ *
+ * Local validation: a simple regex guards against obviously invalid addresses
+ * before the request is sent. The submit button is disabled while the request
+ * is in-flight or after a successful send.
+ */
 // ForgotPassword.jsx
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";

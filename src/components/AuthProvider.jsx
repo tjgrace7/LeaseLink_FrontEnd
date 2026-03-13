@@ -1,4 +1,20 @@
 // src/components/AuthProvider.jsx
+// Global authentication context for the LeaseLink app.
+//
+// Provides:
+//   session          - The active Supabase session (undefined while loading, null if unauthenticated).
+//   userData         - Row from User_Data table for the authenticated user.
+//   roleData         - Row from Roles table corresponding to the user's role_id.
+//   loadingUserData  - True while userData is being fetched.
+//   baseAccess       - Boolean; company has Base_Function feature enabled.
+//   emailAccess      - Boolean; company has Email_Function feature enabled.
+//   propertyChat     - Boolean; company has propertyChat feature enabled.
+//   extraction       - Boolean; company has Extraction_Check feature enabled.
+//   setFrontEndCompany   - (companyId) => void — Admin-only: switches the active company context
+//                          (persisted in localStorage as "activeCompanyId").
+//   clearFrontEndCompany - () => void — Resets active company back to the user's own company.
+//
+// Usage: wrap your app in <AuthProvider> and access via the useAuth() hook.
 
 import { createContext, useEffect, useState, useContext } from 'react';
 import { supabase } from '../supabaseClient';
@@ -104,12 +120,16 @@ export const AuthProvider = ({ children }) => {
       setLoadingUserData(false);
     }
   };
+  // Allows Admin users to impersonate another company's context for support/testing.
+  // No-ops for non-admin roles. Updates both React state and localStorage so all
+  // downstream calls that read "activeCompanyId" will use the new company.
   const setFrontEndCompany = async (companyId) => {
     if (roleData.Role_Name != "Admin") return
     setEffectiveCompanyId(companyId)
     localStorage.setItem('activeCompanyId', companyId)
 
   }
+  // Resets the active company back to the authenticated user's own company_id.
   const clearFrontEndCompany = () => {
     setEffectiveCompanyId(null)
     localStorage.setItem('activeCompanyId', userData.company_id)

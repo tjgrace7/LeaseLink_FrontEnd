@@ -1,3 +1,17 @@
+/**
+ * UserDropdown
+ *
+ * Avatar button in the top-right corner of the app that reveals a dropdown
+ * menu on hover. Menu items are gated by role:
+ *  - "Profile" — always visible
+ *  - "Settings" — only when roleData.Access_Settings is truthy
+ *  - "LeaseLink" (admin dashboard) — only for LeaseLink admins (Is_LeaseLink_Admin)
+ *  - "Sign Out" — always visible
+ *
+ * The avatar image is fetched from Supabase Storage using a signed URL
+ * (get_entity_image). Falls back to a generic user-circle icon if no image
+ * is set or the fetch fails.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
@@ -32,6 +46,9 @@ const UserDropdown = () => {
     return () => { cancelled = true; };
   }, [userData?.image_file_path, session]);
 
+  // Hover open/close with a short debounce on mouse-leave so the user can
+  // move from the trigger button into the dropdown without it immediately
+  // closing. The 200 ms timeout is cancelled on re-enter.
   const handleMouseEnter = () => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
     setIsOpen(true);

@@ -1,3 +1,21 @@
+/**
+ * IntegrationsResponsePage
+ *
+ * OAuth callback landing page for email provider integrations
+ * (Microsoft 365 / Outlook and Gmail / Google Workspace).
+ *
+ * After the OAuth redirect, the backend appends query parameters to this
+ * page's URL to communicate the outcome:
+ *  - `provider`        — "microsoft" or "google"
+ *  - `connected=1`     — email account was successfully linked
+ *  - `admin_approved=1`— admin consent grant was approved (enterprise OAuth)
+ *  - `error`           — one of: consent_failed | missing_code | bad_state |
+ *                        me_fetch_failed | <unknown>
+ *
+ * The component derives a user-friendly title, description, and visual tone
+ * (success / error / info) from those params, then displays a status card
+ * with buttons to return to Settings or navigate to the Dashboard.
+ */
 import { useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import DisplayBox from "../components/DisplayBox";

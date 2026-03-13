@@ -1,4 +1,13 @@
-// src/components/LoadPreviousMessages.jsx
+// src/components/PreviousMessages.jsx (LoadPreviousMessages)
+// Displays a scrollable list of previous chat sessions for an entity or company.
+// Clicking a chat row stores the session details in localStorage and navigates to /chat
+// so ChatPage can restore the conversation thread.
+//
+// Props:
+//   entityId   - ID of the entity (tenant, property, unit, or company) whose chats to load.
+//   session    - Supabase auth session (passed to the fetch utilities).
+//   entityType - "company" uses getCompanyPreviousChats; all others use getPreviousChats.
+//   className  - Optional extra Tailwind classes for the outer wrapper.
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPreviousChats, getCompanyPreviousChats } from "../utilities/GetMessages";

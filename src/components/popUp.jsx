@@ -1,3 +1,18 @@
+/**
+ * PopUp
+ *
+ * Simple modal overlay for displaying short informational messages.
+ * Renders a dark semi-transparent backdrop over the entire viewport with a
+ * centred white card containing a title, message, and a "Close" button.
+ *
+ * The component is purely presentational — it does not manage its own open/
+ * closed state. The parent controls visibility by conditionally rendering it
+ * and passes an `onClose` handler to dismiss it.
+ *
+ * @param {string}   title   — Bold heading displayed at the top of the card
+ * @param {string}   message — Body text shown below the title
+ * @param {Function} onClose — Called when the user clicks the "Close" button
+ */
 import React from 'react';
 
 const PopUp = ({ message, title, onClose }) => {

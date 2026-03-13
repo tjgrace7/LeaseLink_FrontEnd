@@ -1,3 +1,16 @@
+/**
+ * Generic.jsx — shared utility functions used across multiple pages.
+ *
+ * Exports:
+ *  ArchiveEntity    — soft-deletes an entity (and optional dependents) by
+ *                     setting archived=true; cascades by entity type
+ *  UnarchiveEntity  — reverses an archive operation; same cascade rules
+ *  putWithProgress  — XHR PUT to a signed URL with upload-progress callback
+ *                     (fetch API has no native upload progress)
+ *  preLoadedChat    — seeds localStorage with entity context then navigates
+ *                     to /chat so the session opens on that entity immediately
+ *  LoadingSpinner   — simple full-area animated spinner component
+ */
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../components/AuthProvider";
 import { useNavigate } from "react-router-dom";
@@ -133,6 +146,14 @@ export const ArchiveEntity = async (entity, entity_id, access_token) => {
   return { ok: errors.length === 0, errors };
 };
 
+/**
+ * UnarchiveEntity — restores a previously archived entity by setting archived=false.
+ * Mirrors the cascade rules of ArchiveEntity (tenants, units, properties).
+ *
+ * @param {"Property"|"Unit"|"Tenant"|"Owner"|"User"} entity
+ * @param {string|number} entity_id
+ * @returns {Promise<{ok:boolean, errors:string[]}>}
+ */
 export const UnarchiveEntity = async (entity, entity_id) => {
   const errors = [];
   const basePatch = { archived: false };
@@ -195,6 +216,17 @@ export const UnarchiveEntity = async (entity, entity_id) => {
   return { ok: errors.length === 0, errors };
 };
 
+/**
+ * putWithProgress — uploads a file to a pre-signed URL via XHR PUT,
+ * reporting upload progress through a callback.
+ * The native fetch API does not expose upload progress, so XHR is used instead.
+ *
+ * @param {string}   signedUrl   — Pre-signed storage URL (e.g. from Supabase)
+ * @param {File}     file        — The file object to upload
+ * @param {string}   contentType — MIME type (e.g. "application/pdf")
+ * @param {Function} onProgress  — Called with integer 0–100 as bytes are sent
+ * @returns {Promise<void>}       — Resolves when the upload completes (2xx)
+ */
 export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -216,6 +248,17 @@ export const putWithProgress = (signedUrl, file, contentType, onProgress = {}) =
     }
   });
 
+/**
+ * preLoadedChat — pre-seeds localStorage with entity context so that
+ * navigating to /chat immediately opens a session for the given entity,
+ * bypassing the "select an entity first" prompt.
+ *
+ * @param {object} params
+ * @param {string} params.entityId   — ID of the entity to pre-select
+ * @param {string} params.entityType — "tenant" | "property" | "unit"
+ * @param {string} params.entityName — Display name (stored for the chat header)
+ * @param {Function} params.navigate — React Router navigate function
+ */
 export const preLoadedChat = ({entityId, entityType, entityName, navigate}) => {
 
   console.log(entityId, entityType, entityName)
@@ -228,6 +271,7 @@ export const preLoadedChat = ({entityId, entityType, entityName, navigate}) => {
   navigate('/chat')
 }
 
+/** Full-area animated spinner used during long async operations (e.g. file processing). */
 export const LoadingSpinner = () => {
   return (
     <div className="w-full h-full flex items-center justify-center py-20">

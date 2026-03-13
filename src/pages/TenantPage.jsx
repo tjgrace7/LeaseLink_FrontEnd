@@ -1,4 +1,20 @@
 // src/pages/TenantPage.jsx
+// Overview page for a single tenant, accessible at /tenant/:tenant_id (optionally with
+// ?unit_id=<id> to scope to a specific unit when the tenant spans multiple units).
+//
+// Layout (from top to bottom):
+//   1) Back button + "View All Terms" button (Extraction_Check feature-gated)
+//   2) Profile card (entity image, unit(s), chat shortcut) + Previous Messages
+//   3) Lease data sections (Lease Summary, Contact Info, Financial Snapshot,
+//      Responsibility, Key Dates, Critical Rights) — shown only when extraction is enabled
+//   4) Lease Documents list with processing status + Reupload action on error
+//   5) ExtractionModal — opens when any lease field row is clicked
+//
+// Data flow:
+//   - Core tenant, unit links, and contacts are fetched in parallel on mount.
+//   - Extracted terms (getTenantLeaseInfo) are fetched after the unit is resolved.
+//   - Manual overrides (getTenantTermOverrides) are merged via applyOverridesToList
+//     before rendering each section.
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -17,7 +33,9 @@ import { ExtractionModal } from "../components/Modal.jsx";
 /** ---------- Field mapping (Display Label → canonical key used for overrides) ---------- */
 
 
-/** Limit the date-based rule to these keys (recommended) */
+// Keys whose override values should be checked against the raw document date.
+// If the raw date is in the future AND the override was edited BEFORE that date took
+// effect, the raw document value is preferred (a newer lease amendment supersedes the edit).
 const DATE_KEYS = new Set([
   "lease_execution_date",
   "lease_commencement_date",
@@ -47,6 +65,11 @@ function parseDateLoose(input) {
 }
 
 /** ---------- Shared UI bits (match TenantTerms style) ---------- */
+/**
+ * EntryRow — renders a single clickable lease field row in the overview sections.
+ * Highlights in red when the AI flagged the field for manual review and no manual
+ * change has been saved yet. Formats date labels using parseUSDate.
+ */
 function EntryRow({ item, onValueClick }) {
   const { tenant_id } = useParams();
   const [searchParams] = useSearchParams();
@@ -106,6 +129,11 @@ function EntryRow({ item, onValueClick }) {
     </button>
   );
 }
+/**
+ * ContactRow — renders a single label/value pair in the Contact Info section.
+ * Handles the "Rent Escalation" field specially by pretty-printing the JSON schedule.
+ * Other JSON-like values are pretty-printed via JSON.stringify.
+ */
 const ContactRow = ({ item }) => {
   if (!item || typeof item !== "object") return null;
 
@@ -429,7 +457,10 @@ const TenantPage = () => {
   }, [leaseDocs, loadJobStatuses]);
 
 
-  /** ---------- Override application ---------- */
+  // Merges manual overrides into a section's item list before rendering.
+  // For date-keyed fields, skips the override if the raw AI date has since passed the
+  // point where the override was last edited (i.e. a newer lease amendment takes
+  // precedence over a stale human edit).
   const applyOverridesToList = useCallback(
     (list) => {
       if (!Array.isArray(list)) return list;

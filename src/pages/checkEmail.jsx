@@ -1,3 +1,10 @@
+/**
+ * CheckEmail — static confirmation page shown after a password reset email is sent.
+ *
+ * No interactivity; simply informs the user to check their inbox and confirm
+ * the email before continuing. Navigated to by ForgotPassword.jsx after a
+ * successful reset request.
+ */
 import DisplayBox from "../components/DisplayBox";
 
 const CheckEmail = () => {
