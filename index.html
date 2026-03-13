@@ -40,13 +40,6 @@
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
 
-  <!-- Async CSS Loading (NON-BLOCKING) -->
-  <link rel="preload" href="/assets/index-BQwak9Xg.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="/assets/index-BQwak9Xg.css"></noscript>
-
-  <!-- Font Loading -->
-  <link rel="preload" href="/assets/source-serif-pro-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-
   <!-- Open Graph / Social Media -->
   <meta property="og:title" content="LeaseLink — AI Lease Extraction & Search">
   <meta property="og:description" content="Extract key lease terms, search contracts with AI, and answer portfolio questions instantly.">
@@ -96,7 +89,7 @@
     }
     // load GTM after first user interaction or when browser is idle
     window.addEventListener('pointerdown', loadGTM, { once: true });
-    (window.requestIdleCallback || setTimeout)(loadGTM, 3000);
+    window.requestIdleCallback ? requestIdleCallback(loadGTM, { timeout: 3000 }) : setTimeout(loadGTM, 3000);
   </script>
 </head>
 <body>

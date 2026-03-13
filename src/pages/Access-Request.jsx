@@ -143,7 +143,6 @@ const RequestAccess = () => {
         }),
       });
       const result = await response.json();
-      console.log(result)
       if(result.error === "Incorrect Site Code")
       {
         setSiteCodeError(true);

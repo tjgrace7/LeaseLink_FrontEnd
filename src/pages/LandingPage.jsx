@@ -400,6 +400,13 @@ const LinkedInLanding = () => {
                   No credit card required • Limited beta
                 </p>
               </div>
+              <p className="text-xs text-white/30">
+                This site is protected by reCAPTCHA and the Google{" "}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50">Privacy Policy</a>
+                {" "}and{" "}
+                <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50">Terms of Service</a>
+                {" "}apply.
+              </p>
             </form>
           </div>
 

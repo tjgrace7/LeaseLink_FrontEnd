@@ -108,7 +108,6 @@ export const AuthProvider = ({ children }) => {
         console.error("Error Fetching Company Data", companyError)
         return;
       }
-      console.log("Extraction Check", companyData.Extraction_Check)
       setEmailAccess(companyData.Email_Function)
       setBaseAccess(companyData.Base_Function)
       setPropertyChat(companyData.propertyChat)
@@ -135,8 +134,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('activeCompanyId', userData.company_id)
   }
 
+  const refreshUserData = () => {
+    if (session?.user?.id) fetchUserData(session.user.id)
+  }
+
   return (
-    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData, setFrontEndCompany, clearFrontEndCompany, baseAccess, emailAccess, propertyChat, extraction }}>
+    <AuthContext.Provider value={{ session, userData, loadingUserData, roleData, setFrontEndCompany, clearFrontEndCompany, baseAccess, emailAccess, propertyChat, extraction, effectiveCompanyId, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

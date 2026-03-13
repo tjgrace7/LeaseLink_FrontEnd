@@ -81,8 +81,8 @@ const specialAccess = () => {
         if (!userData) return;
         const getEntities = async () => {
             console.log(userData.company_id)
-            const { data: properties, error: propError } = await supabase.from("properties").select('*').eq('prop_id', userData.company_id)
-            console.log(properties)
+            const { data: properties, error: propError } = await supabase.from("properties").select('*').eq('pm_company', userData.company_id)
+            console.log("Properties:", properties)
             if (propError) {
                 console.error("Error Fetching Properties")
                 return
@@ -98,7 +98,7 @@ const specialAccess = () => {
                     navigate('/create_building')
                 }
                 else {
-                    const { data: tenants, error: tenantError } = await supabase.from("Units").select("*").eq('property_management_id', userData.company_id).eq('archived', false)
+                    const { data: tenants, error: tenantError } = await supabase.from("tenant").select("*").eq('property_management_id', userData.company_id).eq('archived', false)
                     if (tenantError) {
                         console.error("Error Fetching Tenants")
                         return;

@@ -292,7 +292,7 @@ const ChatPage = () => {
   //switch to import.meta.env.VITE_SERVER_URL
   //const server_url = "http://localhost:8000";
   const server_url = import.meta.env.VITE_SERVER_URL;
-  const { session, userData, loadingUserData, baseAccess, propertyChat } = useAuth();
+  const { session, userData, loadingUserData, baseAccess, propertyChat, refreshUserData } = useAuth();
   const access_token = session?.access_token;
   const auth_id = session?.user?.id;
   const company_id = localStorage.getItem("activeCompanyId");
@@ -753,6 +753,8 @@ const ChatPage = () => {
         const { data, error } = await supabase.from('User_Data').update({ "First_Value": true }).eq('auth_id', session.user.id)
         if (error) {
           console.error("Error Updating User", error)
+        } else {
+          refreshUserData()
         }
       }
     } catch (err) {

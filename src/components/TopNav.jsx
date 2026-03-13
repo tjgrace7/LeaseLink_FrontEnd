@@ -38,7 +38,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
 const TopNav = () => {
-  const { session, roleData, userData, clearFrontEndCompany, emailAccess } = useAuth();
+  const { session, roleData, userData, clearFrontEndCompany, emailAccess, effectiveCompanyId } = useAuth();
   const navigate = useNavigate();
   // true when userData.Imposter is set — triggers the amber imposter-mode banner
   const [imposter, setImposter] = useState(false)
@@ -57,33 +57,34 @@ const TopNav = () => {
 
   useEffect(() => {
     if (!userData) return
-    if (userData.Imposter) {
-
-      setImposter(true)
-      const getCompanyName = async () => {
-        const { data, error } = await supabase.from('Property_Management_Companies').select('company_name').eq('company_id', company_id).single()
-        if (error) {
-          console.error("Error Fetching Company:", error)
-
-        }
-        setImposterCompany(data.company_name)
-      }
-      getCompanyName()
-    }
-
     setFirstValue(userData.First_Value)
   }, [userData])
+
+  useEffect(() => {
+    if (!effectiveCompanyId || !roleData?.Is_LeaseLink_Admin) {
+      setImposter(false)
+      setImposterCompany('')
+      return
+    }
+    setImposter(true)
+    const getCompanyName = async () => {
+      const { data, error } = await supabase.from('Property_Management_Companies').select('company_name').eq('company_id', effectiveCompanyId).single()
+      if (error) { console.error("Error Fetching Company:", error); return }
+      setImposterCompany(data.company_name)
+    }
+    getCompanyName()
+  }, [effectiveCompanyId, roleData])
 
 
   useEffect(() => {
     if (!emailAccess) return;
     const getSyncLogs = async () => {
-      const { data, error } = await supabase.from("Email_Sync_Logs").select("*").eq("user_id", userData.user_id).single()
+      const { data, error } = await supabase.from("Email_Sync_Logs").select("*").eq("user_id", userData.user_id)
       if (error) {
         console.log("No Sync Logs Available", error)
         return
       }
-      if (data.sync_status === 'complete' || data.sync_status === 'error') {
+      if (data.some((log) => log.sync_status === 'complete' || log.sync_status === 'error')) {
         setEmailIntegrated(true)
       }
       else {
@@ -184,15 +185,12 @@ const TopNav = () => {
                 <p className='md:0'>Upload</p>
               </div>
             </NavLink>
-            {console.log(emailIntegrated)}
             {emailAccess && emailIntegrated && (
               <div>
                 <button
                   aria-label="Sync Email"
                   title="Sync Email"
-                  className={({ isActive }) =>
-                    `${linkBase} p-2 hover:bg-gray-800 transition-colors ${isActive ? activeClass : 'text-white'}`
-                  }
+                  className={`${linkBase} p-2 hover:bg-gray-800 transition-colors text-white`}
                   onClick={async () => await syncEmail()}
                 >
                   <div className='flex flex-col items-center'>

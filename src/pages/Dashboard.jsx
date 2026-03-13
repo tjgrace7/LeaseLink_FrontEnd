@@ -30,7 +30,13 @@ function CardShell({ title, children, className = "" }) {
 }
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { session, userData} = useAuth();
+  const { session, userData, effectiveCompanyId: contextCompanyId } = useAuth();
+
+  // Keep activeCompanyId in sync when imposter mode changes
+  useEffect(() => {
+    const id = contextCompanyId || localStorage.getItem('activeCompanyId') || '';
+    setActiveCompanyId(id);
+  }, [contextCompanyId]);
 
   // ——— Date window: first day of this month → now (ISO)
   const { startISO, nowISO } = useMemo(() => {
@@ -46,7 +52,7 @@ const Dashboard = () => {
   const [messageCount, setMessageCount] = useState(0);
   const [docsCount, setDocsCount] = useState(0);
   const [tenantCount, setTenantCount] = useState(0);
-  const [activeCompanyId, setActiveCompanyId] = useState('')
+  const [activeCompanyId, setActiveCompanyId] = useState(() => localStorage.getItem('activeCompanyId') || '')
 
   // Properties list for EntityListBox
   const [properties, setProperties] = useState([]);
@@ -154,17 +160,13 @@ const Dashboard = () => {
         getRole()
 
       }
-  })
+  }, [userData, navigate])
   useEffect(() => {
     if (!isReady) return;
     fetchKpis();
     fetchProperties();
   }, [isReady, fetchKpis, fetchProperties]);
 
-  useEffect(() => {
-    console.log(localStorage.getItem('activeCompanyId'))
-    setActiveCompanyId(localStorage.getItem('activeCompanyId'))
-  }, [localStorage.getItem('activeCompanyId')])
 
   // ——— Reusable tiny KPI card (keeps JSX clean)
   const KpiCard = ({ label, value, sublabel, loading: isLoading }) => (

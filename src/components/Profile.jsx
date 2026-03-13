@@ -408,7 +408,7 @@ const Profile = ({
                                 placeholder={
                                   selectedUnit
                                     ? `${selectedUnit?.Suite} - ${selectedUnit.address}`
-                                    : "Select Unit"
+                                    : "Change Unit"
                                 }
                                 onSelect={(option) => {
                                   navigate(
