@@ -52,6 +52,7 @@ const ComposerInput = memo(function ComposerInput({
   placeholder = "Ask a question…",
   disabled = false,
 }) {
+
   return (
     <input
       id="ll-composer"
@@ -169,8 +170,16 @@ const Header = memo(function Header({ entitySelected, entity_name, entity_type, 
   )
 });
 
-const Composer = memo(function Composer({ entitySelected, input, setInput, handleSend, composerInputRef }) {
+const Composer = memo(function Composer({ entitySelected, input, setInput, handleSend, composerInputRef, loading }) {
   const handleChange = useCallback((e) => setInput(e.target.value), [setInput]);
+  let bgColor = 'bg-blue-600'
+  let buttonText = 'Send'
+  if (loading) {
+    bgColor = 'bg-gray-600'
+    buttonText = 'Loading...'
+  }
+  
+
   return (
     <div className="z-10 px-2 sm:px-4 md:px-6">
       <div className="mx-auto w-full max-w-4xl">
@@ -180,21 +189,22 @@ const Composer = memo(function Composer({ entitySelected, input, setInput, handl
               e.preventDefault();
               handleSend();
             }}
-            className="ios-allow-select flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg"
+            className={`ios-allow-select flex items-center gap-2 rounded-2xl bg-[#2b2e3a]/95 px-3 py-2 ring-1 ring-inset ring-white/10 shadow-lg`}
           >
             <ComposerInput
               inputRef={composerInputRef}
               value={input}
               onChange={handleChange}
               placeholder="Ask a question…"
+              disabled={loading}
             />
             <button
               type="submit"
-              disabled={!input.trim()}
-              className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors"
+              disabled={!input.trim() || loading }
+              className={`inline-flex items-center rounded-xl ${bgColor} px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 disabled:bg-blue-600/50 disabled:cursor-not-allowed transition-colors`}
               onMouseDown={(e) => e.preventDefault()}
             >
-              Send
+              {buttonText}
             </button>
           </form>
         ) : (
@@ -841,6 +851,7 @@ const ChatPage = () => {
                 setInput={setInput}
                 handleSend={handleSend}
                 composerInputRef={composerInputRef}
+                loading={messages[messages.length - 1]?.loading}
               />
             </div>
           </div>
