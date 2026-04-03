@@ -84,6 +84,7 @@ const CreateUnitProperty = () => {
         if (selectedEntity === "Unit") {
           const props = await getTable("properties", "pm_company", company_id);
           if (!props) return;
+          console.log("Fetched properties for parent dropdown:", props);
           setParent(props);
           setNameLabel("Unit Address");
           setNamePlaceholder("Enter address");

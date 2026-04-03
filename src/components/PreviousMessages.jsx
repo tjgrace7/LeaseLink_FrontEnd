@@ -103,6 +103,7 @@ const LoadPreviousMessages = ({
                   {previousChats.map((chat, idx) => {
                     const title = chat?.title || `Chat ${idx + 1}`;
                     const when = formatWhen(chat);
+                    const recentUser = chat?.recentUser
 
                     return (
                       <li key={chat.session_id || idx} className="last:mb-0">
@@ -118,8 +119,12 @@ const LoadPreviousMessages = ({
                               {title}
                             </span>
                             <span className="text-xs sm:text-sm text-white/80">
+                              {recentUser ? `Last message: ${recentUser}` : chat.session_id}
+                            </span>
+                            <span className="text-xs sm:text-sm text-white/80">
                               {when ? when : chat.session_id}
                             </span>
+
                           </div>
                         </button>
                       </li>

@@ -526,8 +526,7 @@ const ChatPage = () => {
 
   // ------------------------- fetch tenant terms --------------------
   useEffect(() => {
-
-    if (entity_type !== "tenant" || !entity_id || unit.length < 1) return;
+    if (entity_type !== "tenant" || !entity_id || !unit || unit.length < 1) return;
     let cancelled = false;
     (async () => {
       try {

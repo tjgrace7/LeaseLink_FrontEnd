@@ -261,8 +261,7 @@ const UploadLeases = () => {
             alert(`Upload failed for file ${file.name}: ${uploadErr.message}`);
             continue; // skip to next file
           }
-
-          //Remove for Production. Used for Testing to bypass CRON SERVICE
+          // Optional: immediately trigger processing after upload (instead of waiting for a separate step or background worker)
          /*const serverurl = "http://localhost:8000";
           const lease_request = {
             user_id: session.user.id,
@@ -309,9 +308,9 @@ const UploadLeases = () => {
 
             // Show toast, set error state, etc.
             // setError(err.message);
-          } */
+          } 
 
-            
+            */
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
 
