@@ -114,17 +114,16 @@ const LoadPreviousMessages = ({
                           title={title}
                           aria-label={`Open chat ${title}`}
                         >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
-                            <span className="font-medium text-base sm:text-lg leading-tight break-words">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-base sm:text-lg leading-tight line-clamp-2">
                               {title}
                             </span>
-                            <span className="text-xs sm:text-sm text-white/80">
-                              {recentUser ? `Last message: ${recentUser}` : chat.session_id}
-                            </span>
-                            <span className="text-xs sm:text-sm text-white/80">
-                              {when ? when : chat.session_id}
-                            </span>
 
+                            <span className="text-xs text-white/60 flex items-center gap-2">
+                              {recentUser && <span>{recentUser}</span>}
+                              {recentUser && when && <span>•</span>}
+                              {when && <span>{when}</span>}
+                            </span>
                           </div>
                         </button>
                       </li>

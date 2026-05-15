@@ -445,117 +445,14 @@ const CreateEditPerson = () => {
         }
         return;
       }
-      const confirmEmail = `<html lang="en" style="margin:0;padding:0;">
-<head>
-  <meta charset="utf-8">
-  <meta name="x-apple-disable-message-reformatting">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Welcome to LeaseLink</title>
-  <style>
-    /* Just in case some clients keep <style> */
-    @media (prefers-color-scheme: dark) {
-      .bg { background:#0b1220 !important; }
-      .card { background:#111827 !important; color:#e5e7eb !important; }
-      .muted { color:#9ca3af !important; }
-      .btn { background:#10b981 !important; color:#0b1220 !important; }
-      .link { color:#34d399 !important; }
-    }
-  </style>
-</head>
-<body style="margin:0;padding:0;background:#0b1220;" class="bg">
-  <!-- Preheader (hidden) -->
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-    Welcome to LeaseLink — you’ll receive a separate email to create your password.
-  </div>
 
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1220;">
-    <tr>
-      <td align="center" style="padding:32px 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;">
-          <tr>
-            <td align="left" style="padding:0 0 16px 0;">
-              <!-- Logo (optional) -->
-              <a href="https://www.leaselink.ai" target="_blank" style="text-decoration:none;">
-                <img src="https://www.leaselink.ai/logo.png" alt="LeaseLink" width="140" height="auto" style="border:0;display:block;">
-              </a>
-            </td>
-          </tr>
-
-          <tr>
-            <td class="card" style="background:#0f172a;border-radius:14px;padding:28px 24px;color:#e5e7eb;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;">
-              <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.3;font-weight:700;">
-                Welcome to LeaseLink, ${genericFormData.name}!
-              </h1>
-              <p class="muted" style="margin:0 0 16px 0;color:#cbd5e1;font-size:14px;line-height:1.6;">
-                Your Lease Link account has been created. To keep things secure, we don’t send passwords by email.
-              </p>
-
-              <h3 style="margin:20px 0 8px 0;font-size:16px;line-height:1.4;">What happens next</h3>
-              <ol style="margin:0 0 16px 20px;padding:0;color:#e5e7eb;font-size:14px;line-height:1.6;">
-                <li>You’ll receive a <strong>separate email</strong> shortly with the subject:
-                  <em>“Reset your LeaseLink password”</em>.
-                </li>
-                <li>Open that email and click the button to create your password.</li>
-                <li>After setting your password, sign in at <a href="https://www.leaselink.ai" class="link" style="color:#34d399;text-decoration:none;">app.leaselink.ai</a>.
-                </li>
-              </ol>
-
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 8px 0;">
-                <tr>
-                  <td>
-                    <a href="https://www.leaselink.ai" target="_blank"
-                       class="btn"
-                       style="display:inline-block;background:#10b981;color:#062a22;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:600;font-size:14px;">
-                      Go to LeaseLink
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p class="muted" style="margin:16px 0 0 0;color:#9ca3af;font-size:12px;line-height:1.6;">
-                Can’t find the password email? Check your spam or “Updates/Promotions” tabs, and add
-                <span style="white-space:nowrap;">no-reply@leaselink.ai</span> to your contacts.
-              </p>
-
-              <hr style="border:none;border-top:1px solid #1f2937;margin:20px 0;">
-
-              <h3 style="margin:0 0 8px 0;font-size:16px;">Getting started</h3>
-              <ul style="margin:0 0 16px 20px;padding:0;font-size:14px;line-height:1.6;">
-                <li>Upload leases, amendments, and exhibits as PDFs.</li>
-                <li>Ask natural-language questions; answers include citations to the source document.</li>
-                <li>Invite teammates from Settings → Team.</li>
-              </ul>
-
-              <p class="muted" style="margin:0;color:#9ca3af;font-size:12px;">
-                Need help? Reply to this email or contact us at
-                <a href="mailto:support@leaselink.ai" class="link" style="color:#34d399;text-decoration:none;">support@leaselink.ai</a>.
-              </p>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:16px 4px 0 4px;text-align:center;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;color:#9ca3af;font-size:12px;">
-              © {{year}} LeaseLink • 123 Example St, Suite 100, Anytown, USA
-              <br>
-              <a href="{{manage_preferences_url}}" class="link" style="color:#34d399;text-decoration:none;">Manage notifications</a>
-              &nbsp;•&nbsp;
-              <a href="{{privacy_url}}" class="link" style="color:#34d399;text-decoration:none;">Privacy</a>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
       if (selectedPerson === "App User") {
         const emailres = await fetch(`${supabase_url}/functions/v1/internal-Emails`, {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": 'application/json' },
           body: JSON.stringify({
-            emailbody: confirmEmail,
-            emailsubject: 'Welcome to Lease Link',
+            emailtype: "Confirm",
+            emailtoname: genericFormData.name,
             emailto: genericFormData.email,
             user_id: session.user.id,
             newUserEmail: true

@@ -312,7 +312,7 @@ const ChatPage = () => {
   const navigate = useNavigate();
 
   // ------------------------- detect if this is a page refresh ----------
-  const [isPageRefresh, setIsPageRefresh] = useState(false);
+  const [isPageRefresh, setIsPageRefresh] = useState(null);
   const isOldMessage = textToBool(localStorage.getItem('isOldMessage'))
   const isNewNavigation = textToBool(localStorage.getItem('isNewNavigation'))
 
