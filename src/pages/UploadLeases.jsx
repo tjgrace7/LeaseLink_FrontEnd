@@ -262,7 +262,8 @@ const UploadLeases = () => {
             continue; // skip to next file
           }
           // Optional: immediately trigger processing after upload (instead of waiting for a separate step or background worker)
-         const serverurl = "http://localhost:8000";
+         //const serverurl = "http://localhost:8000";
+         /*
           const lease_request = {
             user_id: session.user.id,
             property_id: selectedProperty.prop_id,
@@ -309,7 +310,7 @@ const UploadLeases = () => {
             // Show toast, set error state, etc.
             // setError(err.message);
           } 
-
+          */
             
           // Step 3: Trigger processing
           setStatus(id, { step: "Processing", message: "Starting file processing…" });
