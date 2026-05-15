@@ -546,12 +546,13 @@ console.log("Payload for extraction modal", term)
 
 
 
-    if (term != null) {
-      setActiveLabel(label)
-
-      setActiveExtraction({ value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, reason: term.reason, label: label, manual_review: term.manual_review });
+    setActiveLabel(label);
+    setActiveExtraction({ value: term?.value ?? null, future_value: term?.future_value ?? null, confidence_score: term?.confidence_score ?? null, reason: term?.reason ?? null, label: label, manual_review: term?.manual_review ?? false });
+    if (term?.source_doc) {
       const url = await getSignedUrl(term.source_doc);
       setSignedUrl(`${url}#page=${term.page}`);
+    } else {
+      setSignedUrl(null);
     }
   };
 

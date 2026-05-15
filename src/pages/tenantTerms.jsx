@@ -276,12 +276,13 @@ const TenantTerms = () => {
   const handleOpenExtraction = async (label, term) => {
 
 
-    setActiveExtraction({value: term.value, future_value: term.future_value, confidence_score: term.confidence_score, manual_review: term.manual_review, reason: term.reason, label: label});
-    setActiveLabel(label)
-    if (term != null && term != "") {
-      console.log("Term Not Null")
+    setActiveExtraction({ value: term?.value ?? null, future_value: term?.future_value ?? null, confidence_score: term?.confidence_score ?? null, manual_review: term?.manual_review ?? false, reason: term?.reason ?? null, label: label });
+    setActiveLabel(label);
+    if (term?.source_doc) {
       const url = await getSignedUrl(term.source_doc);
-      setSignedUrl(`${url}#page=${term.page}`)
+      setSignedUrl(`${url}#page=${term.page}`);
+    } else {
+      setSignedUrl(null);
     }
 
   }

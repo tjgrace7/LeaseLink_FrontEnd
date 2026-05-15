@@ -220,8 +220,8 @@ const TicketSystem = () => {
 
     const composerInputRef = useRef(null);
 
-    const server_url = "http://localhost:8000";
-    //const server_url = import.meta.env.VITE_SERVER_URL;
+    //const server_url = "http://localhost:8000";
+    const server_url = import.meta.env.VITE_SERVER_URL;
 
 
     useEffect(() => {
