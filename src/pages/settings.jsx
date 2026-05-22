@@ -780,7 +780,7 @@ ${failures.length > 5 ? `...and ${failures.length - 5} more.` : ''}`;
         {/* Roles */}
         {tab === 'Roles' && (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between gap-4 mb-6">
               <h2 className="text-xl sm:text-2xl font-semibold">Roles</h2>
               <button
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15"
